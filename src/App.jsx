@@ -11098,7 +11098,12 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
             <div key={i} style={{display:"flex",gap:10,alignItems:"center",marginBottom:i===0?10:0}}>
               <div style={{width:36,height:36,borderRadius:14,background:"linear-gradient(135deg,#f59e0b,#ec4899)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>🎂</div>
               <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700}}>{b.name}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{b.sub}</div></div>
-              <button onClick={()=>doToast("Birthday message sent to "+b.name)} style={{padding:"4px 12px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700}}>Send</button>
+              <button onClick={()=>{
+                const tpl=localStorage.getItem("pdc_birthday_template")||"Happy birthday {name}! 🎂 Wishing you a fantastic day from all the team at the practice. — ProDentalConnect";
+                const msg=tpl.replace(/\{name\}/g,b.name.split(" ")[0]);
+                const edited=window.prompt("Birthday message for "+b.name+":\n(You can edit before sending)",msg);
+                if(edited){doToast("🎂 Birthday message sent to "+b.name+" via their preferred contact");}
+              }} style={{padding:"4px 12px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700}}>Send</button>
             </div>
           ))}
         </div>
@@ -19909,7 +19914,7 @@ function CommsPage(){
     <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Communications Hub</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
-        {COMMS.map(c=><div key={c.type} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16}}>
+        {COMMS.map(c=><div key={c.type} onClick={()=>alert(c.type+" channel — sent "+c.sent+" this month\n\nClick on a recent message below to view conversation.")} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16,cursor:"pointer",transition:"transform .15s"}} onMouseOver={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseOut={e=>e.currentTarget.style.transform="none"}>
           <div style={{display:"flex",gap:9,alignItems:"center",marginBottom:12}}><span style={{fontSize:22}}>{c.icon}</span><span style={{fontSize:14,fontWeight:700,color:c.color}}>{c.type}</span></div>
           {[["Sent this month",c.sent],c.opened!=null&&["Opened",`${c.opened} (${Math.round(c.opened/c.sent*100)}%)`],c.replied!=null&&["Replied",c.replied],["Pending",c.pending]].filter(Boolean).map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:"1px solid rgba(80,140,255,0.08)",fontSize:12}}><span style={{color:C.muted}}>{l}</span><span style={{fontWeight:700}}>{v}</span></div>)}
         </div>)}
@@ -19920,7 +19925,7 @@ function CommsPage(){
           {type:"SMS",patient:"John Mills",msg:"Reminder: your appointment is tomorrow at 09:30",sent:"3h ago",status:"Sent"},
           {type:"Email",patient:"Amy Torres",msg:"Treatment plan summary — Crown UR6",sent:"Yesterday",status:"Opened"},
           {type:"WhatsApp",patient:"Tom Bright",msg:"We missed you today — please call to rebook",sent:"Yesterday",status:"Delivered"}].map((c,i)=>(
-          <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center"}}>
+          <div key={i} onClick={()=>alert(c.type+" · "+c.patient+"\n\n"+c.msg+"\n\nSent: "+c.sent+" · Status: "+c.status)} style={{display:"flex",gap:10,padding:"8px 0",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="rgba(80,140,255,0.04)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
             <span style={{fontSize:16,flexShrink:0}}>{c.type==="WhatsApp"?"💬":c.type==="SMS"?"📱":"✉️"}</span>
             <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{c.patient}</div><div style={{fontSize:11,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.msg}</div></div>
             <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:10,color:"#CBD5E1"}}>{c.sent}</div><div style={{fontSize:10,fontWeight:600,color:c.status==="Read"?C.teal:c.status==="Opened"?C.blue:C.muted}}>{c.status}</div></div>
