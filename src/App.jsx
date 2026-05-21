@@ -11021,8 +11021,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
           <button onClick={()=>setPage&&setPage("performance")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>Insights</button>
         </div>
         <div style={{padding:"14px"}}>
-          {[{l:"Seen",v:18,max:24,c:C.green},{l:"DNAs",v:2,max:24,c:C.red},{l:"Rev",v:2840,max:4000,c:C.blue,prefix:"£",suffix:""}].map(m=>(
-            <div key={m.l} style={{marginBottom:12}}>
+          {[{l:"Seen",v:18,max:24,c:C.green,page:"patients"},{l:"DNAs",v:2,max:24,c:C.red,page:"reports"},{l:"Rev",v:2840,max:4000,c:C.blue,prefix:"£",suffix:"",page:"reports"}].map(m=>(
+            <div key={m.l} onClick={()=>setPage&&setPage(m.page)} style={{marginBottom:12,cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.opacity="0.7"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                 <span style={{fontSize:10,fontWeight:600,color:"#F8FAFC"}}>{m.l}</span>
                 <span style={{fontSize:10,fontWeight:700,color:m.c,fontFamily:"ui-monospace,monospace"}}>{m.prefix||""}{m.v>=1000?(m.v/1000).toFixed(1)+"k":m.v}</span>
@@ -17504,6 +17504,7 @@ function HelpSupportPage({user}){
   const support=PLAN_SUPPORT[practicePlan]||PLAN_SUPPORT.Starter;
   const [tickets,setTickets]=useState(TICKETS_INIT.filter(t=>t.practice==="Riverside Dentistry"));
   const [view,setView]=useState("list"); // list | new | detail
+  const [statusFilter,setStatusFilter]=useState("all");
   const [selTicket,setSelTicket]=useState(null);
   const [newMsg,setNewMsg]=useState("");
   const [form,setForm]=useState({title:"",cat:TICKET_CATS[0],priority:"medium",desc:""});
@@ -17574,12 +17575,17 @@ function HelpSupportPage({user}){
 
       {/* ── List view ── */}
       {view==="list"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {[{id:"all",l:"All",n:tickets.length},{id:"open",l:"Open",n:tickets.filter(t=>t.status==="open").length},{id:"pending",l:"Pending",n:tickets.filter(t=>t.status==="pending"||t.status==="in_progress").length},{id:"closed",l:"Closed",n:tickets.filter(t=>t.status==="closed"||t.status==="resolved").length}].map(f=>(
+            <button key={f.id} onClick={()=>setStatusFilter(f.id)} style={{padding:"5px 12px",border:`1.5px solid ${statusFilter===f.id?C.teal:"rgba(80,140,255,0.2)"}`,background:statusFilter===f.id?"rgba(56,189,248,0.12)":"#132238",borderRadius:8,fontSize:11,fontWeight:600,color:statusFilter===f.id?C.teal:"#CBD5E1",cursor:"pointer"}}>{f.l} <span style={{opacity:.7,marginLeft:4}}>({f.n})</span></button>
+          ))}
+        </div>
         {tickets.length===0&&<div style={{textAlign:"center",padding:48,color:"#CBD5E1"}}>
           <div style={{fontSize:32,marginBottom:12}}>🎉</div>
           <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:4}}>No support tickets</div>
           <div style={{fontSize:12}}>Create a ticket if you need any help</div>
         </div>}
-        {tickets.map(t=>{const s=STATUS_META_TICKET[t.status];const p=TICKET_PRIORITIES.find(x=>x.id===t.priority);return(
+        {tickets.filter(t=>statusFilter==="all"||(statusFilter==="pending"?(t.status==="pending"||t.status==="in_progress"):(statusFilter==="closed"?(t.status==="closed"||t.status==="resolved"):t.status===statusFilter))).map(t=>{const s=STATUS_META_TICKET[t.status];const p=TICKET_PRIORITIES.find(x=>x.id===t.priority);return(
           <div key={t.id} onClick={()=>{setSelTicket(t);setView("detail");}} style={{background:"#132238",border:`1.5px solid rgba(59,130,246,0.35)`,borderLeft:`4px solid ${p.c}`,borderRadius:11,padding:"12px 16px",marginBottom:10,cursor:"pointer",transition:"box-shadow .15s"}}
             onMouseOver={e=>e.currentTarget.style.boxShadow="0 3px 12px rgba(0,0,0,.07)"} onMouseOut={e=>e.currentTarget.style.boxShadow="none"}>
             <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
@@ -19565,11 +19571,20 @@ function TasksPage({user}){
 // UDA TRACKER
 // ══════════════════════════════════════════════════════════════════════════════
 function UDAPage(){
+  const [period,setPeriod]=useState("Year");
   const dentists=[{name:"Dr. S. Patel",target:2280,done:1872,color:"#38BDF8"},{name:"Dr. M. Chen",target:2280,done:1529,color:C.purple}];
   const month=4;const totalMonths=12;
+  const periodMul={Week:1/52,Month:1/12,Quarter:1/4,Year:1}[period];
   return(
     <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-      <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>UDA Tracker — 2025/26 Contract Year</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{fontSize:15,fontWeight:800}}>UDA Tracker — 2025/26 Contract Year</div>
+        <div style={{display:"flex",gap:0,background:"#0F1C34",borderRadius:9,padding:3}}>
+          {["Week","Month","Quarter","Year"].map(p=>(
+            <button key={p} onClick={()=>setPeriod(p)} style={{padding:"5px 12px",borderRadius:7,border:"none",cursor:"pointer",fontSize:11,fontWeight:period===p?700:500,background:period===p?"#2563FF":"transparent",color:period===p?"#fff":"#CBD5E1"}}>{p}</button>
+          ))}
+        </div>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,marginBottom:16}}>
         {dentists.map(d=>{const pct=Math.round(d.done/d.target*100);const monthlyNeeded=Math.ceil((d.target-d.done)/(12-month));const onTrack=d.done/(month/12*d.target)>=0.9;return(
           <div key={d.name} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:18}}>
@@ -19833,6 +19848,11 @@ function LabPage(){
                   {l.status==="in_lab"&&<Btn style={{fontSize:10,padding:"4px 10px",whiteSpace:"nowrap"}} onClick={()=>markArrived(l)}>✓ Arrived</Btn>}
                   {l.status==="arrived"&&<Btn v="primary" style={{fontSize:10,padding:"4px 10px",whiteSpace:"nowrap"}} onClick={()=>markComplete(l)}>✓ Fitted</Btn>}
                   <Btn style={{fontSize:10,padding:"4px 8px"}} onClick={()=>openNote(l)}>📝</Btn>
+                  <Btn style={{fontSize:10,padding:"4px 8px"}} onClick={()=>{
+                    const i=document.createElement("input");i.type="file";i.accept=".pdf,.jpg,.jpeg,.png,.doc,.docx";
+                    i.onchange=()=>{if(i.files[0]){doToast("📎 Uploaded "+i.files[0].name+" to "+l.patient+"'s case");setLabs(p=>p.map(x=>x.id===l.id?{...x,notes:(x.notes?x.notes+"\n":"")+"📎 "+i.files[0].name+" uploaded "+new Date().toLocaleDateString("en-GB")}:x));}};
+                    i.click();
+                  }} title="Upload file (PDF, image, doc)">📎</Btn>
                 </div>
               </td>
             </tr>
