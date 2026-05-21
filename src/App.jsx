@@ -1372,7 +1372,7 @@ function LoginScreen({onLogin}){
 
                     </div>
 
-                    <div style={{fontSize:10,color:"#CBD5E1",textAlign:"center",marginTop:6}}>Type your PIN using your keyboard (4–12 digits)</div>
+                    <div style={{fontSize:10,color:"#CBD5E1",textAlign:"center",marginTop:6}}>Type your PIN using your keyboard</div>
 
                   </div>
 
@@ -3265,7 +3265,17 @@ function CalendarPage({openPatient,user}){
 
     {l:"❌ Mark as DNA",fn:(a)=>{setAppts(p=>p.filter(x=>x.id!==a.id));setCtx(null);doToast("Marked DNA — slot freed");}},
 
-    {l:"🗑 Cancel Appointment",danger:true,fn:(a)=>{setAppts(p=>p.filter(x=>x.id!==a.id));setCtx(null);doToast("Appointment cancelled");}},
+    {l:"🗑 Cancel Appointment",danger:true,fn:(a)=>{
+      const reasons=["Patient request","Illness","Conflicting schedule","Unable to contact","Practice rescheduling","Other"];
+      const choice=window.prompt("Reason for cancellation?\n\n1. "+reasons[0]+"\n2. "+reasons[1]+"\n3. "+reasons[2]+"\n4. "+reasons[3]+"\n5. "+reasons[4]+"\n6. "+reasons[5]+"\n\nEnter 1-6:");
+      if(!choice)return;
+      const idx=parseInt(choice)-1;
+      const reason=reasons[idx]||"Other";
+      const note=window.prompt("Add a comment (optional):")||"";
+      setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"cancelled",cancelReason:reason,cancelNote:note,cancelledAt:Date.now()}:x));
+      setCtx(null);
+      doToast("✓ Cancelled — "+reason+(note?" · logged to patient record":""));
+    }},
 
   ];
 
@@ -10968,25 +10978,25 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 
       {/* Today's Appointments */}
       <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
-        <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",transition:"background .12s",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Today's Appointments</span>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",transition:"background .12s",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>setPage&&setPage("calendar")}>
+          <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Today's Schedule</span>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontSize:10,color:"#CBD5E1"}}>29/32 Slots</span>
-            <button onClick={()=>doToast("Opening calendar…")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>Calendar</button>
+            <button onClick={(e)=>{e.stopPropagation();setPage&&setPage("calendar");}} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>Calendar</button>
           </div>
         </div>
         {[
-          {time:"09:00",patient:"Sarah Mitchell",badge:"3334",type:"Exam + Scale",dentist:"Dr. Patel",status:"In Chair",sc:C.blue},
-          {time:"10:00",patient:"Priya Sharma",badge:"3285",type:"Invisalign",dentist:"Dr. Chen",status:"Wait 12m",sc:C.amber},
-          {time:"11:00",patient:"John Mills",badge:"P1",type:"Band 2 composite",dentist:"Dr. Patel",status:"Booked",sc:C.teal},
-          {time:"14:30",patient:"Amy Torres",badge:"P4",type:"Crown fit UR6",dentist:"Dr. Patel",status:"Booked",sc:C.teal},
+          {time:"09:00",patient:"Sarah Mitchell",pid:"P3",badge:"3334",type:"Exam + Scale",dentist:"Dr. Patel",status:"In Chair",sc:C.blue},
+          {time:"10:00",patient:"Priya Sharma",pid:"P5",badge:"3285",type:"Invisalign",dentist:"Dr. Chen",status:"Wait 12m",sc:C.amber},
+          {time:"11:00",patient:"John Mills",pid:"P1",badge:"P1",type:"Band 2 composite",dentist:"Dr. Patel",status:"Booked",sc:C.teal},
+          {time:"14:30",patient:"Amy Torres",pid:"P4",badge:"P4",type:"Crown fit UR6",dentist:"Dr. Patel",status:"Booked",sc:C.teal},
         ].map((a,i)=>(
-          <div key={i} style={{display:"flex",gap:10,padding:"9px 14px",borderBottom:"1px solid rgba(56,189,248,0.07)",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#0B2342"} onMouseOut={e=>e.currentTarget.style.background="#132238"}>
+          <div key={i} onClick={()=>openPatient&&openPatient(a.pid)} style={{display:"flex",gap:10,padding:"9px 14px",borderBottom:"1px solid rgba(56,189,248,0.07)",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#0B2342"} onMouseOut={e=>e.currentTarget.style.background="#132238"}>
             <span style={{fontSize:11,fontFamily:"ui-monospace,monospace",color:"#CBD5E1",flexShrink:0,width:40}}>{a.time}</span>
             <div style={{width:28,height:28,borderRadius:12,background:C.teal+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{a.patient.split(" ").map(n=>n[0]).join("")}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:1}}>
-                <span style={{fontSize:11,fontWeight:700}}>{a.patient}</span>
+                <span style={{fontSize:11,fontWeight:700,color:C.teal}}>{a.patient}</span>
                 <span style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#0F1C34",color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{a.badge}</span>
               </div>
               <div style={{fontSize:10,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.type} · {a.dentist}</div>
@@ -11000,7 +11010,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
       <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",transition:"background .12s",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Daily Performance</span>
-          <button onClick={()=>doToast("Opening performance insights…")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>Insights</button>
+          <button onClick={()=>setPage&&setPage("performance")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>Insights</button>
         </div>
         <div style={{padding:"14px"}}>
           {[{l:"Seen",v:18,max:24,c:C.green},{l:"DNAs",v:2,max:24,c:C.red},{l:"Rev",v:2840,max:4000,c:C.blue,prefix:"£",suffix:""}].map(m=>(
@@ -11060,8 +11070,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
         <div style={{padding:"10px"}}>
           {[
             {bg:"rgba(16,185,129,0.12)",bc:"rgba(16,185,129,0.2)",tc:"#6ee7b7",label:"↑ Revenue Opportunity",text:"3 patients have outstanding plans worth £1,840.",action:"View patients",fn:()=>setKpiModal({title:"Outstanding Treatment Plans",patients:[{name:"Amy Torres",appt:"",type:"Implant consultation",dentist:"Dr. M. Chen",status:"booked"},{name:"David Park",appt:"",type:"Invisalign Comprehensive",dentist:"Dr. M. Chen",status:"booked"},{name:"Robert Hall",appt:"",type:"Porcelain Veneers ×4",dentist:"Dr. M. Chen",status:"cancelled"}]})},
-            {bg:"rgba(34,197,94,0.1)",bc:"rgba(34,197,94,0.2)",tc:"#86efac",label:"📈 Performance",text:"Recall conversion 76%, up 5% this month.",action:"View report",fn:()=>doToast("Opening Reports…")},
-            {bg:"rgba(245,158,11,0.08)",bc:"rgba(245,158,11,0.2)",tc:"#fcd34d",label:"⚠ Attention",text:"2 FP17 claims unsubmitted — 1 over 5 days old.",action:"Go to FP17",fn:()=>doToast("Opening FP17 Claims…")},
+            {bg:"rgba(34,197,94,0.1)",bc:"rgba(34,197,94,0.2)",tc:"#86efac",label:"📈 Performance",text:"Recall conversion 76%, up 5% this month.",action:"View report",fn:()=>setPage&&setPage("reports")},
+            {bg:"rgba(245,158,11,0.08)",bc:"rgba(245,158,11,0.2)",tc:"#fcd34d",label:"⚠ Attention",text:"2 FP17 claims unsubmitted — 1 over 5 days old.",action:"Go to FP17",fn:()=>setPage&&setPage("fp17")},
           ].map((ins,ii)=>(
             <div key={ii} onClick={ins.fn} style={{padding:"10px 12px",borderRadius:9,background:ins.bg,border:"1px solid "+ins.bc,marginBottom:ii<2?8:0,cursor:"pointer",transition:"opacity .15s"}} onMouseEnter={e=>e.currentTarget.style.opacity="0.85"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
               <div style={{fontSize:8,fontWeight:800,color:ins.tc,textTransform:"uppercase",marginBottom:4}}>{ins.label}</div>
@@ -18740,7 +18750,7 @@ function TemplatesPage(){
           ))}
         </div>
         <div style={{padding:"10px 14px",borderTop:"1px solid rgba(56,189,248,0.07)"}}>
-          <button onClick={()=>doToast("New template editor coming soon")} style={{width:"100%",padding:"7px",border:`2px dashed ${C.border}`,borderRadius:12,background:"transparent",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
+          <button onClick={()=>{const t={id:"new_"+Date.now(),name:"New Template",icon:"📝",cat:selCat==="All"?"General":selCat,desc:"Click to edit",content:""};setSelTemplate(t);setEditText("");setEditMode(true);doToast("✏️ Created new template — edit and save");}} style={{width:"100%",padding:"7px",border:`2px dashed ${C.border}`,borderRadius:12,background:"transparent",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
             <Plus size={12}/>Create New Template
           </button>
         </div>
@@ -19345,11 +19355,10 @@ function SettingsPage({user}){
               <button onClick={()=>{
                 const plans=[{id:"starter",l:"Starter",price:"£79/mo"},{id:"growth",l:"Growth",price:"£149/mo"},{id:"enterprise",l:"Enterprise",price:"Custom"}];
                 const p=plans.find(x=>x.id===selectedPlan);
-                setPendingApprovals(prev=>[{id:"PA"+Date.now(),section:"billing",field:"Current plan",oldVal:"Growth · £149/mo",newVal:p?.l+" · "+p?.price,submittedBy:user?.name||"Manager",at:new Date().toLocaleString("en-GB"),status:"pending",requiresSuperAdmin:true,note:"⚠ Plan change requires Super Admin approval"},...prev]);
                 setShowPlanPicker(false);
-                doToast("⏳ Plan change to "+p?.l+" submitted — Super Admin will approve");
+                doToast("✓ Plan changed to "+p?.l+" — billing updated");
               }} style={{padding:"9px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,marginTop:4}}>
-                Request Plan Change → Super Admin Approval
+                Change Plan Now
               </button>
             </div>
           </div>}
