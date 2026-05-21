@@ -1256,10 +1256,7 @@ function LoginScreen({onLogin}){
 
                 {authMode==="password"&&(
 
-                  <div style={{display:"flex",alignItems:"center",background:"#0F1C34",border:"1.5px solid rgba(80,140,255,0.28)",borderRadius:12,boxShadow:"inset 0 1px 3px rgba(0,0,0,0.2)",transition:"border-color .15s, box-shadow .15s"}}
-                    onFocus={e=>{e.currentTarget.style.borderColor="#38BDF8";e.currentTarget.style.boxShadow="0 0 0 3px rgba(56,189,248,0.15)"}}
-                    onBlur={e=>{e.currentTarget.style.borderColor="rgba(80,140,255,0.28)";e.currentTarget.style.boxShadow="inset 0 1px 3px rgba(0,0,0,0.2)"}}
-                  >
+                  <div style={{position:"relative"}}>
 
                     <input
 
@@ -1275,7 +1272,11 @@ function LoginScreen({onLogin}){
 
                       autoComplete="current-password"
 
-                      style={{flex:1,padding:"11px 14px",background:"transparent",border:"none",borderRadius:12,color:"#F8FAFC",fontSize:14,outline:"none",fontFamily:"inherit",minWidth:0}}
+                      style={{...inp,fontSize:14,paddingRight:52,background:"#132238",border:"1.5px solid rgba(80,140,255,0.28)",color:"#F8FAFC",textAlign:"left",letterSpacing:"normal",margin:0}}
+
+                      onFocus={e=>{e.target.style.borderColor="#38BDF8";e.target.style.boxShadow="0 0 0 3px rgba(56,189,248,0.15)"}}
+
+                      onBlur={e=>{e.target.style.borderColor="rgba(80,140,255,0.22)";e.target.style.boxShadow="none"}}
 
                     />
 
@@ -1283,7 +1284,7 @@ function LoginScreen({onLogin}){
 
                       onClick={()=>setShowPass(s=>!s)}
 
-                      style={{flexShrink:0,width:"auto",padding:"4px 12px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,borderRadius:5,whiteSpace:"nowrap"}}
+                      style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",width:"auto",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,padding:"4px 6px",borderRadius:5}}
 
                     >
 
