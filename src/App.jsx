@@ -1256,7 +1256,10 @@ function LoginScreen({onLogin}){
 
                 {authMode==="password"&&(
 
-                  <div style={{position:"relative"}}>
+                  <div style={{display:"flex",alignItems:"center",background:"#0F1C34",border:"1.5px solid rgba(80,140,255,0.28)",borderRadius:12,boxShadow:"inset 0 1px 3px rgba(0,0,0,0.2)",transition:"border-color .15s, box-shadow .15s"}}
+                    onFocus={e=>{e.currentTarget.style.borderColor="#38BDF8";e.currentTarget.style.boxShadow="0 0 0 3px rgba(56,189,248,0.15)"}}
+                    onBlur={e=>{e.currentTarget.style.borderColor="rgba(80,140,255,0.28)";e.currentTarget.style.boxShadow="inset 0 1px 3px rgba(0,0,0,0.2)"}}
+                  >
 
                     <input
 
@@ -1272,11 +1275,7 @@ function LoginScreen({onLogin}){
 
                       autoComplete="current-password"
 
-                      style={{...inp,fontSize:14,paddingRight:52}}
-
-                      onFocus={e=>{e.target.style.borderColor="#38BDF8";e.target.style.boxShadow="0 0 0 3px rgba(56,189,248,0.15)"}}
-
-                      onBlur={e=>{e.target.style.borderColor="rgba(80,140,255,0.22)";e.target.style.boxShadow="none"}}
+                      style={{flex:1,padding:"11px 14px",background:"transparent",border:"none",borderRadius:12,color:"#F8FAFC",fontSize:14,outline:"none",fontFamily:"inherit",minWidth:0}}
 
                     />
 
@@ -1284,7 +1283,7 @@ function LoginScreen({onLogin}){
 
                       onClick={()=>setShowPass(s=>!s)}
 
-                      style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,padding:"4px 6px",borderRadius:5}}
+                      style={{flexShrink:0,padding:"4px 12px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,borderRadius:5,whiteSpace:"nowrap"}}
 
                     >
 
@@ -1515,13 +1514,13 @@ function LoginScreen({onLogin}){
 
           </div>
 
-          <div style={{padding:"10px 36px",background:"#071428",borderTop:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{padding:"10px 16px",background:"#071428",borderTop:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"nowrap"}}>
 
-            <span style={{fontSize:10,color:"#CBD5E1"}}>🔒 Encrypted · GDPR · NHS DSP Toolkit</span>
+            <span style={{fontSize:10,color:"#CBD5E1",whiteSpace:"nowrap"}}>🔒 Encrypted · GDPR · NHS DSP Toolkit</span>
 
-            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center"}}>❓ Help &amp; Support</button>
+            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center",whiteSpace:"nowrap",flexShrink:0}}>❓ Help &amp; Support</button>
 
-            <span style={{fontSize:10,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{getVersion()}</span>
+            <span style={{fontSize:10,color:"#CBD5E1",fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",flexShrink:0}}>{getVersion()}</span>
 
           </div>
 
