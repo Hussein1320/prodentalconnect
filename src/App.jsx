@@ -19894,7 +19894,13 @@ function ShortNoticePage(){
           <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,marginBottom:2}}>{p.name}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{p.phone} · {p.pref} · {p.type} · {p.wait}</div></div>
           {p.booked&&<Chip color={C.green}>Booked ✓</Chip>}
           {p.responded&&!p.booked&&<Chip color={C.amber}>Responded</Chip>}
-          <button onClick={()=>doToast(`Message sent to ${p.name} via ${p.pref}`)} style={{padding:"5px 12px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700}}>Contact</button>
+          <button onClick={()=>{
+            const opts=["WhatsApp","SMS","Call","Email"];
+            const def=p.pref==="WhatsApp"?1:p.pref==="SMS"?2:1;
+            const choice=window.prompt(`Contact ${p.name}\n\nPreferred: ${p.pref}\n\n1. WhatsApp\n2. SMS\n3. Call\n4. Email\n\nEnter 1-4 (default ${def} = ${opts[def-1]}):`)||def;
+            const via=opts[parseInt(choice)-1]||p.pref;
+            doToast(`✓ Message sent to ${p.name} via ${via}`);
+          }} style={{padding:"5px 12px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700}}>Contact</button>
         </div>)}
       </div>
     </div>
