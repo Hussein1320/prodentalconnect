@@ -1272,7 +1272,7 @@ function LoginScreen({onLogin}){
 
                       autoComplete="current-password"
 
-                      style={{...inp,fontSize:14,paddingRight:52}}
+                      style={{...inp,fontSize:14,paddingRight:52,textAlign:"left",letterSpacing:"normal",margin:0}}
 
                       onFocus={e=>{e.target.style.borderColor="#38BDF8";e.target.style.boxShadow="0 0 0 3px rgba(56,189,248,0.15)"}}
 
@@ -1284,7 +1284,7 @@ function LoginScreen({onLogin}){
 
                       onClick={()=>setShowPass(s=>!s)}
 
-                      style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,padding:"4px 6px",borderRadius:5}}
+                      style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",width:"auto",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,padding:"4px 6px",borderRadius:5}}
 
                     >
 
@@ -1515,13 +1515,13 @@ function LoginScreen({onLogin}){
 
           </div>
 
-          <div style={{padding:"10px 36px",background:"#071428",borderTop:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{padding:"10px 16px",background:"#071428",borderTop:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"nowrap"}}>
 
-            <span style={{fontSize:10,color:"#CBD5E1"}}>🔒 Encrypted · GDPR · NHS DSP Toolkit</span>
+            <span style={{fontSize:10,color:"#CBD5E1",whiteSpace:"nowrap"}}>🔒 Encrypted · GDPR · NHS DSP Toolkit</span>
 
-            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center"}}>❓ Help &amp; Support</button>
+            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{width:"auto",flexShrink:0,fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center",whiteSpace:"nowrap"}}>❓ Help &amp; Support</button>
 
-            <span style={{fontSize:10,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{getVersion()}</span>
+            <span style={{fontSize:10,color:"#CBD5E1",fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",flexShrink:0}}>{getVersion()}</span>
 
           </div>
 
