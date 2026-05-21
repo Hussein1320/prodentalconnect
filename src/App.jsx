@@ -11043,11 +11043,11 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
             <span style={{fontSize:9,fontWeight:800,padding:"1px 7px",borderRadius:12,background:"rgba(239,68,68,0.12)",color:C.red}}>8</span>
           </div>
           <div style={{padding:"8px 10px"}}>
-            <div style={{padding:"7px 10px",borderRadius:7,background:"rgba(239,68,68,0.12)",marginBottom:6,cursor:"pointer"}}>
+            <div onClick={()=>setPage&&setPage("fp17")} style={{padding:"7px 10px",borderRadius:7,background:"rgba(239,68,68,0.12)",marginBottom:6,cursor:"pointer"}}>
               <div style={{fontSize:10,fontWeight:800,color:C.red}}>FP17 Rejected</div>
               <div style={{fontSize:9,color:"#EF4444"}}>Priya Sharma — ID 3289</div>
             </div>
-            <div style={{padding:"7px 10px",borderRadius:7,background:"rgba(245,158,11,0.06)",cursor:"pointer"}}>
+            <div onClick={()=>setPage&&setPage("uda")} style={{padding:"7px 10px",borderRadius:7,background:"rgba(245,158,11,0.06)",cursor:"pointer"}}>
               <div style={{fontSize:10,fontWeight:800,color:C.amber}}>UDA Clawback Risk</div>
               <div style={{fontSize:9,color:"#F59E0B"}}>Dr. Patel 71% (Target 85%)</div>
             </div>
@@ -11056,11 +11056,11 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
         <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(56,189,248,0.07)"}}><span style={{fontSize:12,fontWeight:700}}>Quick Actions</span></div>
           <div style={{padding:"10px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <button onClick={()=>doToast("New patient form opened")} style={{padding:"10px 6px",borderRadius:9,border:"1px solid rgba(80,140,255,0.16)",background:"#0F1C34",cursor:"pointer",textAlign:"center"}}>
+            <button onClick={()=>setPage&&setPage("patients")} style={{padding:"10px 6px",borderRadius:9,border:"1px solid rgba(80,140,255,0.16)",background:"#0F1C34",cursor:"pointer",textAlign:"center"}}>
               <User size={16} color={C.teal} style={{marginBottom:3}}/>
               <div style={{fontSize:10,fontWeight:700}}>New Pt</div>
             </button>
-            <button onClick={()=>setShowBookAppt(true)} style={{padding:"10px 6px",borderRadius:9,border:"1px solid rgba(80,140,255,0.16)",background:"#0F1C34",cursor:"pointer",textAlign:"center"}}>
+            <button onClick={()=>setPage&&setPage("calendar")} style={{padding:"10px 6px",borderRadius:9,border:"1px solid rgba(80,140,255,0.16)",background:"#0F1C34",cursor:"pointer",textAlign:"center"}}>
               <Calendar size={16} color={C.blue} style={{marginBottom:3}}/>
               <div style={{fontSize:10,fontWeight:700}}>Book Appt</div>
             </button>
@@ -11111,8 +11111,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
           <div style={{width:7,height:7,borderRadius:"50%",background:"#22c55e"}}/>
         </div>
         <div style={{padding:"8px 14px"}}>
-          {[{icon:"📋",action:"FP17 accepted",sub:"Loc #3086",time:"09:25"},{icon:"🎤",action:"Voice note saved",sub:"Mitchell #3334",time:"09:15"},{icon:"📅",action:"Appointment Booked",sub:"Priya Sharma — 10:00",time:"09:04"}].map((a,i)=>(
-            <div key={i} style={{display:"flex",gap:8,padding:"7px 0",borderBottom:i<2?"1px solid rgba(56,189,248,0.07)":"none",alignItems:"center"}}>
+          {[{icon:"📋",action:"FP17 accepted",sub:"Loc #3086",time:"09:25",page:"fp17"},{icon:"🎤",action:"Voice note saved",sub:"Mitchell #3334",time:"09:15",page:"notes"},{icon:"📅",action:"Appointment Booked",sub:"Priya Sharma — 10:00",time:"09:04",page:"calendar"}].map((a,i)=>(
+            <div key={i} onClick={()=>setPage&&setPage(a.page)} style={{display:"flex",gap:8,padding:"7px 0",borderBottom:i<2?"1px solid rgba(56,189,248,0.07)":"none",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.opacity="0.7"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
               <span style={{fontSize:14,flexShrink:0}}>{a.icon}</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:11,fontWeight:600}}>{a.action}</div>
@@ -14956,7 +14956,7 @@ Added by: ${showDocPreview.by}
                 <button onClick={()=>setShowAddMember(true)} style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#2563FF",fontWeight:600}}>+ Add Member</button>
               </div>
               <div style={{padding:"8px 16px"}}>
-                {[{name:"Michael Chen",rel:"Spouse",dob:"22 Aug 1979",dentist:"Dr. S. Patel",type:"NHS",pid:"P1"},{name:"Lily Chen",rel:"Child",dob:"05 Mar 2015",dentist:"Dr. S. Patel",type:"NHS",pid:"P2"}].map((mem,i)=>(
+                {[{name:"Michael Chen",rel:"Spouse",dob:"22 Aug 1979",dentist:"Dr. S. Patel",type:"NHS",pid:"P5"},{name:"Lily Chen",rel:"Child",dob:"05 Mar 2015",dentist:"Dr. S. Patel",type:"NHS",pid:"P6"}].filter(m=>m.pid!==patient?.id).map((mem,i)=>(
                   <div key={mem.name} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:i===0?"1px solid rgba(56,189,248,0.07)":"none"}}>
                     <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#132238",flexShrink:0}}>{mem.name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                     <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{mem.name} <span style={{fontSize:10,color:"#CBD5E1",fontWeight:400}}>({mem.rel})</span></div><div style={{fontSize:10,color:"#CBD5E1"}}>{mem.dob} · {mem.dentist}</div></div>
@@ -19674,7 +19674,7 @@ function AccountsPage(){
           <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Take Payment — {showPayModal.patient}</div>
           <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>Outstanding: <strong style={{color:C.red,fontSize:13}}>£{showPayModal.balance.toFixed(2)}</strong></div>
           <div style={{display:"flex",gap:8,marginBottom:14}}>
-            {[{id:"link",l:"💳 Payment Link",sub:"Send Stripe link"},{id:"card",l:"📱 Card Reader",sub:"Terminal payment"},{id:"mark_paid",l:"✓ Mark Paid",sub:"Manual record"}].map(m=>(
+            {[{id:"link",l:"💳 Payment Link",sub:"Send Stripe link"},{id:"card",l:"📱 Card Reader",sub:"Terminal payment"},{id:"cash",l:"💵 Cash",sub:"Cash received"},{id:"finance",l:"📋 Finance",sub:"Chrysalis / Medenta"},{id:"mark_paid",l:"✓ Mark Paid",sub:"Manual record"}].map(m=>(
               <button key={m.id} onClick={()=>setPayMethod(m.id)} style={{flex:1,padding:"10px 6px",borderRadius:9,border:`2px solid ${payMethod===m.id?"#2563FF":"rgba(80,140,255,0.2)"}`,background:payMethod===m.id?"rgba(80,140,255,0.06)":"#132238",cursor:"pointer",textAlign:"center"}}>
                 <div style={{fontSize:11,fontWeight:700,color:payMethod===m.id?"#2563FF":"#374151"}}>{m.l}</div>
                 <div style={{fontSize:9,color:"#CBD5E1",marginTop:2}}>{m.sub}</div>
