@@ -6,7 +6,6 @@
   <title>ProDentalConnect — Coming Soon</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       min-height: 100vh;
       background: #071428;
@@ -17,7 +16,6 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       color: #F8FAFC;
     }
-
     .logo {
       font-size: 28px;
       font-weight: 800;
@@ -27,19 +25,8 @@
       margin-bottom: 8px;
       letter-spacing: -0.5px;
     }
-
-    .tooth {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-
-    .tagline {
-      font-size: 15px;
-      color: #94A3B8;
-      margin-bottom: 48px;
-      text-align: center;
-    }
-
+    .tooth { font-size: 48px; margin-bottom: 20px; }
+    .tagline { font-size: 15px; color: #94A3B8; margin-bottom: 48px; text-align: center; }
     .card {
       background: #132238;
       border: 1.5px solid rgba(80,140,255,0.18);
@@ -50,20 +37,8 @@
       text-align: center;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
-
-    .card h2 {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .card p {
-      font-size: 13px;
-      color: #94A3B8;
-      margin-bottom: 28px;
-      line-height: 1.6;
-    }
-
+    .card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .card p { font-size: 13px; color: #94A3B8; margin-bottom: 28px; line-height: 1.6; }
     .badge {
       display: inline-block;
       background: rgba(59,130,246,0.12);
@@ -77,7 +52,6 @@
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
-
     input[type="password"] {
       width: 100%;
       padding: 12px 16px;
@@ -92,16 +66,8 @@
       text-align: center;
       letter-spacing: 3px;
     }
-
-    input[type="password"]:focus {
-      border-color: #3B82F6;
-    }
-
-    input[type="password"]::placeholder {
-      letter-spacing: 0;
-      color: #64748B;
-    }
-
+    input[type="password"]:focus { border-color: #3B82F6; }
+    input[type="password"]::placeholder { letter-spacing: 0; color: #64748B; }
     button {
       width: 100%;
       padding: 12px;
@@ -115,21 +81,9 @@
       transition: opacity 0.2s;
       box-shadow: 0 0 20px rgba(0,109,255,0.3);
     }
-
     button:hover { opacity: 0.9; }
-
-    .error {
-      color: #EF4444;
-      font-size: 12px;
-      margin-top: 10px;
-      display: none;
-    }
-
-    .footer {
-      margin-top: 40px;
-      font-size: 11px;
-      color: #475569;
-    }
+    .error { color: #EF4444; font-size: 12px; margin-top: 10px; display: none; }
+    .footer { margin-top: 40px; font-size: 11px; color: #475569; }
   </style>
 </head>
 <body>
@@ -142,7 +96,6 @@
     <div class="badge">🚀 Coming Soon</div>
     <h2>We're almost ready!</h2>
     <p>Our platform is currently being set up.<br/>Enter the access password to preview the site.</p>
-
     <input type="password" id="pwd" placeholder="Enter access password" onkeydown="if(event.key==='Enter')check()"/>
     <button onclick="check()">Access Site →</button>
     <div class="error" id="err">❌ Incorrect password. Please try again.</div>
@@ -151,19 +104,28 @@
   <div class="footer">© 2026 ProDentalConnect. All rights reserved.</div>
 
   <script>
-    // Change this to whatever password you and the client agree on
     const PASSWORD = "dental2026";
+
+    // Check if already unlocked this session
+    if(sessionStorage.getItem('pdc_unlocked') === 'true'){
+      showApp();
+    }
 
     function check() {
       const val = document.getElementById('pwd').value;
-      if (val === PASSWORD) {
-        // Redirects to the React app
-        window.location.href = '/app.html';
+      if(val === PASSWORD){
+        sessionStorage.setItem('pdc_unlocked', 'true');
+        showApp();
       } else {
         document.getElementById('err').style.display = 'block';
         document.getElementById('pwd').value = '';
         document.getElementById('pwd').focus();
       }
+    }
+
+    function showApp(){
+      sessionStorage.setItem('pdc_unlocked', 'true');
+      window.location.href = '/index-app.html';
     }
   </script>
 
