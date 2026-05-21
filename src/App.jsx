@@ -10158,7 +10158,15 @@ function MorningHuddlePage({openPatient}){
 
                 ?<span style={{fontSize:10,color:C.green,fontWeight:700}}>✓ Noted</span>
 
-                :<button onClick={()=>{setDismissed(p=>({...p,[a.id]:true}));doToast("Alert noted for "+a.patient);}} style={{padding:"4px 10px",border:"1px solid "+C.green,borderRadius:7,background:"rgba(0,109,255,0.06)",cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,flexShrink:0}}>✓ Mark Noted</button>
+                :<button onClick={()=>{
+                  const reasons=["Resolved","Patient contacted","Not relevant","Will follow up later","Duplicate","Other"];
+                  const choice=window.prompt("Why are you dismissing this?\n\n1. "+reasons[0]+"\n2. "+reasons[1]+"\n3. "+reasons[2]+"\n4. "+reasons[3]+"\n5. "+reasons[4]+"\n6. "+reasons[5]+"\n\nEnter 1-6:");
+                  if(!choice)return;
+                  const reason=reasons[parseInt(choice)-1]||"Other";
+                  const note=window.prompt("Comment (saved to patient record):")||"";
+                  setDismissed(p=>({...p,[a.id]:{reason,note,at:Date.now()}}));
+                  doToast("✓ Dismissed — "+reason+" · logged to "+a.patient+"'s record");
+                }} style={{padding:"4px 10px",border:"1px solid "+C.green,borderRadius:7,background:"rgba(0,109,255,0.06)",cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,flexShrink:0}}>✓ Mark Noted</button>
 
               }
 
@@ -13463,10 +13471,14 @@ function DentalWorkspace({patient,user}){
   const selTooth=selTeeth[selTeeth.length-1]||null;
   const selToothData=selTooth?teeth[selTooth]:null;
 
-  const toggleTooth=n=>{
+  const toggleTooth=(n,e)=>{
+    const multi=e&&(e.shiftKey||e.ctrlKey||e.metaKey);
     setSelTeeth(p=>{
-      if(p.includes(n))return p.filter(x=>x!==n);
-      return [...p,n];
+      if(multi){
+        if(p.includes(n))return p.filter(x=>x!==n);
+        return [...p,n];
+      }
+      return p.length===1&&p[0]===n?[]:[n];
     });
     setSelSurfaces(new Set());
     setRightTab("tooth");
@@ -13524,7 +13536,7 @@ function DentalWorkspace({patient,user}){
 
     return(
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{display:"block",cursor:"pointer",borderRadius:4}}
-        onClick={()=>toggleTooth(num)}>
+        onClick={e=>toggleTooth(num,e)}>
         {/* Base */}
         <rect x={0} y={0} width={W} height={H} rx={3}
           fill={isMiss?"rgba(100,116,139,0.12)":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]+"18":"#132238"}
