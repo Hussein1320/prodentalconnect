@@ -1283,7 +1283,7 @@ function LoginScreen({onLogin}){
 
                       onClick={()=>setShowPass(s=>!s)}
 
-                      style={{flexShrink:0,padding:"4px 12px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,borderRadius:5,whiteSpace:"nowrap"}}
+                      style={{flexShrink:0,width:"auto",padding:"4px 12px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:11,fontWeight:600,borderRadius:5,whiteSpace:"nowrap"}}
 
                     >
 
@@ -1518,7 +1518,7 @@ function LoginScreen({onLogin}){
 
             <span style={{fontSize:10,color:"#CBD5E1",whiteSpace:"nowrap"}}>🔒 Encrypted · GDPR · NHS DSP Toolkit</span>
 
-            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center",whiteSpace:"nowrap",flexShrink:0}}>❓ Help &amp; Support</button>
+            <button onClick={()=>window.open&&window.open("mailto:support@prodental.co.uk","_blank")} style={{width:"auto",fontSize:10,color:"#38BDF8",border:`1px solid ${C.teal}30`,background:"rgba(13,148,136,.06)",borderRadius:8,padding:"3px 9px",cursor:"pointer",fontWeight:600,display:"flex",gap:4,alignItems:"center",whiteSpace:"nowrap",flexShrink:0}}>❓ Help &amp; Support</button>
 
             <span style={{fontSize:10,color:"#CBD5E1",fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",flexShrink:0}}>{getVersion()}</span>
 
