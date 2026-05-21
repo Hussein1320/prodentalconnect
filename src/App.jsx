@@ -13040,8 +13040,8 @@ const GROUP_PATTERNS = {
 // Condition → chart condition key mapping
 const CONDITION_MAP = {
   // Missing
-  'missing':'miss','extracted':'miss','gone':'miss','absent':'miss',
-  'not present':'miss','tooth out':'miss','lost':'miss',
+  'missing':'missing','extracted':'missing','gone':'missing','absent':'missing',
+  'not present':'missing','tooth out':'missing','lost':'missing',
   // Filling
   'filling':'filling','filled':'filling','composite':'filling','amalgam':'filling',
   'restoration':'filling','restored':'filling',
@@ -13082,7 +13082,7 @@ const CONDITION_MAP = {
 
 // Condition → display label + colour
 const CONDITION_DISPLAY = {
-  miss:        {l:'Missing',      c:'#64748B', abbr:'M'},
+  missing:    {l:'Missing',      c:'#EF4444', abbr:'M'},
   filling:    {l:'Filling',      c:'#3B82F6', abbr:'F'},
   crown:      {l:'Crown',        c:'#8B5CF6', abbr:'Cr'},
   rct:        {l:'Root Canal',   c:'#F59E0B', abbr:'RCT'},
@@ -13522,6 +13522,22 @@ function DentalWorkspace({patient,user}){
           strokeWidth={isSel?2.5:td.cond?1.8:1}/>
         {isMiss&&<><line x1={8} y1={8} x2={W-8} y2={H-8} stroke="#64748B" strokeWidth={2} strokeLinecap="round"/><line x1={W-8} y1={8} x2={8} y2={H-8} stroke="#64748B" strokeWidth={2} strokeLinecap="round"/></>}
         {td.cond&&!isMiss&&<circle cx={W-5} cy={5} r={4} fill={COND_COLORS[td.cond]} opacity={0.95}/>}
+
+      {/* ── DNA Undo Toast ── */}
+      {recentDNA&&<div style={{position:"fixed",top:64,right:18,zIndex:600,background:"#0F1C34",border:"1.5px solid rgba(239,68,68,0.4)",borderRadius:14,padding:"12px 16px",display:"flex",gap:12,alignItems:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.4)",minWidth:320}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>🚫 {recentDNA.apt.name} marked as DNA</div>
+          <div style={{fontSize:10,color:"#CBD5E1",marginTop:2}}>Did this happen by mistake?</div>
+        </div>
+        <button onClick={()=>{
+          setWaiting(p=>[...p,{...recentDNA.apt,status:"waiting",in:Date.now()}]);
+          setMarkedDNA(p=>p.filter(x=>x.markedAt!==recentDNA.markedAt));
+          setRecentDNA(null);
+        }} style={{padding:"7px 16px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:800,color:"#fff",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>
+          ↩ Undo — Re-add
+        </button>
+        <button onClick={()=>setRecentDNA(null)} style={{border:"none",background:"transparent",cursor:"pointer",color:"#94A3B8",fontSize:18,lineHeight:1,flexShrink:0}}>✕</button>
+      </div>}
         {/* Surface zones */}
         {!isMiss&&zones.map(z=>{
           const cond=td.surfaces[z.id];
@@ -15870,6 +15886,30 @@ function ReceptionAIPage({rxEnabled}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+      {/* ── Send Report Modals ── */}
+      {showSendModal&&<SendReportModal
+        patient={pat}
+        reportType={showSendModal.type||"Treatment Report"}
+        trigger={showSendModal.trigger}
+        existingLog={sendLog}
+        onClose={()=>setShowSendModal(null)}
+        onSend={entry=>{addSendLog(entry);setShowSendModal(null);doToast("✅ Sent to "+pat?.email);}}
+      />}
+      {showReportModal&&<TreatmentReportModal
+        patient={pat}
+        teeth={pat?.chartTeeth||{}}
+        txPlan={pat?.txPlan||[{id:"T1",teeth:["36"],label:"Composite Filling",status:"completed",fee:73.50},{id:"T2",label:"Scale & Polish",status:"planned",fee:0,teeth:[]}]}
+        user={user}
+        onClose={()=>setShowReportModal(false)}
+        onSaveDoc={(doc)=>{addDoc(doc);doToast("✓ Report saved to Documents");}}
+        onSend={(opts)=>{setShowReportModal(false);setShowSendModal({...opts,type:"Treatment Report"});}}
+      />}
+      {showPayPrompt&&<PaymentSendPrompt
+        patient={pat}
+        existingLog={sendLog}
+        onDismiss={()=>setShowPayPrompt(false)}
+        onSend={(isResend)=>{setShowPayPrompt(false);setShowSendModal({type:"Treatment Report",trigger:"payment"});}}
+      />}
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,boxShadow:"0 4px 14px rgba(0,0,0,.12)",display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
 
       {/* ── Header banner ── */}
