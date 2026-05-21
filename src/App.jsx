@@ -4124,7 +4124,7 @@ function OnlineBookingPage({setPage}){
 
               <button onClick={()=>doToast("Opening "+selBooking.name+"'s record — call from practice phone: "+selBooking.phone)} style={{flex:1,padding:"9px",border:`1px solid ${C.teal}`,borderRadius:9,background:"rgba(0,109,255,0.12)",cursor:"pointer",fontSize:12,fontWeight:700,color:"#38BDF8",display:"flex",gap:6,alignItems:"center",justifyContent:"center"}}><Phone size={13}/>Contact — {selBooking.phone}</button>
 
-              <button onClick={()=>doToast("Opening in calendar…")} style={{flex:1,padding:"9px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:9,background:"#132238",cursor:"pointer",fontSize:12,fontWeight:600,color:C.muted}}>📅 View in Calendar</button>
+              <button onClick={()=>setPage&&setPage("calendar")} style={{flex:1,padding:"9px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:9,background:"#132238",cursor:"pointer",fontSize:12,fontWeight:600,color:C.muted}}>📅 View in Calendar</button>
 
               <button onClick={()=>{setRejectTarget(selBooking.id);setShowRejectModal(true);}} style={{flex:1,padding:"9px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:9,background:"rgba(239,68,68,0.06)",cursor:"pointer",fontSize:12,fontWeight:600,color:C.red}}>Cancel Booking</button>
 
@@ -10613,7 +10613,7 @@ function MorningHuddlePage({openPatient}){
 // ══════════════════════════════════════════════════════════════════════════
 // PRINCIPAL'S SMART INSIGHT — dynamic, data-driven, checks real metrics
 // ══════════════════════════════════════════════════════════════════════════
-function SmartInsightBanner({doToast}){
+function SmartInsightBanner({doToast,setPage}){
   // Real-time data checks
   const today=new Date();
   const contractYear={start:new Date("2025-04-01"),end:new Date("2026-03-31")};
@@ -10751,8 +10751,8 @@ function SmartInsightBanner({doToast}){
           <button onClick={()=>setIdx(i=>Math.max(0,i-1))} disabled={idx===0} style={{width:20,height:20,borderRadius:5,border:"1px solid rgba(80,140,255,0.16)",background:idx===0?"rgba(80,140,255,0.1)":"#132238",cursor:idx===0?"not-allowed":"pointer",fontSize:10,color:"#CBD5E1"}}>‹</button>
           <button onClick={()=>setIdx(i=>Math.min(insights.length-1,i+1))} disabled={idx===insights.length-1} style={{width:20,height:20,borderRadius:5,border:"1px solid rgba(80,140,255,0.16)",background:idx===insights.length-1?"rgba(80,140,255,0.1)":"#132238",cursor:idx===insights.length-1?"not-allowed":"pointer",fontSize:10,color:"#CBD5E1"}}>›</button>
         </div>}
-        <button onClick={()=>doToast("Opening "+active.title+"…")} style={{padding:"5px 12px",border:`1px solid ${active.color}50`,borderRadius:7,background:"#132238",cursor:"pointer",fontSize:9,color:active.color,fontWeight:700,whiteSpace:"nowrap"}}>{active.action||"View"}</button>
-        <button onClick={()=>doToast("Insight shared with team on Team Chat")} style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:9,color:"#CBD5E1",whiteSpace:"nowrap"}}>Discuss with Team</button>
+        <button onClick={()=>{if(active.actionId&&setPage)setPage(active.actionId);else doToast("Opening "+active.title+"…");}} style={{padding:"5px 12px",border:`1px solid ${active.color}50`,borderRadius:7,background:"#132238",cursor:"pointer",fontSize:9,color:active.color,fontWeight:700,whiteSpace:"nowrap"}}>{active.action||"View"}</button>
+        <button onClick={()=>{setPage&&setPage("teamchat");doToast("Opening Team Chat to discuss…");}} style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:9,color:"#CBD5E1",whiteSpace:"nowrap"}}>Discuss with Team</button>
       </div>
     </div>
   );
@@ -11130,7 +11130,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
       </div>
     </div>
 
-    <SmartInsightBanner doToast={doToast}/>
+    <SmartInsightBanner doToast={doToast} setPage={setPage}/>
 
     <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:14}}>
 
@@ -14037,6 +14037,7 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
   const [tab,setTab]=useState(defaultTab||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
   const [showEncryptedModal,setShowEncryptedModal]=useState(null);
   const [showSendModal,setShowSendModal]=useState(null);
+  const [consentState,setConsentState]=useState({sms:true,email:false,photo:true,share:true});
   const [showReportModal,setShowReportModal]=useState(false);
   const [savedDocs,setSavedDocs]=useState([{id:"D0",name:"TreatmentReport_20250514.pdf",date:"14 May 2025",type:"Treatment Report",by:"Dr. S. Patel",icon:"📋",sent:true}]);
   const addDoc=(doc)=>setSavedDocs(p=>[{id:"D"+Date.now(),...doc},...p]);
@@ -14943,14 +14944,16 @@ Added by: ${showDocPreview.by}
               </Section>
               <Section id="consent" title="Consent & Comms" noedit={!isManager}>
                 <div>
-                  {[{l:"SMS reminders",k:"sms",v:true},{l:"Email marketing",k:"email",v:false},{l:"Photo consent",k:"photo",v:true},{l:"Data sharing (referrals)",k:"share",v:true}].map((f,i)=>(
+                  {[{l:"SMS reminders",k:"sms"},{l:"Email marketing",k:"email"},{l:"Photo consent",k:"photo"},{l:"Data sharing (referrals)",k:"share"}].map((f,i)=>{
+                    const v=consentState[f.k];
+                    return(
                     <div key={f.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<3?"1px solid rgba(56,189,248,0.07)":"none"}}>
                       <span style={{fontSize:11,color:"#CBD5E1"}}>{f.l}</span>
-                      <button onClick={()=>isManager?doToast("Consent updated"):doToast("Only managers can change consent settings")} style={{fontSize:11,fontWeight:600,padding:"3px 12px",borderRadius:8,background:f.v?"#dcfce7":"#fee2e2",color:f.v?"#16a34a":"#dc2626",border:"none",cursor:isManager?"pointer":"not-allowed",opacity:isManager?1:0.7}}>
-                        {f.v?"✓ Yes":"✗ No"}
+                      <button onClick={()=>{if(!isManager){doToast("Only managers can change consent settings");return;}setConsentState(p=>({...p,[f.k]:!p[f.k]}));doToast("✓ "+f.l+" "+(!v?"enabled":"disabled"));}} style={{fontSize:11,fontWeight:600,padding:"3px 12px",borderRadius:8,background:v?"#dcfce7":"#fee2e2",color:v?"#16a34a":"#dc2626",border:"none",cursor:isManager?"pointer":"not-allowed",opacity:isManager?1:0.7}}>
+                        {v?"✓ Yes":"✗ No"}
                       </button>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </Section>
             </div>
@@ -16716,7 +16719,7 @@ function RevenueRecoveryPage(){
             {patient:"Emily Cooper",action:"Cancellation message sent via WhatsApp",time:"Yesterday",v:"£73.50",c:C.amber},
             {patient:"Tom Bright",action:"DNA follow-up message sent",time:"Yesterday",v:"£73.50",c:C.amber},
             {patient:"John Mills",action:"Crown reminder sent — awaiting response",time:"2 days ago",v:"£319",c:"#64748b"},
-          ].map((a,i)=><div key={i} style={{display:"flex",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.1)":"none",alignItems:"center",background:`${a.c}08`,borderLeft:`3px solid ${a.c}`,borderRadius:i>0?6:0}}>
+          ].map((a,i)=><div key={i} onClick={()=>alert("Outreach Activity\n\nPatient: "+a.patient+"\nAction: "+a.action+"\nValue: "+a.v+"\nTime: "+a.time)} style={{display:"flex",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.1)":"none",alignItems:"center",background:`${a.c}08`,borderLeft:`3px solid ${a.c}`,borderRadius:i>0?6:0,cursor:"pointer"}}>
             <div style={{width:7,height:7,borderRadius:"50%",background:a.c,flexShrink:0,marginTop:2}}/>
             <div style={{flex:1}}><span style={{fontSize:12,fontWeight:600}}>{a.patient}</span> <span style={{fontSize:12,color:"#CBD5E1"}}>{a.action}</span></div>
             <span style={{fontSize:11,fontWeight:700,color:a.c,fontFamily:"ui-monospace,monospace",flexShrink:0}}>{a.v}</span>
@@ -18831,7 +18834,7 @@ function AuditPage(){
       </div>
       <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
         {AUDIT.map((a,i)=>{const t=TYPE_META[a.type]||{c:C.muted,l:a.type};return(
-          <div key={a.id} style={{display:"flex",gap:12,padding:"10px 16px",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center"}}>
+          <div key={a.id} onClick={()=>alert("Audit Entry\n\nTime: "+a.time+"\nUser: "+a.user+" ("+a.role+")\nAction: "+a.action+"\nDetail: "+a.detail+"\nIP: "+a.ip)} style={{display:"flex",gap:12,padding:"10px 16px",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="rgba(80,140,255,0.04)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
             <div style={{fontFamily:"ui-monospace,monospace",fontSize:10,color:"#CBD5E1",flexShrink:0,minWidth:130}}>{a.time}</div>
             <div style={{flexShrink:0,display:"flex",gap:6,alignItems:"center",minWidth:140}}>
               <div style={{width:24,height:24,borderRadius:"50%",background:C.teal+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#38BDF8"}}>{a.user.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
@@ -19945,7 +19948,8 @@ function CommsPage(){
 // ══════════════════════════════════════════════════════════════════════════════
 // PAYMENTS — payment configuration and history
 // ══════════════════════════════════════════════════════════════════════════════
-function PaymentsPage(){
+function PaymentsPage({user}){
+  const isManager=user?.role==="manager"||user?.role==="superadmin";
   const [providers,setProviders]=useState([
     {icon:"💳",name:"Stripe",status:"Connected",type:"Card",fees:"1.4% + 20p",apiKey:"sk_live_••••••••",webhookUrl:"https://pro.dental/webhooks/stripe"},
     {icon:"💰",name:"Chrysalis Finance",status:"Connected",type:"Finance",fees:"Revenue share",apiKey:"CRY-••••••••",webhookUrl:""},
@@ -19992,7 +19996,7 @@ function PaymentsPage(){
           <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>{p.icon}</span><div><div style={{fontSize:12,fontWeight:700}}>{p.name}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{p.type} · {p.fees}</div></div></div>
           <Chip color={p.status==="Connected"?C.green:C.muted}>{p.status}</Chip>
           {p.status==="Connected"&&<div style={{fontSize:9,color:"#CBD5E1",fontFamily:"ui-monospace,monospace",background:"#0F1C34",padding:"2px 6px",borderRadius:4}}>{p.apiKey}</div>}
-          {p.status!=="Connected"&&<button onClick={()=>setConnectModal(p)} style={{padding:"6px",border:`1px solid ${C.teal}`,borderRadius:7,background:"rgba(0,109,255,0.12)",cursor:"pointer",fontSize:10,color:"#38BDF8",fontWeight:700}}>Connect</button>}
+          {p.status!=="Connected"&&<button onClick={()=>{if(!isManager){doToast("Only managers can connect payment providers");return;}setConnectModal(p);}} style={{padding:"6px",border:`1px solid ${C.teal}`,borderRadius:7,background:"rgba(0,109,255,0.12)",cursor:isManager?"pointer":"not-allowed",fontSize:10,color:"#38BDF8",fontWeight:700,opacity:isManager?1:0.5}}>Connect</button>}
         </div>)}
       </div>
       <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
@@ -28637,7 +28641,7 @@ export default function App(){
       shortnotice:<ShortNoticePage/>,
       lab:<LabPage/>,
       accounts:<AccountsPage/>,
-      payments:<PaymentsPage/>,
+      payments:<PaymentsPage user={user}/>,
       reports:<ReportsPage/>,
       myreports:<MyReportsPage user={user}/>,
       tasks:<TasksPage user={user}/>,
