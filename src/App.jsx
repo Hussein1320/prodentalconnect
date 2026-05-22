@@ -3177,6 +3177,9 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const [toast,setToast]=useState(null);
 
+  const [reminderModal,setReminderModal]=useState(null); // {appt, msg}
+  const [noteModal,setNoteModal]=useState(null);         // {appt, note}
+
   const [booking,setBooking]=useState(null);
   const [bForm,setBForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});
   const openBooking=(time,col)=>{setBooking({time,col});setBForm({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});};
@@ -3247,11 +3250,23 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const CTX_ACTIONS=[
 
-    {l:"👤 Open Patient Record",fn:(a)=>{a.pid&&openPatient(a.pid,"charting");setCtx(null);}},
+    {l:"👤 Open Patient Record",fn:(a)=>{
+      if(a.pid){openPatient(a.pid,"charting");}
+      else{doToast("⚠️ No patient record linked to this appointment");}
+      setCtx(null);
+    }},
 
-    {l:"✅ Mark Completed",fn:(a)=>{setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"completed",color:C.green}:x));setCtx(null);doToast("Marked completed");}},
+    {l:"✅ Mark Completed",fn:(a)=>{
+      setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"completed",color:C.green}:x));
+      if(setWaiting)setWaiting(p=>p.filter(w=>!(a.pid?w.pid===a.pid:w.name===a.patient&&w.appt===a.time)));
+      setCtx(null);doToast("✓ "+a.patient+" marked completed");
+    }},
 
-    {l:"🦷 Mark In Surgery",fn:(a)=>{setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"in_surgery",color:C.blue}:x));setCtx(null);doToast("Marked in surgery");}},
+    {l:"🦷 Mark In Surgery",fn:(a)=>{
+      setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"in_surgery",color:C.blue}:x));
+      if(setWaiting)setWaiting(p=>p.map(w=>(a.pid?w.pid===a.pid:w.name===a.patient&&w.appt===a.time)?{...w,status:"called",calledAt:Date.now()}:w));
+      setCtx(null);doToast("🦷 "+a.patient+" — in surgery");
+    }},
 
     {l:"⏳ Mark Waiting",fn:(a)=>{
       setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"waiting",color:C.amber}:x));
@@ -3268,13 +3283,24 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
     {sep:true},
 
-    {l:"📋 Add Clinical Note",fn:()=>{setCtx(null);doToast("Opening clinical note editor…");}},
+    {l:"📋 Add Clinical Note",fn:(a)=>{
+      setCtx(null);
+      setNoteModal({appt:a,note:""});
+    }},
 
-    {l:"✉ Send Reminder",fn:()=>{setCtx(null);doToast("SMS reminder sent to patient");}},
+    {l:"✉ Send Reminder",fn:(a)=>{
+      setCtx(null);
+      const msg="Hi "+a.patient.split(" ")[0]+", this is a reminder of your appointment at "+a.time+" today at Riverside Dental. Please reply YES to confirm or call us on 01234 567890 to rearrange. Thank you!";
+      setReminderModal({appt:a,msg});
+    }},
 
     {sep:true},
 
-    {l:"❌ Mark as DNA",fn:(a)=>{setAppts(p=>p.filter(x=>x.id!==a.id));setCtx(null);doToast("Marked DNA — slot freed");}},
+    {l:"❌ Mark as DNA",fn:(a)=>{
+      setAppts(p=>p.filter(x=>x.id!==a.id));
+      if(setWaiting)setWaiting(p=>p.filter(w=>!(a.pid?w.pid===a.pid:w.name===a.patient&&w.appt===a.time)));
+      setCtx(null);doToast("❌ "+a.patient+" marked DNA — slot freed");
+    }},
 
     {l:"🗑 Cancel Appointment",danger:true,fn:(a)=>{
       const reasons=["Patient request","Illness","Conflicting schedule","Unable to contact","Practice rescheduling","Other"];
@@ -3284,6 +3310,7 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
       const reason=reasons[idx]||"Other";
       const note=window.prompt("Add a comment (optional):")||"";
       setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"cancelled",cancelReason:reason,cancelNote:note,cancelledAt:Date.now()}:x));
+      if(setWaiting)setWaiting(p=>p.filter(w=>!(a.pid?w.pid===a.pid:w.name===a.patient&&w.appt===a.time)));
       setCtx(null);
       doToast("✓ Cancelled — "+reason+(note?" · logged to patient record":""));
     }},
@@ -3534,6 +3561,46 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
           onMouseOver={e=>e.currentTarget.style.background=a.danger?"#fef2f2":"#132238"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>{a.l}</button>)}
 
+    </div>}
+
+    {/* ── Send Reminder modal ────────────────────────────────── */}
+    {reminderModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}}>
+      <div style={{background:"#132238",borderRadius:18,width:420,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
+        <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>✉ Send SMS Reminder</div>
+        <div style={{fontSize:12,color:"#94A3B8",marginBottom:14}}>{reminderModal.appt.patient} · {reminderModal.appt.time}</div>
+        <textarea
+          value={reminderModal.msg}
+          onChange={e=>setReminderModal(p=>({...p,msg:e.target.value}))}
+          rows={5}
+          style={{width:"100%",padding:"10px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:12,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box"}}
+        />
+        <div style={{fontSize:10,color:"#64748B",marginTop:4,marginBottom:14}}>{reminderModal.msg.length} characters</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setReminderModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,background:"#0F1C34",cursor:"pointer",fontSize:12,fontWeight:600,color:"#CBD5E1"}}>Cancel</button>
+          <button onClick={()=>{setReminderModal(null);doToast("✓ SMS reminder sent to "+reminderModal.appt.patient);}} style={{flex:2,padding:"10px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:800,color:"white"}}>📱 Send SMS</button>
+        </div>
+      </div>
+    </div>}
+
+    {/* ── Add Clinical Note modal ─────────────────────────────── */}
+    {noteModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}}>
+      <div style={{background:"#132238",borderRadius:18,width:420,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
+        <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>📋 Add Clinical Note</div>
+        <div style={{fontSize:12,color:"#94A3B8",marginBottom:14}}>{noteModal.appt.patient} · {noteModal.appt.type} · {noteModal.appt.time}</div>
+        <textarea
+          placeholder="Enter clinical note…"
+          value={noteModal.note}
+          onChange={e=>setNoteModal(p=>({...p,note:e.target.value}))}
+          rows={5}
+          style={{width:"100%",padding:"10px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:12,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box"}}
+          autoFocus
+        />
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button onClick={()=>setNoteModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,background:"#0F1C34",cursor:"pointer",fontSize:12,fontWeight:600,color:"#CBD5E1"}}>Cancel</button>
+          {noteModal.appt.pid&&<button onClick={()=>{setNoteModal(null);openPatient(noteModal.appt.pid,"notes");doToast("✓ Note saved · opening patient record");}} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"rgba(59,130,246,0.1)",cursor:"pointer",fontSize:12,fontWeight:700,color:"#60A5FA"}}>Open Record</button>}
+          <button onClick={()=>{if(!noteModal.note.trim()){doToast("⚠️ Please enter a note first");return;}setNoteModal(null);doToast("✓ Clinical note saved for "+noteModal.appt.patient);}} style={{flex:2,padding:"10px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:800,color:"white"}}>💾 Save Note</button>
+        </div>
+      </div>
     </div>}
 
     {booking&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
