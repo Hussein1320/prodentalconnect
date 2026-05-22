@@ -3251,7 +3251,7 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
   const CTX_ACTIONS=[
 
     {l:"👤 Open Patient Record",fn:(a)=>{
-      if(a.pid){openPatient(a.pid,"charting");}
+      if(a.pid){openPatient(a.pid,"chart");}
       else{doToast("⚠️ No patient record linked to this appointment");}
       setCtx(null);
     }},
@@ -11618,7 +11618,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
                 </div>
               </div>
               {/* Dentist: open record */}
-              {w.pid&&isDentist&&<button onClick={()=>openPatient&&openPatient(w.pid,"charting")} style={{padding:"7px 12px",background:"linear-gradient(135deg,#006DFF,#1D4ED8)",color:"#fff",boxShadow:"0 0 12px rgba(0,109,255,0.3)",border:"none",borderRadius:10,cursor:"pointer",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>🦷 Open Record</button>}
+              {w.pid&&isDentist&&<button onClick={()=>openPatient&&openPatient(w.pid,"chart")} style={{padding:"7px 12px",background:"linear-gradient(135deg,#006DFF,#1D4ED8)",color:"#fff",boxShadow:"0 0 12px rgba(0,109,255,0.3)",border:"none",borderRadius:10,cursor:"pointer",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>🦷 Open Record</button>}
               {/* Mark complete */}
               <button onClick={()=>{removePatient(w.id);doToast("✓ "+w.name+" — appointment complete");}} style={{padding:"7px 12px",border:"1px solid rgba(34,197,94,0.3)",borderRadius:10,background:"rgba(34,197,94,0.08)",cursor:"pointer",fontSize:11,fontWeight:700,color:"#22C55E",whiteSpace:"nowrap",display:"flex",gap:4,alignItems:"center"}}><Check size={11}/>Done</button>
             </div>
@@ -11694,7 +11694,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
                     )}
                     {/* DENTIST: Open patient record */}
                     {isDentist&&w.pid&&(
-                      <button onClick={()=>openPatient&&openPatient(w.pid,"charting")} style={{padding:"7px 12px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,background:"rgba(0,109,255,0.1)",cursor:"pointer",fontSize:11,fontWeight:700,color:"#38BDF8",whiteSpace:"nowrap",display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
+                      <button onClick={()=>openPatient&&openPatient(w.pid,"chart")} style={{padding:"7px 12px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,background:"rgba(0,109,255,0.1)",cursor:"pointer",fontSize:11,fontWeight:700,color:"#38BDF8",whiteSpace:"nowrap",display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
                         🦷 Record
                       </button>
                     )}
@@ -12077,7 +12077,7 @@ function PatientsPage({patients,openPatient}){
 
                       <button onClick={e=>{e.stopPropagation();openPatient(p.id);}} style={{padding:"4px 9px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:7,background:"#0F1C34",cursor:"pointer",fontSize:10,color:"#CBD5E1",fontWeight:600}}>Record</button>
 
-                      <button onClick={e=>{e.stopPropagation();openPatient(p.id,"charting");}} style={{padding:"4px 9px",border:"none",borderRadius:7,background:C.teal,cursor:"pointer",fontSize:10,color:"#132238",fontWeight:700}}>🦷 Chart</button>
+                      <button onClick={e=>{e.stopPropagation();openPatient(p.id,"chart");}} style={{padding:"4px 9px",border:"none",borderRadius:7,background:C.teal,cursor:"pointer",fontSize:10,color:"#132238",fontWeight:700}}>🦷 Chart</button>
 
                     </div>
 
@@ -14112,7 +14112,7 @@ function ChartingPage({openPatient,embeddedPatient}){
 
 function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
 
-  const [tab,setTab]=useState(defaultTab||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
+  const [tab,setTab]=useState((defaultTab==="charting"?"chart":defaultTab)||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
   const [showEncryptedModal,setShowEncryptedModal]=useState(null);
   const [showSendModal,setShowSendModal]=useState(null);
   const [consentState,setConsentState]=useState({sms:true,email:false,photo:true,share:true});
