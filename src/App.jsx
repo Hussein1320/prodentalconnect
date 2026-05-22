@@ -3157,7 +3157,7 @@ function AlertModal({patient,onAck,onCancel}){
 
 // ═══════════════════════════════════════════════════════════════════
 
-function CalendarPage({openPatient,user}){
+function CalendarPage({openPatient,user,waiting,setWaiting}){
   // Leave conflict checking
   const checkStaffLeave=(staffName,date)=>{
     if(!staffName||!date)return null;
@@ -3253,7 +3253,18 @@ function CalendarPage({openPatient,user}){
 
     {l:"🦷 Mark In Surgery",fn:(a)=>{setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"in_surgery",color:C.blue}:x));setCtx(null);doToast("Marked in surgery");}},
 
-    {l:"⏳ Mark Waiting",fn:(a)=>{setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"waiting",color:C.amber}:x));setCtx(null);doToast("Marked waiting");}},
+    {l:"⏳ Mark Waiting",fn:(a)=>{
+      setAppts(p=>p.map(x=>x.id===a.id?{...x,status:"waiting",color:C.amber}:x));
+      if(setWaiting){
+        const dentist=DCOLS[a.col]||"";
+        setWaiting(p=>{
+          const exists=p.find(w=>(a.pid&&w.pid===a.pid)||(w.name===a.patient&&w.appt===a.time));
+          if(exists)return p.map(w=>w.id===exists.id?{...w,status:"waiting",in:Date.now()}:w);
+          return [...p,{id:"W"+Date.now(),name:a.patient,pid:a.pid||null,appt:a.time,dentist,in:Date.now(),status:"waiting"}];
+        });
+      }
+      setCtx(null);doToast("✓ "+a.patient+" added to waiting room");
+    }},
 
     {sep:true},
 
@@ -28625,7 +28636,7 @@ export default function App(){
     const PP={
       nba:<NBAPage role={user?.role||"reception"} setPage={p=>{setPage(p);setPatientId(null);}} openPatient={openPatient}/>,
       dashboard:<Dashboard openPatient={openPatient} waiting={waiting} setWaiting={setWaiting} user={user} setPage={p=>{setPage(p);setPatientId(null);}}/>,
-      calendar:<CalendarPage openPatient={openPatient} user={user}/>,
+      calendar:<CalendarPage openPatient={openPatient} user={user} waiting={waiting} setWaiting={setWaiting}/>,
       waiting:<WaitingPage waiting={waiting} setWaiting={setWaiting} user={user} openPatient={openPatient} setNotifs={n=>setNotifs(n)}/>,
       patients:<PatientsPage patients={PATIENTS} openPatient={openPatient}/>,
       // charting: accessed via patient record, not standalone
