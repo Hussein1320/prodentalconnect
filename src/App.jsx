@@ -16419,7 +16419,8 @@ const BOOKING_RULES_INIT=[
 ];
 
 function ReceptionAIPage({rxEnabled}){
-  const [tab,setTab]=useState(rxEnabled?"inbox":"settings");
+  const [tab,setTab]=useState(rxEnabled?"dashboard":"settings");
+  const [period,setPeriod]=useState("Today");
   const [paused,setPaused]=useState(false);
   const [selCall,setSelCall]=useState("CL1");
   const [showTx,setShowTx]=useState(true);
@@ -16439,7 +16440,7 @@ function ReceptionAIPage({rxEnabled}){
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2200);};
 
   const selLog=CALL_LOG.find(c=>c.id===selCall)||CALL_LOG[0];
-  const TABS=[{id:"inbox",l:"Call Inbox",n:CALL_LOG.length},{id:"settings",l:"AI Settings"},{id:"hours",l:"Opening Hours"},{id:"booking",l:"Booking Rules"},{id:"setup",l:"Setup & Test"},{id:"usage",l:"Usage & Billing"}];
+  const TABS=[{id:"dashboard",l:"📊 Dashboard"},{id:"inbox",l:"Call Inbox",n:CALL_LOG.length},{id:"missed",l:"Missed Calls",n:2},{id:"callbacks",l:"Callbacks",n:1},{id:"analytics",l:"Analytics"},{id:"settings",l:"AI Settings"},{id:"hours",l:"Opening Hours"},{id:"booking",l:"Booking Rules"},{id:"setup",l:"Setup & Test"},{id:"usage",l:"Usage & Billing"}];
 
   // ── Locked/upsell screen ──
   if(!rxEnabled) return(
@@ -16496,6 +16497,242 @@ function ReceptionAIPage({rxEnabled}){
           </button>)}
         </div>
       </div>
+
+      {/* ════════════ DASHBOARD ════════════ */}
+      {tab==="dashboard"&&(()=>{
+        const booked=CALL_LOG.filter(c=>c.booked).length;
+        const transferred=CALL_LOG.filter(c=>c.transferred).length;
+        const missed=2;
+        const total=CALL_LOG.length;
+        const answered=total-missed;
+        const newPt=CALL_LOG.filter(c=>c.intent==="enquiry").length;
+        const existing=total-newPt;
+        const pct=(n,d)=>d?Math.round(n/d*100):0;
+
+        /* SVG bar chart data — hourly call volume */
+        const hours24=[0,0,1,0,0,0,0,0,3,4,5,3,2,4,3,2,1,2,1,0,0,0,0,0];
+        const maxH=Math.max(...hours24,1);
+        const barW=14;const barGap=4;const chartW=hours24.length*(barW+barGap);const chartH=80;
+
+        /* Donut chart — call intents */
+        const intents=[
+          {l:"Booking",v:3,c:"#3B82F6"},{l:"Enquiry",v:2,c:"#8B5CF6"},
+          {l:"Cancel",v:1,c:"#F59E0B"},{l:"Complaint",v:1,c:"#EF4444"},
+          {l:"Emergency",v:1,c:"#EF4444"},{l:"Other",v:total-8,c:"#64748B"},
+        ].filter(x=>x.v>0);
+        const totalInt=intents.reduce((s,x)=>s+x.v,0);
+        let startAngle=0;
+        const slices=intents.map(it=>{
+          const frac=it.v/totalInt;
+          const start=startAngle;
+          startAngle+=frac*2*Math.PI;
+          return{...it,frac,start,end:startAngle};
+        });
+        const arc=(cx,cy,r,start,end)=>{
+          const x1=cx+r*Math.cos(start-Math.PI/2);
+          const y1=cy+r*Math.sin(start-Math.PI/2);
+          const x2=cx+r*Math.cos(end-Math.PI/2);
+          const y2=cy+r*Math.sin(end-Math.PI/2);
+          const large=end-start>Math.PI?1:0;
+          return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+        };
+
+        const StatCard=({icon,label,value,sub,color,delta})=>(
+          <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.14)",borderRadius:14,padding:"14px 16px",display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:16}}>{icon}</span>
+              <span style={{fontSize:10,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</span>
+            </div>
+            <div style={{fontSize:26,fontWeight:900,color:color||"#F8FAFC",lineHeight:1}}>{value}</div>
+            {sub&&<div style={{fontSize:11,color:"#94A3B8"}}>{sub}</div>}
+            {delta!==undefined&&<div style={{fontSize:10,fontWeight:700,color:delta>=0?"#4ADE80":"#F87171"}}>
+              {delta>=0?"▲":"▼"} {Math.abs(delta)}% vs yesterday
+            </div>}
+          </div>
+        );
+
+        const liveQueue=[
+          {id:"Q1",caller:"Incoming Call",phone:"07712 334455",wait:"0:23",status:"ringing"},
+          {id:"Q2",caller:"On Hold",phone:"07899 000111",wait:"1:05",status:"hold"},
+        ];
+
+        return(
+          <div style={{flex:1,overflowY:"auto",background:"#071428",padding:18,display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* Period selector */}
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",flex:1}}>AI Reception Dashboard</div>
+              {["Today","MTD","Last 7d","Last 30d"].map(p=>(
+                <button key={p} onClick={()=>setPeriod(p)} style={{padding:"5px 14px",borderRadius:20,border:`1px solid ${period===p?"rgba(37,99,255,0.5)":"rgba(80,140,255,0.15)"}`,background:period===p?"rgba(37,99,255,0.15)":"transparent",cursor:"pointer",fontSize:11,fontWeight:period===p?700:500,color:period===p?"#60A5FA":"#64748B",fontFamily:"inherit"}}>{p}</button>
+              ))}
+            </div>
+
+            {/* Live queue bar */}
+            <div style={{background:"linear-gradient(135deg,rgba(37,99,255,0.1),rgba(139,92,246,0.08))",border:"1px solid rgba(80,140,255,0.2)",borderRadius:14,padding:"12px 16px",display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 8px rgba(34,197,94,0.6)",animation:"pulse 1.5s infinite"}}/>
+                <span style={{fontSize:12,fontWeight:800,color:"#22C55E"}}>AI LIVE</span>
+              </div>
+              <div style={{flex:1,display:"flex",gap:16,flexWrap:"wrap"}}>
+                {liveQueue.map(q=>(
+                  <div key={q.id} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 12px",background:"rgba(0,0,0,0.2)",borderRadius:10,border:`1px solid ${q.status==="ringing"?"rgba(239,68,68,0.4)":"rgba(245,158,11,0.4)"}`}}>
+                    <span style={{fontSize:14}}>{q.status==="ringing"?"📲":"⏸"}</span>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#F8FAFC"}}>{q.caller}</div>
+                      <div style={{fontSize:9,color:"#94A3B8"}}>{q.phone} · {q.wait}</div>
+                    </div>
+                    <span style={{fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:6,background:q.status==="ringing"?"rgba(239,68,68,0.15)":"rgba(245,158,11,0.12)",color:q.status==="ringing"?"#FCA5A5":"#FCD34D"}}>{q.status==="ringing"?"RINGING":"ON HOLD"}</span>
+                  </div>
+                ))}
+                {liveQueue.length===0&&<span style={{fontSize:11,color:"#64748B"}}>No calls in queue</span>}
+              </div>
+              <div style={{fontSize:11,color:"#94A3B8"}}>{liveQueue.length} call{liveQueue.length!==1?"s":""} in queue</div>
+            </div>
+
+            {/* Inbound stats */}
+            <div>
+              <div style={{fontSize:10,fontWeight:800,color:"#64748B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Inbound Calls</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>
+                <StatCard icon="📲" label="Received"  value={total}    sub="All inbound today" color="#F8FAFC" delta={12}/>
+                <StatCard icon="✅" label="Answered"  value={answered} sub={pct(answered,total)+"%"} color="#4ADE80" delta={5}/>
+                <StatCard icon="📅" label="Booked"    value={booked}   sub={pct(booked,total)+"%"} color="#60A5FA" delta={8}/>
+                <StatCard icon="📵" label="Missed"    value={missed}   sub="Needs callback" color="#FCA5A5" delta={-20}/>
+                <StatCard icon="➡️" label="Transferred" value={transferred} sub="To human/manager" color="#FCD34D" delta={0}/>
+              </div>
+            </div>
+
+            {/* Patient type + duration */}
+            <div>
+              <div style={{fontSize:10,fontWeight:800,color:"#64748B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Call Outcomes</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>
+                <StatCard icon="🆕" label="New Patient"      value={newPt}   sub="Enquiries today" color="#A78BFA"/>
+                <StatCard icon="🔄" label="Existing Patient" value={existing} sub="Calls today" color="#60A5FA"/>
+                <StatCard icon="⏱" label="Avg Duration"      value="1m 54s"  sub="Per call" color="#F8FAFC"/>
+                <StatCard icon="⏰" label="Avg Answer"        value="3s"      sub="Time to AI answer" color="#4ADE80"/>
+              </div>
+            </div>
+
+            {/* Charts row */}
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14}}>
+
+              {/* Bar chart — hourly volume */}
+              <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.14)",borderRadius:14,padding:"14px 16px"}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:12}}>Calls by Hour — {period}</div>
+                <div style={{overflowX:"auto"}}>
+                  <svg width={chartW} height={chartH+20} style={{display:"block"}}>
+                    {hours24.map((v,i)=>{
+                      const bh=v?(v/maxH)*(chartH-10):2;
+                      const x=i*(barW+barGap);
+                      const y=chartH-bh;
+                      const isPeak=v===maxH;
+                      return(
+                        <g key={i}>
+                          <rect x={x} y={y} width={barW} height={bh} rx={3}
+                            fill={isPeak?"#3B82F6":v>0?"rgba(59,130,246,0.45)":"rgba(80,140,255,0.08)"}/>
+                          {(i%4===0)&&<text x={x+barW/2} y={chartH+14} textAnchor="middle" fontSize={8} fill="#64748B">{i}:00</text>}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+                <div style={{display:"flex",gap:14,marginTop:6}}>
+                  <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:10,height:10,borderRadius:2,background:"#3B82F6"}}/><span style={{fontSize:10,color:"#94A3B8"}}>Calls received</span></div>
+                  <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:10,height:10,borderRadius:2,background:"rgba(59,130,246,0.45)"}}/><span style={{fontSize:10,color:"#94A3B8"}}>Off-peak</span></div>
+                </div>
+              </div>
+
+              {/* Donut chart — intents */}
+              <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.14)",borderRadius:14,padding:"14px 16px"}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>Call Intents</div>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <svg width={90} height={90} viewBox="0 0 90 90" style={{flexShrink:0}}>
+                    {slices.map((s,i)=>(
+                      <path key={i} d={arc(45,45,42,s.start,s.end)} fill={s.c} opacity={0.85}/>
+                    ))}
+                    <circle cx={45} cy={45} r={26} fill="#132238"/>
+                    <text x={45} y={49} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#F8FAFC">{total}</text>
+                  </svg>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {slices.map((s,i)=>(
+                      <div key={i} style={{display:"flex",gap:5,alignItems:"center"}}>
+                        <div style={{width:8,height:8,borderRadius:2,background:s.c,flexShrink:0}}/>
+                        <span style={{fontSize:10,color:"#94A3B8",whiteSpace:"nowrap"}}>{s.l}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:"#F8FAFC",marginLeft:"auto"}}>{s.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Missed calls queue */}
+            <div style={{background:"#132238",border:"1px solid rgba(239,68,68,0.2)",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+                <span style={{fontSize:12,fontWeight:800,color:"#FCA5A5"}}>📵 Missed Calls — Needs Callback ({missed})</span>
+                <div style={{flex:1}}/>
+                <button onClick={()=>doToast("All missed calls assigned for callback")} style={{padding:"5px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"#FCA5A5",fontFamily:"inherit"}}>Assign All</button>
+              </div>
+              {[{name:"Unknown Caller",phone:"07833 445566",time:"Today 09:12",attempts:1},{name:"Paul Davies",phone:"07700 900199",time:"Today 07:48",attempts:2}].map((mc,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 0",borderTop:i>0?"1px solid rgba(80,140,255,0.08)":"none"}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>📵</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{mc.name}</div>
+                    <div style={{fontSize:10,color:"#94A3B8"}}>{mc.phone} · {mc.time} · {mc.attempts} attempt{mc.attempts>1?"s":""}</div>
+                  </div>
+                  <button onClick={()=>doToast("Callback task created for "+mc.phone)} style={{padding:"5px 12px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"white",fontFamily:"inherit"}}>📞 Callback</button>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* ════════════ MISSED CALLS ════════════ */}
+      {tab==="missed"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+        <div style={{fontSize:14,fontWeight:800,marginBottom:14,color:"#FCA5A5"}}>📵 Missed Calls</div>
+        {[{name:"Unknown Caller",phone:"07833 445566",time:"Today 09:12",attempts:1},{name:"Paul Davies",phone:"07700 900199",time:"Today 07:48",attempts:2},{name:"Sarah R.",phone:"07910 223344",time:"Yesterday 17:55",attempts:1}].map((mc,i)=>(
+          <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderRadius:12,border:"1px solid rgba(239,68,68,0.2)",background:"#0F1C34",marginBottom:8}}>
+            <div style={{fontSize:22}}>📵</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC"}}>{mc.name}</div>
+              <div style={{fontSize:11,color:"#94A3B8"}}>{mc.phone} · {mc.time} · {mc.attempts} missed attempt{mc.attempts!==1?"s":""}</div>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>doToast("SMS sent to "+mc.phone)} style={{padding:"6px 12px",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,background:"rgba(59,130,246,0.08)",cursor:"pointer",fontSize:11,fontWeight:700,color:"#60A5FA",fontFamily:"inherit"}}>SMS</button>
+              <button onClick={()=>doToast("Callback task created")} style={{padding:"6px 12px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"white",fontFamily:"inherit"}}>📞 Call Back</button>
+            </div>
+          </div>
+        ))}
+      </div>}
+
+      {/* ════════════ CALLBACKS ════════════ */}
+      {tab==="callbacks"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+        <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>📞 Scheduled Callbacks</div>
+        <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderRadius:12,border:"1px solid rgba(245,158,11,0.25)",background:"#0F1C34",marginBottom:8}}>
+          <div style={{fontSize:22}}>🔄</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC"}}>Robert Hall</div>
+            <div style={{fontSize:11,color:"#94A3B8"}}>07700 900333 · Scheduled: Today 14:00 · Reason: Balance query</div>
+          </div>
+          <span style={{fontSize:10,fontWeight:800,padding:"3px 8px",borderRadius:6,background:"rgba(245,158,11,0.12)",color:"#F59E0B",border:"1px solid rgba(245,158,11,0.3)"}}>⏰ Scheduled</span>
+        </div>
+      </div>}
+
+      {/* ════════════ ANALYTICS ════════════ */}
+      {tab==="analytics"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+        <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>📈 Call Analytics</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {[{l:"Booking Conversion",v:"35%",sub:"Calls → appointments",trend:"+4%"},{l:"Avg AI Resolution",v:"78%",sub:"Resolved without transfer",trend:"+2%"},{l:"Complaint Rate",v:"1.8%",sub:"Below 2% target",trend:"-0.3%"},{l:"NHS vs Private Mix",v:"62/38%",sub:"NHS/Private split",trend:"Stable"}].map((s,i)=>(
+            <div key={i} style={{background:"#132238",border:"1px solid rgba(80,140,255,0.14)",borderRadius:14,padding:"16px"}}>
+              <div style={{fontSize:11,color:"#64748B",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>{s.l}</div>
+              <div style={{fontSize:28,fontWeight:900,color:"#F8FAFC",marginBottom:4}}>{s.v}</div>
+              <div style={{fontSize:11,color:"#94A3B8"}}>{s.sub}</div>
+              <div style={{fontSize:11,fontWeight:700,color:"#4ADE80",marginTop:4}}>{s.trend}</div>
+            </div>
+          ))}
+        </div>
+      </div>}
 
       {/* ════════════ CALL INBOX ════════════ */}
       {tab==="inbox"&&<div style={{flex:1,display:"flex",overflow:"hidden"}}>
