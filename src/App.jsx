@@ -14273,6 +14273,251 @@ function DentalWorkspace({patient,user}){
   </div>);
 }
 
+// ─── Patient Activity Tab ─────────────────────────────────────────────────────
+
+const ACT_META={
+  whatsapp_in: {icon:"💬",label:"WhatsApp",color:"#25D366",dir:"in"},
+  whatsapp_out:{icon:"💬",label:"WhatsApp",color:"#25D366",dir:"out"},
+  sms_in:      {icon:"📱",label:"SMS",     color:"#3B82F6",dir:"in"},
+  sms_out:     {icon:"📱",label:"SMS",     color:"#3B82F6",dir:"out"},
+  email_in:    {icon:"📧",label:"Email",   color:"#6366F1",dir:"in"},
+  email_out:   {icon:"📧",label:"Email",   color:"#6366F1",dir:"out"},
+  call_in:     {icon:"📞",label:"Call",    color:"#06B6D4",dir:"in"},
+  call_out:    {icon:"📞",label:"Call",    color:"#06B6D4",dir:"out"},
+  missed_call: {icon:"📵",label:"Missed",  color:"#EF4444",dir:"in"},
+  ai_call:     {icon:"🤖",label:"AI Call", color:"#8B5CF6",dir:"in"},
+  appointment_created:   {icon:"📅",label:"Appointment",color:"#F59E0B",dir:null},
+  appointment_cancelled: {icon:"📅",label:"Appointment",color:"#EF4444",dir:null},
+  consent_signed:        {icon:"✍️",label:"Consent",    color:"#8B5CF6",dir:null},
+  document_uploaded:     {icon:"📂",label:"Document",   color:"#3B82F6",dir:null},
+  treatment_plan_sent:   {icon:"💊",label:"Tx Plan",    color:"#06B6D4",dir:null},
+  payment_received:      {icon:"💳",label:"Payment",    color:"#22C55E",dir:null},
+  staff_note:    {icon:"📌",label:"Note",   color:"#64748B",dir:null},
+  task_created:  {icon:"✅",label:"Task",   color:"#F97316",dir:null},
+  task_completed:{icon:"✅",label:"Task",   color:"#22C55E",dir:null},
+  alert_added:   {icon:"⚠️",label:"Alert",  color:"#EF4444",dir:null},
+};
+
+const TAG_COLORS={anxious:"#F59E0B",finance:"#3B82F6","complaint-risk":"#EF4444",VIP:"#8B5CF6","follow-up":"#06B6D4",general:"#64748B"};
+
+function PatientActivityTab({patient,user,doToast}){
+  const NOW=Date.now();
+  const M=60000;
+
+  const SEED_EVENTS=[
+    {id:"AE1", type:"consent_signed",      ts:NOW-25*M,   by:"Dr. S. Patel",  subject:"Consent Form Signed",             preview:"General Treatment Consent signed on iPad",                      content:"General Treatment Consent (v2.1) signed by patient on reception iPad. IP: 192.168.1.45. Session SIG-A1B2C.",tags:[],priority:null},
+    {id:"AE2", type:"appointment_created", ts:NOW-42*M,   by:"Emma Wilson",   subject:"Appointment Booked",              preview:"Crown Fit UR6 — 27 May 2026 · 14:00 with Dr. S. Patel",         content:"Appointment created for Crown Fit UR6 on 27 May 2026 at 14:00. Booked by Emma Wilson via reception desk.",tags:[],priority:null},
+    {id:"AE3", type:"sms_out",             ts:NOW-90*M,   by:"System",        subject:"SMS Reminder Sent",               preview:"Reminder sent: appointment tomorrow at 09:30",                   content:"Hi John, this is a reminder of your appointment tomorrow at 09:30 with Dr. Patel. Reply YES to confirm or call 01234 567890.",tags:[],priority:null},
+    {id:"AE4", type:"whatsapp_in",         ts:NOW-3*60*M, by:"Patient",       subject:"WhatsApp — Inbound",              preview:"YES confirmed!",                                                 content:"YES confirmed!",tags:[],priority:null},
+    {id:"AE5", type:"payment_received",    ts:NOW-24*60*M,by:"Emma Wilson",   subject:"Payment Received",                preview:"£73.50 received — Band 2 NHS charge",                           content:"Payment of £73.50 received for Band 2 NHS treatment (Composite UR6). Receipt emailed to john.mills@email.com.",tags:["finance"],priority:null},
+    {id:"AE6", type:"treatment_plan_sent", ts:NOW-26*60*M,by:"Dr. S. Patel",  subject:"Treatment Plan Sent",             preview:"Band 2 plan sent for patient acceptance",                       content:"Treatment plan (Band 2 — Composite UR6, Scale & Polish) sent to patient via email for review and acceptance.",tags:[],priority:null},
+    {id:"AE7", type:"email_in",            ts:NOW-28*60*M,by:"Patient",       subject:"Email — Inbound",                 preview:"Re: upcoming appointment — question about cost",                 content:"Hi, I just wanted to check — is the £73.50 the total I need to pay or is there anything else? Thanks, John",tags:["finance"],priority:null},
+    {id:"AE8", type:"staff_note",          ts:NOW-30*60*M,by:"Dr. S. Patel",  subject:"Clinical Note Added",             preview:"Patient anxious about injection — confirmed LA preference",     content:"Patient called ahead of appointment. Very anxious about injection. Confirmed topical LA to be applied first. Extra 15 min booked.",tags:["anxious"],priority:"high",visibility:"clinical"},
+    {id:"AE9", type:"call_out",            ts:NOW-48*60*M,by:"Emma Wilson",   subject:"Outbound Call",                   preview:"Called to confirm tomorrow's appointment · 4 min",              content:"Called patient to confirm tomorrow's crown fit appointment. Patient confirmed. Reminder of £73.50 balance discussed.",tags:[],priority:null},
+    {id:"AE10",type:"appointment_cancelled",ts:NOW-5*24*60*M,by:"Patient",    subject:"Appointment Cancelled",           preview:"Previous check-up cancelled — patient rescheduled",             content:"Patient cancelled routine check-up via WhatsApp message. Rescheduled to 27 May. Reason: work conflict.",tags:[],priority:null},
+    {id:"AE11",type:"email_out",           ts:NOW-7*24*60*M,by:"Emma Wilson", subject:"Email — Outbound",                preview:"Welcome back letter + updated privacy notice",                  content:"Dear John,\n\nThank you for registering back with us. Please find attached our updated privacy notice and consent form for your next visit.\n\nKind regards,\nRiverside Dental",tags:[],priority:null},
+    {id:"AE12",type:"alert_added",         ts:NOW-14*24*60*M,by:"Dr. S. Patel",subject:"Medical Alert Added",           preview:"Warfarin — Check INR Before Invasive Treatment",                 content:"Medical alert added: Patient on Warfarin 5mg OD for AF. Target INR 2.0–3.0. Check and document before any invasive procedure.",tags:[],priority:"high"},
+  ];
+
+  const [events,setEvents]=useState(SEED_EVENTS);
+  const [filter,setFilter]=useState("all");
+  const [expanded,setExpanded]=useState(new Set());
+  const [action,setAction]=useState(null); // {type:"note"|"whatsapp"|"sms"|"email"|"call"|"task"}
+  const [draft,setDraft]=useState({text:"",subject:"",priority:"normal",tags:[],visibility:"all",taskDue:""});
+
+  const FILTERS=[
+    {id:"all",    l:"All",      match:()=>true},
+    {id:"notes",  l:"Notes",   match:t=>t==="staff_note"},
+    {id:"calls",  l:"Calls",   match:t=>["call_in","call_out","missed_call","ai_call"].includes(t)},
+    {id:"email",  l:"Email",   match:t=>t.startsWith("email")},
+    {id:"whatsapp",l:"WhatsApp",match:t=>t.startsWith("whatsapp")},
+    {id:"sms",    l:"SMS",     match:t=>t.startsWith("sms")},
+    {id:"tasks",  l:"Tasks",   match:t=>t.startsWith("task")},
+    {id:"payments",l:"Payments",match:t=>t==="payment_received"},
+  ];
+
+  const visible=events
+    .filter(e=>FILTERS.find(f=>f.id===filter)?.match(e.type))
+    .sort((a,b)=>b.ts-a.ts);
+
+  const fmtTs=ts=>{
+    const diff=NOW-ts;
+    if(diff<60*M) return Math.round(diff/M)+"m ago";
+    if(diff<60*60*M) return Math.round(diff/(60*M))+"h ago";
+    if(diff<48*60*60*M) return "Yesterday "+new Date(ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    return new Date(ts).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+" · "+new Date(ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  };
+
+  const addEvent=(type,subject,preview,content,extraFields={})=>{
+    const e={id:"AE"+Date.now(),type,ts:Date.now(),by:user?.name||"Staff",subject,preview,content,tags:draft.tags||[],priority:draft.priority||null,...extraFields};
+    setEvents(p=>[e,...p]);
+    setAction(null);
+    setDraft({text:"",subject:"",priority:"normal",tags:[],visibility:"all",taskDue:""});
+    doToast("✓ "+subject+" logged");
+  };
+
+  const ACTIONS=[
+    {id:"whatsapp",icon:"💬",l:"Send WhatsApp", color:"#25D366"},
+    {id:"sms",     icon:"📱",l:"Send SMS",      color:"#3B82F6"},
+    {id:"email",   icon:"📧",l:"Send Email",    color:"#6366F1"},
+    {id:"call",    icon:"📞",l:"Log Call",      color:"#06B6D4"},
+    {id:"note",    icon:"📌",l:"Add Note",      color:"#64748B"},
+    {id:"task",    icon:"✅",l:"Create Task",   color:"#F97316"},
+  ];
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
+
+      {/* ── Action Bar ── */}
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(80,140,255,0.15)",padding:"10px 16px",display:"flex",gap:8,flexWrap:"wrap",flexShrink:0}}>
+        {ACTIONS.map(a=>(
+          <button key={a.id} onClick={()=>setAction(a.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",border:`1px solid ${a.color}40`,borderRadius:10,background:action===a.id?`${a.color}18`:"#0F1C34",cursor:"pointer",fontSize:12,fontWeight:700,color:a.color,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+            <span>{a.icon}</span>{a.l}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        <div style={{fontSize:11,color:"#64748B",display:"flex",alignItems:"center"}}>{events.length} events · auto-linked via {patient.phone||patient.email}</div>
+      </div>
+
+      {/* ── Quick Action Panel ── */}
+      {action&&(
+        <div style={{background:"#0d1b2e",borderBottom:"1px solid rgba(80,140,255,0.15)",padding:"14px 16px",flexShrink:0}}>
+          {action==="note"&&(
+            <div style={{maxWidth:700}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#F8FAFC",marginBottom:10}}>📌 Add Internal Note</div>
+              <textarea value={draft.text} onChange={e=>setDraft(p=>({...p,text:e.target.value}))} placeholder="Type note here…" rows={3} style={{width:"100%",padding:"10px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box",marginBottom:8}}/>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                <select value={draft.priority} onChange={e=>setDraft(p=>({...p,priority:e.target.value}))} style={{padding:"5px 10px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#F8FAFC",fontSize:11,fontFamily:"inherit",outline:"none"}}>
+                  {["normal","high","urgent"].map(v=><option key={v} value={v}>{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}
+                </select>
+                <select value={draft.visibility} onChange={e=>setDraft(p=>({...p,visibility:e.target.value}))} style={{padding:"5px 10px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#F8FAFC",fontSize:11,fontFamily:"inherit",outline:"none"}}>
+                  {["all","clinical","manager-only"].map(v=><option key={v}>{v}</option>)}
+                </select>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {Object.keys(TAG_COLORS).map(tag=>(
+                    <button key={tag} onClick={()=>setDraft(p=>({...p,tags:p.tags.includes(tag)?p.tags.filter(x=>x!==tag):[...p.tags,tag]}))} style={{padding:"3px 10px",borderRadius:20,border:`1px solid ${TAG_COLORS[tag]}60`,background:draft.tags.includes(tag)?TAG_COLORS[tag]+"25":"transparent",cursor:"pointer",fontSize:10,fontWeight:700,color:draft.tags.includes(tag)?TAG_COLORS[tag]:"#64748B",fontFamily:"inherit"}}>{tag}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{if(!draft.text.trim()){doToast("⚠️ Enter note text");return;}addEvent("staff_note","Internal Note",draft.text.substring(0,60)+(draft.text.length>60?"…":""),draft.text,{priority:draft.priority,tags:draft.tags,visibility:draft.visibility});}} style={{padding:"8px 20px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:800,color:"white"}}>💾 Save Note</button>
+                <button onClick={()=>setAction(null)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B"}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {(action==="whatsapp"||action==="sms"||action==="email")&&(
+            <div style={{maxWidth:700}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#F8FAFC",marginBottom:10}}>{action==="whatsapp"?"💬 Send WhatsApp":action==="sms"?"📱 Send SMS":"📧 Send Email"}</div>
+              {action==="email"&&<input value={draft.subject} onChange={e=>setDraft(p=>({...p,subject:e.target.value}))} placeholder="Subject line…" style={{width:"100%",padding:"8px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:8}}/>}
+              <textarea value={draft.text} onChange={e=>setDraft(p=>({...p,text:e.target.value}))} placeholder={action==="email"?"Compose email…":"Type message…"} rows={3} style={{width:"100%",padding:"10px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box",marginBottom:8}}/>
+              <div style={{fontSize:10,color:"#64748B",marginBottom:8}}>To: {patient.name} · {action==="email"?patient.email:patient.phone}</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{if(!draft.text.trim()){doToast("⚠️ Enter message");return;}const type=action+"_out";addEvent(type,action==="email"?"Email Sent":action==="sms"?"SMS Sent":"WhatsApp Sent",draft.text.substring(0,60)+(draft.text.length>60?"…":""),draft.text);}} style={{padding:"8px 20px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:800,color:"white"}}>Send →</button>
+                <button onClick={()=>setAction(null)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B"}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {action==="call"&&(
+            <div style={{maxWidth:700}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#F8FAFC",marginBottom:10}}>📞 Log Call</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                {["call_out","call_in","missed_call"].map(ct=>(
+                  <button key={ct} onClick={()=>setDraft(p=>({...p,subject:ct}))} style={{padding:"6px 14px",border:`1px solid ${draft.subject===ct?"#06B6D4":"rgba(80,140,255,0.2)"}`,borderRadius:9,background:draft.subject===ct?"rgba(6,182,212,0.12)":"#0F1C34",cursor:"pointer",fontSize:11,fontWeight:700,color:draft.subject===ct?"#06B6D4":"#94A3B8",fontFamily:"inherit"}}>
+                    {ct==="call_out"?"📞 Outbound":ct==="call_in"?"📲 Inbound":"📵 Missed"}
+                  </button>
+                ))}
+              </div>
+              <textarea value={draft.text} onChange={e=>setDraft(p=>({...p,text:e.target.value}))} placeholder="Call notes — what was discussed…" rows={2} style={{width:"100%",padding:"10px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:8}}/>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{const ct=draft.subject||"call_out";addEvent(ct,ct==="missed_call"?"Missed Call":ct==="call_in"?"Inbound Call":"Outbound Call",draft.text.substring(0,60)||"Call logged",draft.text||"No notes");}} style={{padding:"8px 20px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:800,color:"white"}}>💾 Log Call</button>
+                <button onClick={()=>setAction(null)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B"}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {action==="task"&&(
+            <div style={{maxWidth:700}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#F8FAFC",marginBottom:10}}>✅ Create Task</div>
+              <input value={draft.text} onChange={e=>setDraft(p=>({...p,text:e.target.value}))} placeholder="Task description…" style={{width:"100%",padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:8}}/>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <input value={draft.taskDue} onChange={e=>setDraft(p=>({...p,taskDue:e.target.value}))} type="date" style={{padding:"6px 10px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#F8FAFC",fontSize:11,fontFamily:"inherit",outline:"none"}}/>
+                <select value={draft.priority} onChange={e=>setDraft(p=>({...p,priority:e.target.value}))} style={{padding:"6px 10px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#F8FAFC",fontSize:11,fontFamily:"inherit",outline:"none"}}>
+                  {["normal","high","urgent"].map(v=><option key={v} value={v}>{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{if(!draft.text.trim()){doToast("⚠️ Enter task");return;}addEvent("task_created","Task Created",draft.text.substring(0,60),draft.text+(draft.taskDue?" · Due: "+draft.taskDue:""),{priority:draft.priority});}} style={{padding:"8px 20px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:800,color:"white"}}>✅ Create Task</button>
+                <button onClick={()=>setAction(null)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B"}}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Filter Bar ── */}
+      <div style={{background:"#0d1b2e",borderBottom:"1px solid rgba(80,140,255,0.1)",padding:"8px 16px",display:"flex",gap:6,flexShrink:0,overflowX:"auto"}}>
+        {FILTERS.map(f=>(
+          <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:"5px 14px",borderRadius:20,border:`1px solid ${filter===f.id?"rgba(37,99,255,0.5)":"rgba(80,140,255,0.15)"}`,background:filter===f.id?"rgba(37,99,255,0.15)":"transparent",cursor:"pointer",fontSize:11,fontWeight:filter===f.id?700:500,color:filter===f.id?"#60A5FA":"#64748B",whiteSpace:"nowrap",fontFamily:"inherit"}}>
+            {f.l}{f.id==="all"?` (${events.length})`:""}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Timeline ── */}
+      <div style={{flex:1,overflowY:"auto",padding:"16px 16px 24px",display:"flex",flexDirection:"column",gap:0}}>
+        {visible.length===0&&(
+          <div style={{textAlign:"center",padding:"40px",color:"#64748B",fontSize:13}}>No activity events in this category yet.</div>
+        )}
+        {visible.map((ev,idx)=>{
+          const meta=ACT_META[ev.type]||{icon:"📋",label:ev.type,color:"#64748B"};
+          const isExp=expanded.has(ev.id);
+          const toggle=()=>setExpanded(p=>{const n=new Set(p);n.has(ev.id)?n.delete(ev.id):n.add(ev.id);return n;});
+          const isLast=idx===visible.length-1;
+          return(
+            <div key={ev.id} style={{display:"flex",gap:0,position:"relative"}}>
+              {/* Timeline line */}
+              {!isLast&&<div style={{position:"absolute",left:19,top:40,bottom:-8,width:2,background:"rgba(80,140,255,0.1)",zIndex:0}}/>}
+              {/* Icon bubble */}
+              <div style={{width:38,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:12,zIndex:1}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:`${meta.color}18`,border:`2px solid ${meta.color}50`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{meta.icon}</div>
+              </div>
+              {/* Card */}
+              <div style={{flex:1,marginLeft:8,marginBottom:8,background:"#0F1C34",border:`1px solid rgba(80,140,255,0.14)`,borderLeft:`3px solid ${meta.color}`,borderRadius:12,overflow:"hidden",cursor:"pointer"}} onClick={toggle}>
+                <div style={{padding:"10px 14px",display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3,flexWrap:"wrap"}}>
+                      <span style={{fontSize:11,fontWeight:800,color:"#F8FAFC"}}>{ev.subject}</span>
+                      {meta.dir&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:meta.dir==="in"?"rgba(34,197,94,0.12)":"rgba(59,130,246,0.12)",color:meta.dir==="in"?"#4ADE80":"#60A5FA",fontWeight:700}}>{meta.dir==="in"?"↙ In":"↗ Out"}</span>}
+                      {ev.priority==="high"&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(245,158,11,0.12)",color:"#F59E0B",fontWeight:700}}>⚡ High</span>}
+                      {ev.priority==="urgent"&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(239,68,68,0.12)",color:"#EF4444",fontWeight:700}}>🔴 Urgent</span>}
+                      {(ev.tags||[]).map(t=><span key={t} style={{fontSize:9,padding:"1px 7px",borderRadius:10,background:`${TAG_COLORS[t]||"#64748B"}18`,color:TAG_COLORS[t]||"#94A3B8",fontWeight:600,border:`1px solid ${TAG_COLORS[t]||"#64748B"}30`}}>{t}</span>)}
+                    </div>
+                    <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:isExp?"normal":"nowrap"}}>{ev.preview}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                    <span style={{fontSize:10,color:"#64748B",whiteSpace:"nowrap"}}>{fmtTs(ev.ts)}</span>
+                    <span style={{fontSize:9,color:"#64748B"}}>{ev.by}</span>
+                  </div>
+                  <span style={{fontSize:11,color:"#64748B",marginLeft:4,marginTop:2}}>{isExp?"▲":"▼"}</span>
+                </div>
+                {isExp&&(
+                  <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(80,140,255,0.08)"}}>
+                    <div style={{fontSize:11,color:"#CBD5E1",whiteSpace:"pre-wrap",lineHeight:1.6,paddingTop:10}}>{ev.content}</div>
+                    {ev.type==="staff_note"&&ev.visibility&&<div style={{fontSize:10,color:"#64748B",marginTop:6}}>👁 Visibility: {ev.visibility}</div>}
+                    <div style={{display:"flex",gap:8,marginTop:10}}>
+                      <button onClick={e=>{e.stopPropagation();doToast("Reference copied");}} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:10,color:"#94A3B8",fontFamily:"inherit"}}>Copy ref</button>
+                      {ev.type==="task_created"&&<button onClick={e=>{e.stopPropagation();setEvents(p=>p.map(x=>x.id===ev.id?{...x,type:"task_completed",subject:"Task Completed",preview:"✓ "+x.preview}:x));doToast("Task marked complete");}} style={{padding:"4px 10px",border:"1px solid rgba(34,197,94,0.3)",borderRadius:7,background:"rgba(34,197,94,0.08)",cursor:"pointer",fontSize:10,color:"#4ADE80",fontFamily:"inherit"}}>✓ Mark complete</button>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DocsTab({patient,savedDocs,doToast,setShowSendModal}){
   const [sigSessions,setSigSessions]=useState([
     {id:"SIG-A1B2C",form:"Consent Form",status:"signed",signedAt:"14 May 2026 · 09:45",by:"Patient (tablet)",pdf:true},
@@ -14535,6 +14780,7 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
 
   const ALL_PATIENT_TABS=[
     {id:"details",  l:"Details",         icon:"👤",roles:["reception","dentist","hygienist","manager"]},
+    {id:"activity", l:"Activity",        icon:"📊",roles:["reception","dentist","hygienist","manager"]},
     {id:"chart",    l:"Chart",           icon:"🦷",roles:["dentist","hygienist","manager"]},
     {id:"medical",  l:"Medical",         icon:"🩺",roles:["dentist","hygienist","manager","reception"]},
     {id:"appts",    l:"Appointments",    icon:"📅",roles:["reception","dentist","hygienist","manager"]},
@@ -14545,8 +14791,8 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
     {id:"history",  l:"History",         icon:"🔒",roles:["manager","dentist"]},
     {id:"consent",  l:"Consent Forms",   icon:"✍️",roles:["dentist","manager","reception","hygienist"]},
   ];
-  const DENTIST_ORDER=["chart","notes","medical","plans","appts","details","docs","consent","history"];
-  const RECEPTION_ORDER=["details","appts","accounts","plans","medical","docs","consent"];
+  const DENTIST_ORDER=["chart","activity","notes","medical","plans","appts","details","docs","consent","history"];
+  const RECEPTION_ORDER=["details","activity","appts","accounts","plans","medical","docs","consent"];
   const TABS=user?.role==="dentist"||user?.role==="hygienist"
     ? ALL_PATIENT_TABS.filter(t=>t.roles.includes(user.role)).sort((a,b)=>DENTIST_ORDER.indexOf(a.id)-DENTIST_ORDER.indexOf(b.id))
     : user?.role==="reception"
@@ -15751,6 +15997,8 @@ Added by: ${showDocPreview.by}
     </div>}
 
     {tab==="docs"&&<DocsTab patient={patient} savedDocs={savedDocs} doToast={doToast} setShowSendModal={setShowSendModal}/>}
+
+    {tab==="activity"&&<PatientActivityTab patient={patient} user={user} doToast={doToast}/>}
 
     {tab==="consent"&&<ConsentFormsPanel patient={patient} user={user}/>}
 
