@@ -840,7 +840,7 @@ const INTEGRATIONS_DATA = [
 
 ];
 
-const ALERT_META={medical:{c:C.red,bg:"#fee2e2",b:"#fecaca",Icon:AlertTriangle},anxiety:{c:C.amber,bg:"rgba(99,102,241,0.08)",b:"#fde68a",Icon:Heart},disability:{c:C.blue,bg:"#dbeafe",b:"#bfdbfe",Icon:Shield},general:{c:"#374151",bg:"#132238",b:"rgba(80,140,255,0.2)",Icon:FileText}};
+const ALERT_META={medical:{c:"#FCA5A5",bg:"rgba(185,28,28,0.18)",b:"rgba(239,68,68,0.4)",Icon:AlertTriangle},anxiety:{c:C.amber,bg:"rgba(99,102,241,0.08)",b:"#fde68a",Icon:Heart},disability:{c:C.blue,bg:"rgba(37,99,255,0.12)",b:"rgba(59,130,246,0.35)",Icon:Shield},general:{c:"#CBD5E1",bg:"#132238",b:"rgba(80,140,255,0.2)",Icon:FileText}};
 
 
 // ── Global dark theme styles injected ─────────────────────────────────────────
@@ -15751,6 +15751,8 @@ Added by: ${showDocPreview.by}
     </div>}
 
     {tab==="docs"&&<DocsTab patient={patient} savedDocs={savedDocs} doToast={doToast} setShowSendModal={setShowSendModal}/>}
+
+    {tab==="consent"&&<ConsentFormsPanel patient={patient} user={user}/>}
 
     {tab==="history"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
