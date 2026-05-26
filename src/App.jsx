@@ -3152,6 +3152,149 @@ function AlertModal({patient,onAck,onCancel}){
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// DIGITAL SIGNATURE COMPONENTS
+// ═══════════════════════════════════════════════════════════════════
+
+const FORM_TYPES=["Consent Form","Treatment Plan","Financial Agreement","Privacy / GDPR Notice","Medical History","Referral Consent"];
+
+function SignatureRequestModal({appt,onClose,doToast}){
+  const [formType,setFormType]=useState("Consent Form");
+  const [channel,setChannel]=useState("tablet"); // tablet | sms | qr
+  const [phone,setPhone]=useState("");
+  const [signed,setSigned]=useState(false);
+  const [sigData,setSigData]=useState(null);
+  const sessionId="SIG-"+Math.random().toString(36).substring(2,8).toUpperCase();
+  const signingUrl="https://sign.prodentalconnect.co.uk/s/"+sessionId;
+
+  const handleSigned=(data)=>{
+    setSigData(data);
+    setSigned(true);
+    doToast("✓ "+formType+" signed by "+appt.patient+" — saved to patient record");
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950}}>
+      <div style={{background:"#132238",borderRadius:20,width:520,maxHeight:"90vh",overflowY:"auto",padding:26,boxShadow:"0 24px 60px rgba(0,0,0,.5)"}}>
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:800}}>✍️ Request Signature</div>
+            <div style={{fontSize:12,color:"#94A3B8",marginTop:2}}>{appt.patient} · {appt.time} · {appt.type}</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#64748B",cursor:"pointer",fontSize:18,padding:0}}>✕</button>
+        </div>
+
+        {signed?(
+          <div style={{textAlign:"center",padding:"30px 0"}}>
+            <div style={{fontSize:40,marginBottom:12}}>✅</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#22C55E",marginBottom:6}}>Signature Captured</div>
+            <div style={{fontSize:12,color:"#94A3B8",marginBottom:4}}>{formType} signed by {appt.patient}</div>
+            <div style={{fontSize:11,color:"#64748B",marginBottom:4}}>Timestamp: {new Date(sigData?.timestamp||Date.now()).toLocaleString("en-GB")}</div>
+            <div style={{fontSize:11,color:"#64748B",marginBottom:16}}>Session ID: {sessionId}</div>
+            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+              <div style={{padding:"4px 10px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:8,fontSize:10,fontWeight:700,color:"#22C55E"}}>📎 Attached to patient chart</div>
+              <div style={{padding:"4px 10px",background:"rgba(37,99,255,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,fontSize:10,fontWeight:700,color:"#60A5FA"}}>🔒 Encrypted PDF generated</div>
+              <div style={{padding:"4px 10px",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:8,fontSize:10,fontWeight:700,color:"#A5B4FC"}}>📋 Audit trail logged</div>
+            </div>
+            <button onClick={onClose} style={{marginTop:18,padding:"10px 28px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:700,color:"white"}}>Done</button>
+          </div>
+        ):(
+          <>
+            {/* Form type selector */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:6,textTransform:"uppercase",letterSpacing:".04em"}}>Form Type</div>
+              <select value={formType} onChange={e=>setFormType(e.target.value)} style={{width:"100%",padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:13,fontFamily:"inherit",outline:"none"}}>
+                {FORM_TYPES.map(f=><option key={f}>{f}</option>)}
+              </select>
+            </div>
+
+            {/* Signing method */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".04em"}}>Signing Method</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                {[{id:"tablet",icon:"📱",l:"Sign Here",sub:"Tablet/mouse"},{id:"sms",icon:"💬",l:"Send Link",sub:"Via SMS"},{id:"qr",icon:"⬛",l:"QR Code",sub:"Patient scans"}].map(m=>(
+                  <button key={m.id} onClick={()=>setChannel(m.id)} style={{padding:"10px 6px",border:`2px solid ${channel===m.id?"#2563FF":"rgba(80,140,255,0.2)"}`,borderRadius:12,background:channel===m.id?"rgba(37,99,255,0.12)":"#0F1C34",cursor:"pointer",textAlign:"center"}}>
+                    <div style={{fontSize:18,marginBottom:3}}>{m.icon}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:channel===m.id?"#60A5FA":"#CBD5E1"}}>{m.l}</div>
+                    <div style={{fontSize:9,color:"#64748B"}}>{m.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tablet signing */}
+            {channel==="tablet"&&(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:8}}>Sign Below — {formType}</div>
+                <div style={{fontSize:10,color:"#64748B",marginBottom:8}}>Use finger, stylus or mouse. Draw your signature in the box below.</div>
+                <SignatureCanvas
+                  onSave={(dataUrl)=>handleSigned({imageData:dataUrl,timestamp:new Date().toISOString(),deviceInfo:navigator.userAgent.substring(0,60)})}
+                  onClear={()=>{}}
+                />
+                <div style={{display:"flex",gap:6,justifyContent:"flex-end",marginTop:8}}>
+                  <button onClick={onClose} style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:8,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* SMS link */}
+            {channel==="sms"&&(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:6}}>Patient Mobile Number</div>
+                <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07700 000000" style={{width:"100%",padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+                <div style={{padding:"10px 12px",background:"rgba(37,99,255,0.06)",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,fontSize:11,color:"#94A3B8",marginBottom:12,wordBreak:"break-all"}}>
+                  <span style={{color:"#60A5FA",fontWeight:700}}>SMS Preview: </span>"Hi {appt.patient.split(" ")[0]}, please sign your {formType} for today's appointment: {signingUrl}"
+                </div>
+                <button onClick={()=>{if(!phone){doToast("⚠️ Enter a mobile number");return;}doToast("✓ Signing link sent to "+phone+" — awaiting signature");onClose();}} style={{width:"100%",padding:"11px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:800,color:"white"}}>📱 Send SMS Link</button>
+              </div>
+            )}
+
+            {/* QR code */}
+            {channel==="qr"&&(
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:11,color:"#94A3B8",marginBottom:12}}>Patient scans with their phone to sign</div>
+                {/* Simulated QR code using SVG pattern */}
+                <div style={{display:"inline-block",background:"#fff",padding:12,borderRadius:12,marginBottom:12}}>
+                  <svg width={140} height={140} viewBox="0 0 140 140">
+                    <rect width={140} height={140} fill="white"/>
+                    {/* QR corner squares */}
+                    <rect x={8} y={8} width={36} height={36} fill="none" stroke="#111" strokeWidth={4}/>
+                    <rect x={14} y={14} width={24} height={24} fill="#111"/>
+                    <rect x={96} y={8} width={36} height={36} fill="none" stroke="#111" strokeWidth={4}/>
+                    <rect x={102} y={14} width={24} height={24} fill="#111"/>
+                    <rect x={8} y={96} width={36} height={36} fill="none" stroke="#111" strokeWidth={4}/>
+                    <rect x={14} y={102} width={24} height={24} fill="#111"/>
+                    {/* Data pattern */}
+                    {[52,56,60,64,68,72,76,80,84,88].map((x,i)=>
+                      [52,56,60,64,68,72,76,80,84,88].map((y,j)=>
+                        (i+j)%3!==0&&(i*j)%5!==2?<rect key={x+","+y} x={x} y={y} width={3} height={3} fill="#111"/>:null
+                      )
+                    )}
+                    {/* Center logo */}
+                    <rect x={60} y={60} width={20} height={20} rx={4} fill="#2563FF"/>
+                    <text x={70} y={73} textAnchor="middle" fontSize={11} fontWeight="bold" fill="white">🦷</text>
+                  </svg>
+                </div>
+                <div style={{fontSize:11,color:"#64748B",wordBreak:"break-all",marginBottom:6}}>Session: <span style={{color:"#60A5FA",fontFamily:"monospace"}}>{sessionId}</span></div>
+                <div style={{fontSize:10,color:"#64748B",marginBottom:14}}>Link expires in 30 minutes · Encrypted session</div>
+                <button onClick={()=>{doToast("✓ Signing session created · monitoring for "+appt.patient+"'s signature");onClose();}} style={{padding:"10px 24px",background:"rgba(37,99,255,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:"#60A5FA"}}>⏳ Wait for Signature</button>
+              </div>
+            )}
+
+            {/* Security footer */}
+            <div style={{marginTop:16,padding:"10px 12px",background:"rgba(34,197,94,0.04)",border:"1px solid rgba(34,197,94,0.15)",borderRadius:10,display:"flex",gap:12,flexWrap:"wrap"}}>
+              {["🔒 TLS encrypted","⏱ Timestamped","📋 Audit logged","📄 PDF generated"].map(b=>(
+                <span key={b} style={{fontSize:10,color:"#4ADE80",fontWeight:600}}>{b}</span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 
 // CALENDAR WITH FULL DND + RIGHT-CLICK
 
@@ -3179,6 +3322,7 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const [reminderModal,setReminderModal]=useState(null); // {appt, msg}
   const [noteModal,setNoteModal]=useState(null);         // {appt, note}
+  const [sigReqModal,setSigReqModal]=useState(null);     // {appt, formType, status}
 
   const [booking,setBooking]=useState(null);
   const [bForm,setBForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});
@@ -3293,6 +3437,8 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
       const msg="Hi "+a.patient.split(" ")[0]+", this is a reminder of your appointment at "+a.time+" today at Riverside Dental. Please reply YES to confirm or call us on 01234 567890 to rearrange. Thank you!";
       setReminderModal({appt:a,msg});
     }},
+
+    {l:"✍️ Request Signature",fn:(a)=>{setCtx(null);setSigReqModal({appt:a,formType:"Consent Form",status:"pending"});}},
 
     {sep:true},
 
@@ -3563,6 +3709,9 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
     </div>}
 
+    {/* ── Signature Request modal ────────────────────────────── */}
+    {sigReqModal&&<SignatureRequestModal appt={sigReqModal.appt} onClose={()=>setSigReqModal(null)} doToast={doToast}/>}
+
     {/* ── Send Reminder modal ────────────────────────────────── */}
     {reminderModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}}>
       <div style={{background:"#132238",borderRadius:18,width:420,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
@@ -3745,14 +3894,33 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                     onDragLeave={()=>setDragOver(null)}
                     onDrop={()=>{if(dragging){setAppts(p=>p.map(a=>a.id===dragging.id?{...a,time,col}:a));setDragging(null);setDragOver(null);doToast("Appointment moved to "+time);}}}
                   >
-                    {appt&&<div draggable onDragStart={()=>setDragging(appt)} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
-                      style={{background:appt.color+"20",borderLeft:"4px solid "+appt.color,borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:appt.color,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${appt.color}25`}}>
-                      <div style={{display:"flex",gap:6,alignItems:"center",overflow:"hidden"}}>
-                        <span style={{fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.patient}</span>
-                      </div>
-                      {rowSpanCount>2&&<span style={{fontSize:10,opacity:.75,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>}
-                      {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration} mins · {appt.time}</span>}
-                    </div>}
+                    {appt&&(()=>{
+                      const apptPt=appt.pid?PATIENTS.find(p=>p.id===appt.pid):null;
+                      const hasBalance=apptPt&&apptPt.balance>0;
+                      const hasMedAlert=apptPt&&apptPt.medAlerts&&apptPt.medAlerts.length>0;
+                      const isOverdue=apptPt&&apptPt.overdue;
+                      const tipLines=[
+                        appt.patient+" · "+appt.time+(appt.duration?" ("+appt.duration+"m)":""),
+                        "Type: "+appt.type,
+                        hasBalance?"⚠️ Balance: £"+apptPt.balance+(isOverdue?" — OVERDUE":""):"",
+                        hasMedAlert?"🚨 "+apptPt.medAlerts.join(", "):"",
+                        appt.notes?"Note: "+appt.notes:"",
+                      ].filter(Boolean).join("\n");
+                      const urgentColor=appt.type&&(appt.type.toLowerCase().includes("emergency")||appt.type.toLowerCase().includes("pain"))?"#EF4444":null;
+                      return(
+                        <div draggable onDragStart={()=>setDragging(appt)} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
+                          title={tipLines}
+                          style={{background:(urgentColor||appt.color)+"20",borderLeft:"4px solid "+(urgentColor||appt.color),borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:urgentColor||appt.color,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${urgentColor||appt.color}25`}}>
+                          <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
+                            <span style={{fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{appt.patient}</span>
+                            {isOverdue&&<span title={"Overdue balance: £"+apptPt.balance} style={{fontSize:8,background:"rgba(239,68,68,0.2)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0,fontWeight:800}}>£!</span>}
+                            {hasMedAlert&&<span title={apptPt.medAlerts.join(", ")} style={{fontSize:8,background:"rgba(239,68,68,0.15)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0}}>⚕</span>}
+                          </div>
+                          <span style={{fontSize:10,opacity:.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>
+                          {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
+                        </div>
+                      );
+                    })()}
                   </td>
                 );
 
@@ -14105,6 +14273,108 @@ function DentalWorkspace({patient,user}){
   </div>);
 }
 
+function DocsTab({patient,savedDocs,doToast,setShowSendModal}){
+  const [sigSessions,setSigSessions]=useState([
+    {id:"SIG-A1B2C",form:"Consent Form",status:"signed",signedAt:"14 May 2026 · 09:45",by:"Patient (tablet)",pdf:true},
+    {id:"SIG-D3E4F",form:"Treatment Plan",status:"pending",sentAt:"14 May 2026 · 10:00",channel:"SMS"},
+  ]);
+  const [showSigModal,setShowSigModal]=useState(false);
+  const [sigFormType,setSigFormType]=useState("Consent Form");
+
+  const statusBadge={
+    signed:{bg:"rgba(34,197,94,0.1)",bc:"rgba(34,197,94,0.3)",c:"#22C55E",l:"✅ Signed"},
+    pending:{bg:"rgba(245,158,11,0.1)",bc:"rgba(245,158,11,0.3)",c:"#F59E0B",l:"⏳ Awaiting"},
+    expired:{bg:"rgba(239,68,68,0.1)",bc:"rgba(239,68,68,0.3)",c:"#EF4444",l:"❌ Expired"},
+  };
+
+  return(
+    <div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
+      {/* ── Documents ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,maxWidth:900}}>
+        <span style={{fontSize:14,fontWeight:700}}>Documents</span>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt";inp.multiple=true;inp.onchange=e=>{const files=Array.from(e.target.files||[]);if(files.length>0)doToast("✓ "+files.length+" file"+(files.length>1?"s":"")+" uploaded");};inp.click();}} style={{padding:"7px 14px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={13}/>Upload</button>
+          <button onClick={()=>setShowSendModal({type:"Treatment Report",trigger:"manual"})} style={{padding:"7px 14px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",fontFamily:"inherit",display:"flex",gap:5,alignItems:"center",boxShadow:"0 2px 10px rgba(37,99,255,0.3)"}}>📧 Send</button>
+        </div>
+      </div>
+      <div style={{maxWidth:900,marginBottom:24}}>
+        {[
+          {id:"D1",icon:"📄",name:"Consent Form — Composite UR6",date:"14 May 2026",by:"Dr. S. Patel",type:"Consent",sent:false},
+          {id:"D2",icon:"📋",name:"Referral Letter — Periodontist",date:"14 May 2026",by:"Dr. S. Patel",type:"Referral",sent:false},
+          {id:"D3",icon:"📃",name:"Medical History Questionnaire",date:"14 May 2026",by:"Patient",type:"Medical",sent:false},
+          {id:"D4",icon:"🖼",name:"OPG Radiograph — Jan 2026",date:"15 Jan 2026",by:"Dr. S. Patel",type:"X-Ray",sent:false},
+          ...(savedDocs||[]),
+        ].map((d,i)=>(
+          <div key={d.id||i} style={{display:"flex",gap:12,alignItems:"center",padding:"11px 16px",borderRadius:12,border:"1px solid rgba(80,140,255,0.18)",background:"#0F1C34",marginBottom:6}}>
+            <div style={{fontSize:20,flexShrink:0}}>{d.icon||"📄"}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</div>
+              <div style={{fontSize:10,color:"#94A3B8"}}>{d.date} · by {d.by}{d.sent&&<span style={{color:"#4ADE80",fontWeight:700}}> · Sent</span>}</div>
+            </div>
+            <button onClick={()=>setShowSendModal({type:d.type||"Document",trigger:"manual",docName:d.name})} style={{padding:"5px 14px",background:d.sent?"transparent":"linear-gradient(135deg,#2563FF,#1D4ED8)",border:d.sent?"1px solid rgba(80,140,255,0.25)":"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,color:d.sent?"#60A5FA":"#fff",fontFamily:"inherit",flexShrink:0}}>{d.sent?"Resend":"Send"}</button>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Digital Signatures ── */}
+      <div style={{maxWidth:900}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700}}>✍️ Digital Signatures</div>
+            <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>Consent forms, treatment plans and financial agreements</div>
+          </div>
+          <button onClick={()=>setShowSigModal(true)} style={{padding:"7px 14px",background:"linear-gradient(135deg,#7C3AED,#5B21B6)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",display:"flex",gap:5,alignItems:"center"}}>
+            ✍️ Request Signature
+          </button>
+        </div>
+
+        {sigSessions.map(s=>{
+          const sb=statusBadge[s.status]||statusBadge.pending;
+          return(
+            <div key={s.id} style={{display:"flex",gap:12,alignItems:"center",padding:"11px 16px",borderRadius:12,border:`1px solid ${sb.bc}`,background:"#0F1C34",marginBottom:6}}>
+              <div style={{fontSize:20,flexShrink:0}}>✍️</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{s.form}</div>
+                <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>
+                  {s.status==="signed"?s.signedAt+" · "+s.by:s.status==="pending"?"Sent "+s.sentAt+" via "+s.channel:""}
+                  {s.pdf&&<span style={{color:"#4ADE80",fontWeight:700,marginLeft:6}}>· PDF ready</span>}
+                </div>
+                <div style={{fontSize:9,color:"#64748B",fontFamily:"monospace",marginTop:1}}>Session {s.id}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:sb.bg,border:"1px solid "+sb.bc,color:sb.c}}>{sb.l}</span>
+                {s.status==="signed"&&<button onClick={()=>doToast("Downloading signed PDF…")} style={{fontSize:9,color:"#60A5FA",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline"}}>Download PDF</button>}
+                {s.status==="pending"&&<button onClick={()=>doToast("Reminder sent to patient")} style={{fontSize:9,color:"#F59E0B",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline"}}>Resend link</button>}
+              </div>
+            </div>
+          );
+        })}
+
+        {sigSessions.length===0&&<div style={{textAlign:"center",padding:"24px",background:"rgba(80,140,255,0.04)",borderRadius:12,border:"1px solid rgba(80,140,255,0.1)",color:"#64748B",fontSize:12}}>No signature requests yet. Click "Request Signature" above.</div>}
+      </div>
+
+      {/* Signature request mini-modal */}
+      {showSigModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950}}>
+        <div style={{background:"#132238",borderRadius:18,width:460,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.5)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>✍️ Request Signature</div>
+          <div style={{fontSize:12,color:"#94A3B8",marginBottom:16}}>{patient?.name}</div>
+          <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:6}}>Form Type</div>
+          <select value={sigFormType} onChange={e=>setSigFormType(e.target.value)} style={{width:"100%",padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,color:"#F8FAFC",fontSize:13,fontFamily:"inherit",outline:"none",marginBottom:14}}>
+            {FORM_TYPES.map(f=><option key={f}>{f}</option>)}
+          </select>
+          <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",marginBottom:6}}>Send via</div>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            {["SMS","Email","QR Code","Tablet"].map(ch=>(
+              <button key={ch} onClick={()=>{setSigSessions(p=>[{id:"SIG-"+Math.random().toString(36).substring(2,8).toUpperCase(),form:sigFormType,status:"pending",sentAt:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" · "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),channel:ch},...p]);setShowSigModal(false);doToast("✓ Signature request sent via "+ch+" · waiting for "+patient?.name);}} style={{flex:1,padding:"8px 4px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,background:"#0F1C34",cursor:"pointer",fontSize:11,fontWeight:700,color:"#CBD5E1",textAlign:"center"}}>{ch}</button>
+            ))}
+          </div>
+          <button onClick={()=>setShowSigModal(false)} style={{width:"100%",padding:"10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B"}}>Cancel</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 function ChartingPage({openPatient,embeddedPatient}){
   return <DentalWorkspace patient={embeddedPatient||PATIENTS[0]} user={null}/>;
 }
@@ -15480,40 +15750,7 @@ Added by: ${showDocPreview.by}
       </div>
     </div>}
 
-    {tab==="docs"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,maxWidth:900}}>
-        <span style={{fontSize:14,fontWeight:700}}>Documents</span>
-        <button onClick={()=>{
-          const inp=document.createElement("input");
-          inp.type="file";
-          inp.accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt";
-          inp.multiple=true;
-          inp.onchange=e=>{const files=Array.from(e.target.files||[]);if(files.length>0)doToast("✓ "+files.length+" file"+(files.length>1?"s":"")+" uploaded");};
-          inp.click();
-        }} style={{padding:"7px 16px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={13}/>Upload</button>
-          <button onClick={()=>setShowSendModal({type:"Treatment Report",trigger:"manual"})} style={{padding:"7px 16px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",fontFamily:"inherit",display:"flex",gap:5,alignItems:"center",boxShadow:"0 2px 10px rgba(37,99,255,0.3)"}}>📧 Send</button>
-      </div>
-      <div style={{maxWidth:900}}>
-        {[
-          {id:"D1",icon:"📄",name:"Consent Form — Composite UR6",date:"14 May 2026",by:"Dr. S. Patel",type:"Consent",sent:false},
-          {id:"D2",icon:"📋",name:"Referral Letter — Periodontist",date:"14 May 2026",by:"Dr. S. Patel",type:"Referral",sent:false},
-          {id:"D3",icon:"📃",name:"Medical History Questionnaire",date:"14 May 2026",by:"Patient",type:"Medical",sent:false},
-          {id:"D4",icon:"🖼",name:"OPG Radiograph — Jan 2026",date:"15 Jan 2026",by:"Dr. S. Patel",type:"X-Ray",sent:false},
-          ...(savedDocs||[]),
-        ].map((d,i)=>(
-          <div key={d.id||i} style={{display:"flex",gap:12,alignItems:"center",padding:"11px 16px",borderRadius:12,border:"1px solid rgba(80,140,255,0.18)",background:"#0F1C34",marginBottom:6}}>
-            <div style={{fontSize:20,flexShrink:0}}>{d.icon||"📄"}</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</div>
-              <div style={{fontSize:10,color:"#94A3B8"}}>{d.date} · by {d.by}{d.sent&&<span style={{color:"#4ADE80",fontWeight:700}}> · Sent</span>}</div>
-            </div>
-            <button onClick={()=>setShowSendModal({type:d.type||"Document",trigger:"manual",docName:d.name})} style={{padding:"5px 14px",background:d.sent?"transparent":"linear-gradient(135deg,#2563FF,#1D4ED8)",border:d.sent?"1px solid rgba(80,140,255,0.25)":"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,color:d.sent?"#60A5FA":"#fff",fontFamily:"inherit",flexShrink:0}}>
-              {d.sent?"Resend":"Send"}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>}
+    {tab==="docs"&&<DocsTab patient={patient} savedDocs={savedDocs} doToast={doToast} setShowSendModal={setShowSendModal}/>}
 
     {tab==="history"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
