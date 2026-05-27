@@ -5430,7 +5430,7 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
   const [auditFilter,setAuditFilter]=useState({annId:"all",practice:"all",acked:"all"});
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
-  const BLANK={id:"",title:"",body:"",type:"General",priority:"Normal",display_mode:"banner",target_scope:"all",target_practice_ids:[],target_role_ids:[],target_user_ids:[],start_at:new Date().toISOString().slice(0,10),expires_at:"",recurrence_rule:"once",require_acknowledgement:false,dismissible:true,blocking:false,action_label:"",action_url:"",attachment:null,release_version:"",created_by:"superadmin",status:"draft",created_at:""};
+  const BLANK={id:"",title:"",body:"",type:"General",priority:"Normal",display_mode:"banner",target_scope:"all",target_practice_ids:[],target_role_ids:[],target_user_ids:[],start_at:new Date().toISOString().slice(0,10),expires_at:"",recurrence_rule:"once",require_acknowledgement:false,dismissible:true,blocking:false,allow_snooze:true,allow_dont_show_again:true,snooze_duration_hours:24,action_label:"",action_url:"",attachment:null,release_version:"",created_by:"superadmin",status:"draft",created_at:""};
   const [form,setForm]=useState(BLANK);
   const fld=(k,v)=>setForm(p=>({...p,[k]:v}));
 
@@ -5539,8 +5539,8 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
                 {[["once","Show once only"],["every_login","Every login"],["every_login_until_expiry","Every login until expiry date"],["daily","Once per day"],["every_x_hours","Every X hours"],["until_dismissed","Until dismissed by user"],["until_billing_resolved","Until billing issue resolved"],["until_disabled","Until disabled by Super Admin"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
               </select>
             </div>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap",padding:"10px 14px",background:"rgba(80,140,255,0.04)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)"}}>
-              {[{k:"require_acknowledgement",l:"Require acknowledgement"},{k:"dismissible",l:"Dismissible by user"},{k:"blocking",l:"Blocking (prevents all access)"}].map(cb=>(
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",padding:"10px 14px",background:"rgba(80,140,255,0.04)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)"}}>
+              {[{k:"require_acknowledgement",l:"Require acknowledgement"},{k:"dismissible",l:"Dismissible by user"},{k:"blocking",l:"Blocking (prevents all access)"},{k:"allow_snooze",l:"Allow Remind Later"},{k:"allow_dont_show_again",l:"Allow Don't Show Again"}].map(cb=>(
                 <label key={cb.k} style={{display:"flex",gap:7,alignItems:"center",cursor:"pointer",fontSize:12,fontWeight:500}}>
                   <input type="checkbox" checked={!!form[cb.k]} onChange={e=>fld(cb.k,e.target.checked)} style={{width:14,height:14,accentColor:"#38BDF8",cursor:"pointer"}}/>
                   {cb.l}
@@ -5676,6 +5676,71 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
         </div>
       </div>}
 
+      {/* ── ANALYTICS ── */}
+      {tab==="analytics"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+        <div style={{marginBottom:18}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>Engagement Overview</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+            {(()=>{
+              const totTarget=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.targeted,0);
+              const totViewed=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.viewed,0);
+              const totAcked=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.acknowledged,0);
+              const totSnoozed=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.snoozed,0);
+              const totDontShow=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.dont_show_again,0);
+              const totNotes=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.notes_clicked,0);
+              const totDismissed=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.dismissed,0);
+              const engPct=totTarget>0?Math.round(totViewed/totTarget*100):0;
+              const ackPct=totTarget>0?Math.round(totAcked/totTarget*100):0;
+              return [
+                {l:"Total Delivered",v:totTarget,c:C.teal,sub:"across all active announcements"},
+                {l:"Total Viewed",v:totViewed,c:C.blue,sub:`${engPct}% view rate`},
+                {l:"Acknowledged",v:totAcked,c:C.green,sub:`${ackPct}% of targeted`},
+                {l:"Snoozed",v:totSnoozed,c:C.amber,sub:"Remind Later pressed"},
+                {l:"Don't Show Again",v:totDontShow,c:"#F87171",sub:"permanently opted out"},
+                {l:"Release Notes Clicked",v:totNotes,c:C.purple,sub:"content engagement"},
+                {l:"Dismissed",v:totDismissed,c:"#64748B",sub:"manually closed"},
+                {l:"Active Campaigns",v:announcements.filter(a=>a.status==="active").length,c:C.teal,sub:"currently running"},
+              ].map(s=>(
+                <div key={s.l} style={{padding:"12px 14px",background:"rgba(7,20,40,0.9)",borderRadius:12,border:"1px solid rgba(80,140,255,0.1)"}}>
+                  <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>{s.l}</div>
+                  <div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace",marginBottom:2}}>{s.v}</div>
+                  <div style={{fontSize:10,color:"#374151"}}>{s.sub}</div>
+                </div>
+              ));
+            })()}
+          </div>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>Per-Announcement Breakdown</div>
+          <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.12)",borderRadius:14,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"3fr 1fr 1fr 1fr 1fr 1fr 1fr",padding:"8px 14px",borderBottom:"1px solid rgba(80,140,255,0.08)",background:"rgba(7,20,40,0.8)"}}>
+              {["Announcement","Targeted","Viewed","Snoozed","Don't Show","Notes Clicked","Eng %"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".04em"}}>{h}</div>)}
+            </div>
+            {announcements.map((ann,i)=>{
+              const s=INIT_ANN_DELIVERY_STATS[ann.id];
+              if(!s)return null;
+              const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["General"];
+              const engPct=s.targeted>0?Math.round(s.viewed/s.targeted*100):0;
+              return(
+                <div key={ann.id} style={{display:"grid",gridTemplateColumns:"3fr 1fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",alignItems:"center",background:i%2===0?"transparent":"rgba(80,140,255,0.015)"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",minWidth:0}}>
+                    <span style={{fontSize:16}}>{meta.icon}</span>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ann.title.slice(0,40)}</div>
+                      <div style={{fontSize:9,color:meta.color,textTransform:"uppercase",fontWeight:600}}>{ann.type}</div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.muted,fontFamily:"ui-monospace,monospace"}}>{s.targeted}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.blue,fontFamily:"ui-monospace,monospace"}}>{s.viewed}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.amber,fontFamily:"ui-monospace,monospace"}}>{s.snoozed}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#F87171",fontFamily:"ui-monospace,monospace"}}>{s.dont_show_again}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.purple,fontFamily:"ui-monospace,monospace"}}>{s.notes_clicked}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:engPct>=70?C.green:engPct>=40?C.amber:C.red,fontFamily:"ui-monospace,monospace"}}>{engPct}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>}
+
       {/* ── AUDIT LOG ── */}
       {tab==="audit"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
         <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center",background:"#132238",padding:"10px 14px",borderRadius:12,border:"1px solid rgba(80,140,255,0.12)"}}>
@@ -5697,21 +5762,24 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
           <button onClick={()=>doToast("Audit log exported as CSV")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,background:"rgba(80,140,255,0.06)",color:C.text,cursor:"pointer",fontSize:11,display:"flex",gap:4,alignItems:"center"}}><Download size={10}/>Export CSV</button>
         </div>
         <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.12)",borderRadius:14,overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr",padding:"8px 14px",borderBottom:"1px solid rgba(80,140,255,0.08)",background:"rgba(7,20,40,0.8)"}}>
-            {["User / Practice","Role","Announcement","Viewed","Acknowledged","Dismissed","Device / Channel"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".04em"}}>{h}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr",padding:"8px 14px",borderBottom:"1px solid rgba(80,140,255,0.08)",background:"rgba(7,20,40,0.8)"}}>
+            {["User / Practice","Role","Announcement","Viewed","Acknowledged","Dismissed","Snoozed","Don't Show","Notes","Device"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".04em"}}>{h}</div>)}
           </div>
           {filteredAudit.map((r,i)=>{
             const ann=announcements.find(a=>a.id===r.annId);
             const meta=ann?ANN_TYPE_META[ann.type]:ANN_TYPE_META["General"];
             return(
-              <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr",padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",alignItems:"center",background:i%2===0?"transparent":"rgba(80,140,255,0.015)"}}>
+              <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",alignItems:"center",background:i%2===0?"transparent":"rgba(80,140,255,0.015)"}}>
                 <div><div style={{fontSize:12,fontWeight:600}}>{r.user}</div><div style={{fontSize:10,color:C.muted}}>{r.practice}</div></div>
                 <span style={{fontSize:10,padding:"2px 8px",borderRadius:7,background:"rgba(80,140,255,0.08)",color:"#94A3B8",width:"fit-content"}}>{r.role}</span>
                 <div style={{fontSize:10,color:meta?.color||C.muted,display:"flex",gap:4,alignItems:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{meta?.icon} {ann?.title?.slice(0,35)||r.annId}</div>
                 <div style={{fontSize:10,color:"#CBD5E1"}}>{r.viewed||"—"}</div>
                 <div style={{fontSize:10,color:r.acked?C.green:"#374151",display:"flex",gap:3,alignItems:"center"}}>{r.acked?<><Check size={9}/>{r.acked}</>:"—"}</div>
                 <div style={{fontSize:10,color:r.dismissed?C.amber:"#374151"}}>{r.dismissed||"—"}</div>
-                <div style={{fontSize:10,color:"#64748B"}}>{r.device}<br/><span style={{color:"#374151"}}>{r.channel}</span></div>
+                <div style={{fontSize:10,color:r.snoozed?"#38BDF8":"#374151"}}>{r.snoozed||"—"}</div>
+                <div style={{fontSize:10,color:r.dont_show_again?"#F87171":"#374151"}}>{r.dont_show_again?"Yes":"—"}</div>
+                <div style={{fontSize:10,color:r.notes_clicked?C.purple:"#374151"}}>{r.notes_clicked?"✓":"—"}</div>
+                <div style={{fontSize:10,color:"#64748B"}}>{r.device}</div>
               </div>
             );
           })}
