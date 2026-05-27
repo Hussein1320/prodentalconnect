@@ -5203,6 +5203,15 @@ const INIT_ANNOUNCEMENTS=[
    allow_snooze:false,allow_dont_show_again:false,snooze_duration_hours:0,
    action_label:"Update Payment",action_url:"#",attachment:null,release_version:null,
    created_by:"superadmin",status:"draft",created_at:"2026-05-01"},
+  {id:"AN6",title:"Security & Access Review — Annual Practice Review Recommended",
+   body:"We recommend reviewing your practice settings, staff permissions, patient consent workflows, and data access controls to ensure everything remains accurate and secure.\n\nThis helps maintain good operational security and supports GDPR best practices within your clinic.\n\nYou can review:\n• Staff access permissions\n• Patient consent settings\n• Communication preferences\n• Audit logs\n• Security settings\n\nNavigate to: Settings → Security & Compliance",
+   type:"Compliance",priority:"Normal",display_mode:"modal",target_scope:"selected_roles",
+   target_practice_ids:[],target_role_ids:["manager"],target_user_ids:[],
+   start_at:"2026-05-27",expires_at:"2026-08-31",recurrence_rule:"once",
+   require_acknowledgement:false,dismissible:true,blocking:false,
+   allow_snooze:true,allow_dont_show_again:true,snooze_duration_hours:72,
+   action_label:"Review Settings",action_url:"admin_security",attachment:null,release_version:null,
+   created_by:"superadmin",status:"active",created_at:"2026-05-27"},
 ];
 const ANN_RELEASE_NOTES={
   AN1:{
@@ -5247,6 +5256,7 @@ const INIT_ANN_DELIVERY_STATS={
   AN3:{targeted:127,delivered:127,viewed:74,acknowledged:41,dismissed:0,snoozed:22,dont_show_again:0,notes_clicked:19,not_seen:53},
   AN4:{targeted:34,delivered:34,viewed:18,acknowledged:0,dismissed:6,snoozed:4,dont_show_again:8,notes_clicked:11,not_seen:16},
   AN5:{targeted:1,delivered:1,viewed:1,acknowledged:0,dismissed:0,snoozed:0,dont_show_again:0,notes_clicked:0,not_seen:0},
+  AN6:{targeted:127,delivered:127,viewed:0,acknowledged:0,dismissed:0,snoozed:0,dont_show_again:0,notes_clicked:0,not_seen:127},
 };
 const ANN_AUDIT_ROWS=[
   {practice:"Riverside Dentistry",user:"Dr. S. Patel",role:"dentist",annId:"AN1",viewed:"27 May 10:14",acked:null,dismissed:"27 May 10:15",snoozed:null,dont_show_again:false,notes_clicked:true,channel:"modal",device:"Chrome / macOS"},
@@ -30630,7 +30640,7 @@ export default function App(){
   return <div style={{display:"flex",height:"100vh",overflow:"hidden",fontFamily:"'Inter',system-ui,sans-serif",color:C.text,background:"#071428",backgroundImage:"radial-gradient(ellipse at 20% 50%,rgba(59,130,246,0.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 10%,rgba(80,140,255,0.05) 0%,transparent 45%)",WebkitFontSmoothing:"antialiased",MozOsxFontSmoothing:"grayscale",backgroundImage:"radial-gradient(ellipse at 15% 60%,rgba(0,109,255,0.05) 0%,transparent 55%),radial-gradient(ellipse at 85% 15%,rgba(80,140,255,0.04) 0%,transparent 50%)"}}>
     {annReleaseNotes&&<ReleaseNotesPanel ann={annReleaseNotes} onClose={()=>setAnnReleaseNotes(null)}/>}
     {blockingAnn&&<BlockingNotice ann={blockingAnn} onAck={()=>patchAnnPref(blockingAnn.id,{acked_at:Date.now()})} onViewNotes={blockingAnn.action_label?()=>{setAnnReleaseNotes(blockingAnn);patchAnnPref(blockingAnn.id,{notes_clicked:true});}:null}/>}
-    {!blockingAnn&&modalAnn&&<AnnouncementModal ann={modalAnn} onClose={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onDismiss={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onSnooze={()=>patchAnnPref(modalAnn.id,{snoozed_until:Date.now()+(modalAnn.snooze_duration_hours||24)*3600000})} onDontShowAgain={()=>patchAnnPref(modalAnn.id,{dont_show_again:true})} onAck={()=>patchAnnPref(modalAnn.id,{acked_at:Date.now()})} onViewNotes={()=>{setAnnReleaseNotes(modalAnn);patchAnnPref(modalAnn.id,{notes_clicked:true,dismissed_at:Date.now()});}}/>}
+    {!blockingAnn&&modalAnn&&<AnnouncementModal ann={modalAnn} onClose={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onDismiss={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onSnooze={()=>patchAnnPref(modalAnn.id,{snoozed_until:Date.now()+(modalAnn.snooze_duration_hours||24)*3600000})} onDontShowAgain={()=>patchAnnPref(modalAnn.id,{dont_show_again:true})} onAck={()=>patchAnnPref(modalAnn.id,{acked_at:Date.now()})} onViewNotes={modalAnn.action_label?()=>{patchAnnPref(modalAnn.id,{notes_clicked:true,dismissed_at:Date.now()});if(modalAnn.action_url&&modalAnn.action_url!=="#"){setPage(modalAnn.action_url);}else{setAnnReleaseNotes(modalAnn);}}:null}/>}
     {alertQueue[0]&&<AlertModal patient={alertQueue[0]} onAck={ackAlert} onCancel={()=>{setAlertQueue([]);setPatientId(prevPatientId||null);setPrevPatientId(null);}}/>}
     <BusinessCopilot open={copilotOpen} onClose={()=>setCopilotOpen(false)} subscribed={copilotSubscribed} onSubscribe={()=>setCopilotSubscribed(true)}/>
     
@@ -30657,7 +30667,7 @@ export default function App(){
         onDismiss={()=>patchAnnPref(ann.id,{dismissed_at:Date.now()})}
         onAck={()=>patchAnnPref(ann.id,{acked_at:Date.now()})}
         onSnooze={ann.allow_snooze?()=>patchAnnPref(ann.id,{snoozed_until:Date.now()+(ann.snooze_duration_hours||24)*3600000}):null}
-        onViewNotes={ann.action_label?()=>{setAnnReleaseNotes(ann);patchAnnPref(ann.id,{notes_clicked:true});}:null}
+        onViewNotes={ann.action_label?()=>{patchAnnPref(ann.id,{notes_clicked:true});if(ann.action_url&&ann.action_url!=="#"){setPage(ann.action_url);}else{setAnnReleaseNotes(ann);}}:null}
       />)}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>{renderContent()}</div>
     </div>
