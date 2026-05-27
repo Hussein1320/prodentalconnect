@@ -29413,37 +29413,437 @@ function AdminSecurityCompliance(){
 }
 
 // ════════════════════════════════════════════════════════════════
-// CLOUD BACKUP
+// CLOUD BACKUP — Enterprise diagnostics & audit
 // ════════════════════════════════════════════════════════════════
+const BACKUP_JOBS_INIT=[
+  {id:"BJ1",name:"Riverside Dentistry",location:"London SW1",lastBackup:"2026-05-27 02:14",lastBackupAgo:"2h ago",sizeRaw:847,sizeFmt:"847 MB",status:"healthy",lastError:null,retries:0,filesCount:12847,duration:"2m 14s",initiated:"Auto",destination:"s3://prodental-backups/riverside/",encrypted:true,replicated:true,compressed:true,failReason:null,retentionDays:90},
+  {id:"BJ2",name:"City Smile Clinic",location:"Manchester M1",lastBackup:"2026-05-27 01:02",lastBackupAgo:"3h ago",sizeRaw:423,sizeFmt:"423 MB",status:"healthy",lastError:null,retries:0,filesCount:6211,duration:"1m 31s",initiated:"Auto",destination:"s3://prodental-backups/citysmile/",encrypted:true,replicated:true,compressed:true,failReason:null,retentionDays:90},
+  {id:"BJ3",name:"Northside Dental",location:"Leeds LS1",lastBackup:"2026-05-26 03:30",lastBackupAgo:"22h ago",sizeRaw:318,sizeFmt:"318 MB",status:"warning",lastError:"Replication lag — 4h behind",retries:0,filesCount:4892,duration:"58s",initiated:"Auto",destination:"s3://prodental-backups/northside/",encrypted:true,replicated:false,compressed:true,failReason:"Replication lag — secondary S3 bucket (eu-central-1) is 4h behind primary. Data is safe but cross-region redundancy is impaired.",retentionDays:90},
+  {id:"BJ4",name:"Bayview Dentists",location:"Bristol BS1",lastBackup:"2026-05-24 02:00",lastBackupAgo:"3 days ago",sizeRaw:0,sizeFmt:"0 MB",status:"critical",lastError:"AWS S3 timeout — ECONNRESET",retries:3,filesCount:0,duration:"—",initiated:"Auto",destination:"s3://prodental-backups/bayview/",encrypted:true,replicated:false,compressed:false,failReason:"Connection to S3 endpoint refused (ECONNRESET). Transfer interrupted at 0 bytes. 3 automatic retries exhausted. Manual intervention required.",retentionDays:90},
+  {id:"BJ5",name:"The Smile Studio",location:"Edinburgh EH1",lastBackup:"2026-05-27 00:45",lastBackupAgo:"3h ago",sizeRaw:274,sizeFmt:"274 MB",status:"healthy",lastError:null,retries:0,filesCount:3641,duration:"47s",initiated:"Auto",destination:"s3://prodental-backups/smilestudio/",encrypted:true,replicated:true,compressed:true,failReason:null,retentionDays:90},
+  {id:"BJ6",name:"Dental House",location:"Birmingham B1",lastBackup:"Never",lastBackupAgo:"Never",sizeRaw:0,sizeFmt:"0 MB",status:"offline",lastError:"Backup agent unreachable",retries:0,filesCount:0,duration:"—",initiated:"—",destination:"—",encrypted:false,replicated:false,compressed:false,failReason:"Backup agent is offline. The practice has not completed backup integration setup. No data is being protected.",retentionDays:0},
+  {id:"BJ7",name:"Sunshine Dental",location:"Leeds LS2",lastBackup:"2026-05-27 01:30",lastBackupAgo:"2h ago",sizeRaw:389,sizeFmt:"389 MB",status:"healthy",lastError:null,retries:0,filesCount:5128,duration:"1m 02s",initiated:"Auto",destination:"s3://prodental-backups/sunshine/",encrypted:true,replicated:true,compressed:true,failReason:null,retentionDays:90},
+  {id:"BJ8",name:"Coastal Dentistry",location:"Brighton BN1",lastBackup:"2026-05-27 02:00",lastBackupAgo:"2h ago",sizeRaw:198,sizeFmt:"198 MB",status:"healthy",lastError:null,retries:0,filesCount:2841,duration:"35s",initiated:"Auto",destination:"s3://prodental-backups/coastal/",encrypted:true,replicated:true,compressed:true,failReason:null,retentionDays:90},
+];
+const BACKUP_LOG_DATA={
+  BJ1:[
+    {ts:"2026-05-27 02:14:52",type:"info",msg:"Backup job started — daily scheduled run"},
+    {ts:"2026-05-27 02:14:53",type:"info",msg:"Authenticating with AWS S3 (eu-west-1) — OK"},
+    {ts:"2026-05-27 02:14:53",type:"info",msg:"Encryption key verified — AES-256-GCM"},
+    {ts:"2026-05-27 02:15:01",type:"info",msg:"Incremental diff calculated — 847 MB / 12,847 files"},
+    {ts:"2026-05-27 02:15:01",type:"info",msg:"Compression started — zstd level 3"},
+    {ts:"2026-05-27 02:16:28",type:"info",msg:"Upload to s3://prodental-backups/riverside/ — complete"},
+    {ts:"2026-05-27 02:16:28",type:"info",msg:"Cross-region replication to eu-central-1 — initiated"},
+    {ts:"2026-05-27 02:16:30",type:"success",msg:"Replication confirmed — secondary bucket in sync"},
+    {ts:"2026-05-27 02:16:30",type:"success",msg:"Backup completed — 2m 14s · 847 MB · 12,847 files"},
+    {ts:"2026-05-27 02:16:31",type:"info",msg:"Retention cleanup — removing backups older than 90 days — 0 files removed"},
+    {ts:"2026-05-27 02:16:31",type:"success",msg:"Job finished successfully"},
+  ],
+  BJ4:[
+    {ts:"2026-05-27 02:00:01",type:"info",msg:"Backup job started — daily scheduled run"},
+    {ts:"2026-05-27 02:00:02",type:"info",msg:"Authenticating with AWS S3 (eu-west-1) — OK"},
+    {ts:"2026-05-27 02:00:02",type:"info",msg:"Encryption key verified — AES-256-GCM"},
+    {ts:"2026-05-27 02:00:05",type:"info",msg:"Incremental diff calculated — 521 MB / 7,834 files"},
+    {ts:"2026-05-27 02:00:05",type:"info",msg:"Upload started — target: s3://prodental-backups/bayview/"},
+    {ts:"2026-05-27 02:00:35",type:"error",msg:"ECONNRESET — Connection dropped by remote host after 30s"},
+    {ts:"2026-05-27 02:00:35",type:"error",msg:"Transfer interrupted at 0 bytes sent"},
+    {ts:"2026-05-27 02:01:05",type:"warning",msg:"Retry 1/3 — waiting 30s before retry"},
+    {ts:"2026-05-27 02:01:35",type:"error",msg:"Retry 1 failed — ECONNRESET (same endpoint)"},
+    {ts:"2026-05-27 02:02:05",type:"warning",msg:"Retry 2/3 — switching to failover endpoint"},
+    {ts:"2026-05-27 02:02:35",type:"error",msg:"Retry 2 failed — endpoint unresponsive"},
+    {ts:"2026-05-27 02:03:05",type:"warning",msg:"Retry 3/3 — final attempt"},
+    {ts:"2026-05-27 02:03:35",type:"error",msg:"Retry 3 failed — all endpoints exhausted"},
+    {ts:"2026-05-27 02:03:35",type:"error",msg:"BACKUP FAILED — 3 retries exhausted. Last backup: 3 days ago. DATA AT RISK."},
+    {ts:"2026-05-27 02:03:36",type:"info",msg:"Alert sent to admin@prodentalconnect.co.uk"},
+  ],
+  BJ3:[
+    {ts:"2026-05-26 03:30:10",type:"info",msg:"Backup job started — daily scheduled run"},
+    {ts:"2026-05-26 03:30:11",type:"success",msg:"Primary backup to eu-west-1 — complete (58s · 318 MB)"},
+    {ts:"2026-05-26 03:30:12",type:"info",msg:"Cross-region replication to eu-central-1 — initiated"},
+    {ts:"2026-05-26 03:30:12",type:"warning",msg:"Replication lag detected — eu-central-1 bucket is 4h behind"},
+    {ts:"2026-05-26 03:30:12",type:"warning",msg:"Replication not confirmed — proceeding with degraded redundancy"},
+    {ts:"2026-05-26 03:30:13",type:"warning",msg:"Backup marked PARTIAL — primary OK, replication incomplete"},
+  ],
+  BJ6:[
+    {ts:"2026-05-27 02:00:00",type:"error",msg:"Backup agent health check — FAILED"},
+    {ts:"2026-05-27 02:00:00",type:"error",msg:"Agent at backup.dentalhouse.prodental.co.uk — not responding"},
+    {ts:"2026-05-27 02:00:00",type:"error",msg:"Backup skipped — agent offline for 6 days"},
+    {ts:"2026-05-27 02:00:01",type:"error",msg:"Alert sent — practice has never completed a backup"},
+  ],
+};
+const BACKUP_HISTORY_DATA={
+  BJ1:[
+    {date:"2026-05-27 02:14",type:"Auto",status:"success",size:"847 MB",files:12847,duration:"2m 14s",initiatedBy:"System",restoreTest:"Passed 25 May"},
+    {date:"2026-05-26 02:11",type:"Auto",status:"success",size:"821 MB",files:12640,duration:"2m 03s",initiatedBy:"System",restoreTest:"—"},
+    {date:"2026-05-25 02:09",type:"Auto",status:"success",size:"818 MB",files:12591,duration:"1m 58s",initiatedBy:"System",restoreTest:"Passed"},
+    {date:"2026-05-24 09:30",type:"Manual",status:"success",size:"810 MB",files:12440,duration:"2m 01s",initiatedBy:"SuperAdmin",restoreTest:"—"},
+    {date:"2026-05-24 02:07",type:"Auto",status:"success",size:"802 MB",files:12290,duration:"1m 55s",initiatedBy:"System",restoreTest:"—"},
+    {date:"2026-05-23 02:05",type:"Auto",status:"success",size:"799 MB",files:12201,duration:"1m 52s",initiatedBy:"System",restoreTest:"—"},
+    {date:"2026-05-22 02:04",type:"Auto",status:"success",size:"790 MB",files:12044,duration:"1m 49s",initiatedBy:"System",restoreTest:"—"},
+  ],
+  BJ4:[
+    {date:"2026-05-27 02:00",type:"Auto",status:"failed",size:"0 MB",files:0,duration:"3m 35s",initiatedBy:"System",restoreTest:"—",error:"ECONNRESET × 3"},
+    {date:"2026-05-26 02:00",type:"Auto",status:"failed",size:"0 MB",files:0,duration:"3m 40s",initiatedBy:"System",restoreTest:"—",error:"ECONNRESET × 3"},
+    {date:"2026-05-25 02:00",type:"Auto",status:"failed",size:"0 MB",files:0,duration:"3m 38s",initiatedBy:"System",restoreTest:"—",error:"Storage timeout"},
+    {date:"2026-05-24 02:00",type:"Auto",status:"success",size:"521 MB",files:7834,duration:"1m 41s",initiatedBy:"System",restoreTest:"Passed 22 May"},
+    {date:"2026-05-23 02:00",type:"Auto",status:"success",size:"508 MB",files:7640,duration:"1m 38s",initiatedBy:"System",restoreTest:"—"},
+  ],
+};
+const BACKUP_AUDIT_LOG=[
+  {ts:"2026-05-27 09:14",user:"SuperAdmin",action:"Viewed logs",practice:"Bayview Dentists",detail:"Viewed failure log for 2026-05-27"},
+  {ts:"2026-05-27 09:12",user:"SuperAdmin",action:"Triggered backup",practice:"Riverside Dentistry",detail:"Manual backup initiated"},
+  {ts:"2026-05-27 02:16",user:"System",action:"Backup completed",practice:"Riverside Dentistry",detail:"Auto · 847 MB · 12,847 files"},
+  {ts:"2026-05-27 02:03",user:"System",action:"Backup failed",practice:"Bayview Dentists",detail:"ECONNRESET × 3 — alert sent"},
+  {ts:"2026-05-26 02:11",user:"System",action:"Backup completed",practice:"City Smile Clinic",detail:"Auto · 423 MB · 6,211 files"},
+  {ts:"2026-05-24 09:30",user:"SuperAdmin",action:"Triggered backup",practice:"Riverside Dentistry",detail:"Manual backup — pre-deployment"},
+  {ts:"2026-05-24 02:00",user:"System",action:"Backup completed",practice:"Bayview Dentists",detail:"Auto · 521 MB · 7,834 files"},
+];
+
+const BK_HEALTH={
+  healthy:{color:"#4ADE80",bg:"rgba(34,197,94,0.1)",bc:"rgba(34,197,94,0.25)",label:"Healthy",icon:"✓"},
+  warning:{color:"#F59E0B",bg:"rgba(245,158,11,0.1)",bc:"rgba(245,158,11,0.25)",label:"Warning",icon:"⚠"},
+  critical:{color:"#F87171",bg:"rgba(239,68,68,0.12)",bc:"rgba(239,68,68,0.3)",label:"Critical",icon:"✕"},
+  offline:{color:"#64748B",bg:"rgba(100,116,139,0.12)",bc:"rgba(100,116,139,0.25)",label:"Offline",icon:"○"},
+};
+
 function AdminCloudBackup(){
   const [toast,setToast]=useState(null);
-  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
-  return(
-  <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-    {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600}}>{toast}</div>}
-    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
-      <div><div style={{fontSize:15,fontWeight:800}}>Cloud Backup — All Practices</div><div style={{fontSize:11,color:"#CBD5E1"}}>AWS S3 · AES-256 · Real-time replication · 90-day retention</div></div>
-      <button onClick={()=>doToast("✓ Emergency backup triggered for all practices")} style={{padding:"8px 18px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>☁ Backup All Now</button>
-    </div>
-    <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px 80px 100px",padding:"8px 16px",background:"#0F1C34",borderBottom:"2px solid rgba(80,140,255,0.18)",fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",gap:8}}>
-        <span>Practice</span><span>Last Backup</span><span>Size</span><span>Status</span><span>Action</span>
-      </div>
-      {ADMIN_PRACTICES_DATA.map((p,i)=>{
-        const statuses=["Synced","Synced","Synced","Synced","Synced","Failed","Synced","Synced"];
-        const s=statuses[i];
-        return(
-        <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 100px 80px 80px 100px",padding:"10px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",gap:8,alignItems:"center"}}>
-          <div><div style={{fontSize:11,fontWeight:700}}>{p.name}</div><div style={{fontSize:9,color:"#CBD5E1"}}>{p.location}</div></div>
-          <span style={{fontSize:10,fontFamily:"ui-monospace,monospace",color:"#CBD5E1"}}>{i===5?"3 days ago":"2m ago"}</span>
-          <span style={{fontSize:10,fontFamily:"ui-monospace,monospace"}}>{(Math.random()*500+100).toFixed(0)}MB</span>
-          <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:5,background:s==="Synced"?"#dcfce7":"#fee2e2",color:s==="Synced"?"#16a34a":"#dc2626"}}>{s}</span>
-          <button onClick={()=>doToast("✓ Backup triggered for "+p.name)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"#0F1C34",cursor:"pointer",fontSize:9,fontWeight:600}}>Backup Now</button>
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2800);};
+  const [jobs,setJobs]=useState(BACKUP_JOBS_INIT);
+  const [logsModal,setLogsModal]=useState(null);   // job object
+  const [histModal,setHistModal]=useState(null);   // job object
+  const [detailsModal,setDetailsModal]=useState(null); // job object
+  const [alertsOpen,setAlertsOpen]=useState(false);
+  const [alerts,setAlerts]=useState({email:true,inapp:true,sms:false,slack:false});
+  const [auditOpen,setAuditOpen]=useState(false);
+  const [backingUp,setBackingUp]=useState(new Set());
+
+  const triggerBackup=(job)=>{
+    setBackingUp(s=>new Set([...s,job.id]));
+    doToast(`⏳ Backup started — ${job.name}`);
+    setTimeout(()=>{
+      setJobs(prev=>prev.map(j=>j.id===job.id?{...j,status:"healthy",lastBackup:"2026-05-27 "+new Date().toTimeString().slice(0,5),lastBackupAgo:"just now",failReason:null,retries:0,lastError:null}:j));
+      setBackingUp(s=>{const n=new Set(s);n.delete(job.id);return n;});
+      doToast(`✓ Backup completed — ${job.name}`);
+    },2500);
+  };
+
+  const retryBackup=(job)=>{
+    doToast(`⏳ Retrying backup — ${job.name} (attempt ${job.retries+1})`);
+    setTimeout(()=>{
+      setJobs(prev=>prev.map(j=>j.id===job.id?{...j,status:"healthy",lastBackup:"2026-05-27 "+new Date().toTimeString().slice(0,5),lastBackupAgo:"just now",failReason:null,retries:0,lastError:null,sizeFmt:"521 MB",sizeRaw:521,filesCount:7834,duration:"1m 41s"}:j));
+      doToast(`✓ Retry successful — ${job.name} backup complete`);
+    },2800);
+  };
+
+  const healthy=jobs.filter(j=>j.status==="healthy").length;
+  const warnings=jobs.filter(j=>j.status==="warning").length;
+  const critical=jobs.filter(j=>j.status==="critical"||j.status==="offline").length;
+  const totalStorage=jobs.reduce((s,j)=>s+j.sizeRaw,0);
+
+  // ── Logs Modal ──────────────────────────────────────────────────
+  const LogsModal=()=>{
+    if(!logsModal)return null;
+    const entries=BACKUP_LOG_DATA[logsModal.id]||[{ts:"—",type:"info",msg:"No log data available for this practice"}];
+    const typeStyle={success:{color:"#4ADE80",icon:"✓"},info:{color:"#38BDF8",icon:"ℹ"},warning:{color:"#F59E0B",icon:"⚠"},error:{color:"#F87171",icon:"✕"}};
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700}}>
+        <div style={{background:"#0F1C34",borderRadius:20,width:700,maxWidth:"97vw",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.6)",border:"1px solid rgba(80,140,255,0.2)"}}>
+          <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(80,140,255,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:800}}>Backup Logs — {logsModal.name}</div>
+              <div style={{fontSize:11,color:C.muted}}>Most recent job · {logsModal.lastBackup} · {logsModal.destination}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>doToast("Log exported as CSV")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:11,color:C.muted,display:"flex",gap:4,alignItems:"center"}}><Download size={10}/>Export</button>
+              <button onClick={()=>setLogsModal(null)} style={{border:"none",background:"rgba(80,140,255,0.08)",cursor:"pointer",color:C.muted,borderRadius:8,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={14}/></button>
+            </div>
+          </div>
+          {/* Job metadata */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px",borderBottom:"1px solid rgba(80,140,255,0.08)",flexShrink:0}}>
+            {[{l:"Status",v:<span style={{color:BK_HEALTH[logsModal.status]?.color||C.muted,fontWeight:700}}>{BK_HEALTH[logsModal.status]?.icon} {logsModal.status.toUpperCase()}</span>},{l:"Duration",v:logsModal.duration},{l:"Files",v:logsModal.filesCount.toLocaleString()},{l:"Size",v:logsModal.sizeFmt},{l:"Encryption",v:logsModal.encrypted?"AES-256 ✓":"⚠ Disabled"},{l:"Replication",v:logsModal.replicated?"Multi-region ✓":"⚠ None"},{l:"Compression",v:logsModal.compressed?"zstd ✓":"No"},{l:"Initiated",v:logsModal.initiated}].map(m=>(
+              <div key={m.l} style={{background:"rgba(7,20,40,0.8)",borderRadius:8,padding:"8px 10px"}}>
+                <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{m.l}</div>
+                <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{m.v}</div>
+              </div>
+            ))}
+          </div>
+          {/* Timeline */}
+          <div style={{flex:1,overflowY:"auto",padding:"14px 20px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:".05em"}}>Status Timeline</div>
+            <div style={{fontFamily:"ui-monospace,monospace",fontSize:11,display:"flex",flexDirection:"column",gap:2}}>
+              {entries.map((e,i)=>{
+                const ts=typeStyle[e.type]||typeStyle.info;
+                return(
+                  <div key={i} style={{display:"flex",gap:10,padding:"5px 8px",borderRadius:6,background:e.type==="error"?"rgba(239,68,68,0.06)":e.type==="warning"?"rgba(245,158,11,0.04)":"transparent"}}>
+                    <span style={{color:"#4B5563",whiteSpace:"nowrap",flexShrink:0}}>{e.ts}</span>
+                    <span style={{color:ts.color,flexShrink:0,width:12}}>{ts.icon}</span>
+                    <span style={{color:e.type==="error"?"#F87171":e.type==="warning"?"#F59E0B":e.type==="success"?"#4ADE80":"#CBD5E1"}}>{e.msg}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {logsModal.failReason&&<div style={{padding:"12px 20px",borderTop:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",flexShrink:0}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#F87171",marginBottom:3}}>⚠ Failure Analysis</div>
+            <div style={{fontSize:11,color:"#FCA5A5",lineHeight:1.7}}>{logsModal.failReason}</div>
+            {logsModal.status==="critical"&&<div style={{fontSize:10,color:"#EF4444",marginTop:6,fontWeight:600}}>⚡ Action required — use Retry or contact support.</div>}
+          </div>}
+          <div style={{padding:"12px 20px",borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}}>
+            <button onClick={()=>{setLogsModal(null);setHistModal(logsModal);}} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:12,color:C.text,fontFamily:"inherit"}}>View Full History</button>
+            {(logsModal.status==="critical"||logsModal.status==="warning")&&<button onClick={()=>{retryBackup(logsModal);setLogsModal(null);}} style={{padding:"7px 16px",background:"linear-gradient(135deg,#EF4444,#DC2626)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}><RefreshCw size={11}/>Retry Backup</button>}
+          </div>
         </div>
-        );
-      })}
+      </div>
+    );
+  };
+
+  // ── History Modal ────────────────────────────────────────────────
+  const HistoryModal=()=>{
+    if(!histModal)return null;
+    const entries=BACKUP_HISTORY_DATA[histModal.id]||[];
+    const SC={success:{c:"#4ADE80",bg:"rgba(34,197,94,0.1)"},failed:{c:"#F87171",bg:"rgba(239,68,68,0.1)"},warning:{c:"#F59E0B",bg:"rgba(245,158,11,0.1)"},partial:{c:"#F59E0B",bg:"rgba(245,158,11,0.08)"}};
+    const hasFails=entries.some(e=>e.status==="failed");
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700}}>
+        <div style={{background:"#0F1C34",borderRadius:20,width:760,maxWidth:"97vw",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.6)",border:"1px solid rgba(80,140,255,0.2)"}}>
+          <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(80,140,255,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:800}}>Backup History — {histModal.name}</div>
+              <div style={{fontSize:11,color:C.muted}}>{entries.length} records · {histModal.retentionDays}-day retention · {histModal.destination}</div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {hasFails&&<span style={{fontSize:10,fontWeight:700,padding:"2px 9px",borderRadius:8,background:"rgba(239,68,68,0.12)",color:"#F87171"}}>⚠ Repeated failures detected</span>}
+              <button onClick={()=>doToast("History report exported")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:11,color:C.muted,display:"flex",gap:4,alignItems:"center"}}><Download size={10}/>Export</button>
+              <button onClick={()=>setHistModal(null)} style={{border:"none",background:"rgba(80,140,255,0.08)",cursor:"pointer",color:C.muted,borderRadius:8,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={14}/></button>
+            </div>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"14px 20px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"140px 70px 80px 70px 1fr 80px 100px",gap:8,padding:"7px 10px",background:"rgba(7,20,40,0.9)",borderRadius:8,marginBottom:8,fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase"}}>
+              {["Date & Time","Type","Status","Size","Initiated By","Duration","Restore Test"].map(h=><span key={h}>{h}</span>)}
+            </div>
+            {entries.length===0&&<div style={{textAlign:"center",padding:40,color:C.muted,fontSize:12}}>No backup history available</div>}
+            {entries.map((e,i)=>{
+              const s=SC[e.status]||SC.success;
+              return(
+                <div key={i} style={{display:"grid",gridTemplateColumns:"140px 70px 80px 70px 1fr 80px 100px",gap:8,padding:"10px 10px",borderBottom:"1px solid rgba(80,140,255,0.06)",alignItems:"center",background:e.status==="failed"?"rgba(239,68,68,0.03)":"transparent"}}>
+                  <span style={{fontSize:11,fontFamily:"ui-monospace,monospace",color:"#CBD5E1"}}>{e.date}</span>
+                  <span style={{fontSize:10,padding:"1px 7px",borderRadius:6,background:e.type==="Manual"?"rgba(167,139,250,0.1)":"rgba(80,140,255,0.08)",color:e.type==="Manual"?"#A78BFA":"#38BDF8",width:"fit-content"}}>{e.type}</span>
+                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                    <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:6,background:s.bg,color:s.c}}>{e.status}</span>
+                    {e.error&&<span title={e.error} style={{cursor:"help",color:"#F87171",fontSize:12}}>⚠</span>}
+                  </div>
+                  <span style={{fontSize:10,fontFamily:"ui-monospace,monospace",color:"#CBD5E1"}}>{e.size}</span>
+                  <span style={{fontSize:10,color:"#F8FAFC"}}>{e.initiatedBy}</span>
+                  <span style={{fontSize:10,fontFamily:"ui-monospace,monospace",color:"#CBD5E1"}}>{e.duration}</span>
+                  <span style={{fontSize:10,color:e.restoreTest==="Passed"||e.restoreTest?.startsWith("Passed")?C.green:"#64748B"}}>{e.restoreTest}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{padding:"12px 20px",borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8,justifyContent:"space-between",flexShrink:0,alignItems:"center"}}>
+            <span style={{fontSize:10,color:"#64748B"}}>⚡ Future: point-in-time restore · backup verification · multi-region replication</span>
+            <button onClick={()=>setHistModal(null)} style={{padding:"7px 16px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Close</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Details Modal ────────────────────────────────────────────────
+  const DetailsModal=()=>{
+    if(!detailsModal)return null;
+    const d=detailsModal;
+    const h=BK_HEALTH[d.status]||BK_HEALTH.offline;
+    const hist=BACKUP_HISTORY_DATA[d.id]||[];
+    const successRate=hist.length?Math.round(hist.filter(x=>x.status==="success").length/hist.length*100):0;
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700}}>
+        <div style={{background:"#0F1C34",borderRadius:20,width:620,maxWidth:"97vw",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.6)",border:`1px solid ${h.color}30`}}>
+          <div style={{height:3,background:h.color,borderRadius:"20px 20px 0 0"}}/>
+          <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(80,140,255,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:800}}>Backup Details — {d.name}</div>
+              <div style={{fontSize:11,color:C.muted}}>{d.location} · {d.destination}</div>
+            </div>
+            <button onClick={()=>setDetailsModal(null)} style={{border:"none",background:"rgba(80,140,255,0.08)",cursor:"pointer",color:C.muted,borderRadius:8,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={14}/></button>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            {/* Health badge */}
+            <div style={{display:"flex",gap:10,alignItems:"center",padding:"10px 14px",background:h.bg,border:`1px solid ${h.bc}`,borderRadius:12}}>
+              <div style={{width:36,height:36,borderRadius:12,background:h.bg,border:`2px solid ${h.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{h.icon}</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:800,color:h.color}}>{h.label}</div>
+                <div style={{fontSize:11,color:"#CBD5E1"}}>{d.status==="healthy"?"All systems operational — backup within last 24h":d.status==="warning"?"Backup older than 24h or replication degraded":d.status==="critical"?"Backup older than 72h or repeated failures — action required":"Backup service unreachable — no data being protected"}</div>
+              </div>
+            </div>
+            {/* Spec grid */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              {[{l:"Last Backup",v:d.lastBackup},{l:"Backup Age",v:d.lastBackupAgo},{l:"Backup Size",v:d.sizeFmt},{l:"File Count",v:d.filesCount.toLocaleString()},{l:"Duration",v:d.duration},{l:"Initiated By",v:d.initiated},{l:"Retry Attempts",v:d.retries||0},{l:"Success Rate (7d)",v:`${successRate}%`},{l:"Encryption",v:d.encrypted?"AES-256-GCM ✓":"⚠ Disabled"},{l:"Replication",v:d.replicated?"Multi-region ✓":"⚠ Not replicated"},{l:"Compression",v:d.compressed?"zstd level 3 ✓":"No"},{l:"Retention",v:d.retentionDays?`${d.retentionDays} days`:"Not configured"}].map(m=>(
+                <div key={m.l} style={{background:"rgba(7,20,40,0.8)",borderRadius:8,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:10,color:C.muted}}>{m.l}</span>
+                  <span style={{fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{m.v}</span>
+                </div>
+              ))}
+            </div>
+            {d.failReason&&<div style={{padding:"10px 14px",background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#F87171",marginBottom:4}}>Last Error</div>
+              <div style={{fontSize:11,color:"#FCA5A5",lineHeight:1.7}}>{d.failReason}</div>
+            </div>}
+            <div style={{padding:"10px 14px",background:"rgba(80,140,255,0.04)",border:"1px solid rgba(80,140,255,0.1)",borderRadius:10,fontSize:10,color:"#64748B",lineHeight:1.7}}>
+              ⚡ Future capabilities: Point-in-time restore · Backup verification test · Immutable snapshots · Disaster recovery dashboard
+            </div>
+          </div>
+          <div style={{padding:"12px 20px",borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}}>
+            <button onClick={()=>{setDetailsModal(null);setLogsModal(d);}} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:12,color:C.text,fontFamily:"inherit"}}>View Logs</button>
+            <button onClick={()=>{setDetailsModal(null);setHistModal(d);}} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:12,color:C.text,fontFamily:"inherit"}}>View History</button>
+            {(d.status==="critical"||d.status==="warning")&&<button onClick={()=>{retryBackup(d);setDetailsModal(null);}} style={{padding:"7px 16px",background:"linear-gradient(135deg,#EF4444,#DC2626)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}><RefreshCw size={11}/>Retry</button>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:600,boxShadow:"0 4px 14px rgba(0,0,0,.2)",display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
+      <LogsModal/>
+      <HistoryModal/>
+      <DetailsModal/>
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px",flexShrink:0}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+          <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#0057CC)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>☁</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:800}}>Cloud Backup — All Practices</div>
+            <div style={{fontSize:11,color:"#CBD5E1"}}>AWS S3 · AES-256-GCM · Multi-region replication · 90-day retention</div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setAuditOpen(o=>!o)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:11,fontWeight:600,color:C.muted,display:"flex",gap:5,alignItems:"center"}}><Shield size={11}/>Audit Log</button>
+            <button onClick={()=>setAlertsOpen(o=>!o)} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:11,fontWeight:600,color:C.muted,display:"flex",gap:5,alignItems:"center"}}><Bell size={11}/>Alert Settings</button>
+            <button onClick={()=>{jobs.forEach(j=>triggerBackup(j));}} style={{padding:"8px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.35)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Server size={12}/>Backup All Now</button>
+          </div>
+        </div>
+
+        {/* KPI strip */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:alertsOpen||auditOpen?12:0}}>
+          {[{l:"Total Practices",v:jobs.length,c:C.teal},{l:"Healthy",v:healthy,c:C.green},{l:"Warnings",v:warnings,c:C.amber},{l:"Critical / Offline",v:critical,c:C.red},{l:"Total Storage",v:`${totalStorage.toLocaleString()} MB`,c:C.blue},{l:"Last Global Backup",v:"27 May 02:14",c:C.muted}].map(s=>(
+            <div key={s.l} style={{padding:"8px 10px",background:"rgba(7,20,40,0.8)",borderRadius:10,border:"1px solid rgba(80,140,255,0.1)"}}>
+              <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",marginBottom:1}}>{s.l}</div>
+              <div style={{fontSize:16,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Alert settings panel */}
+        {alertsOpen&&<div style={{padding:"12px 14px",background:"rgba(7,20,40,0.8)",border:"1px solid rgba(80,140,255,0.12)",borderRadius:12,marginBottom:12}}>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>🔔 Backup Alert Notifications</div>
+          <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:8}}>
+            {[{k:"email",l:"Email alerts"},{"k":"inapp",l:"In-app alerts"},{k:"sms",l:"SMS (optional)"},{k:"slack",l:"Slack / Teams webhook"}].map(a=>(
+              <label key={a.k} style={{display:"flex",gap:7,alignItems:"center",cursor:"pointer",fontSize:12}}>
+                <input type="checkbox" checked={!!alerts[a.k]} onChange={e=>setAlerts(p=>({...p,[a.k]:e.target.checked}))} style={{width:13,height:13,accentColor:"#38BDF8",cursor:"pointer"}}/>
+                {a.l}
+              </label>
+            ))}
+          </div>
+          <div style={{fontSize:10,color:"#64748B",lineHeight:1.7}}>Alerts sent for: failed backups · backup not run (24h overdue) · retention issue · storage limit reached</div>
+        </div>}
+
+        {/* Audit log panel */}
+        {auditOpen&&<div style={{padding:"12px 14px",background:"rgba(7,20,40,0.8)",border:"1px solid rgba(80,140,255,0.12)",borderRadius:12,marginBottom:12,maxHeight:200,overflowY:"auto"}}>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:8,display:"flex",justifyContent:"space-between"}}>
+            🛡 Backup Audit Log
+            <button onClick={()=>doToast("Audit log exported")} style={{padding:"3px 10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:10,color:C.muted,display:"flex",gap:3,alignItems:"center"}}><Download size={9}/>Export</button>
+          </div>
+          {BACKUP_AUDIT_LOG.map((a,i)=>(
+            <div key={i} style={{display:"flex",gap:10,fontSize:10,padding:"4px 0",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",color:"#CBD5E1"}}>
+              <span style={{fontFamily:"ui-monospace,monospace",color:"#4B5563",flexShrink:0,minWidth:120}}>{a.ts}</span>
+              <span style={{fontWeight:600,color:"#F8FAFC",flexShrink:0,minWidth:90}}>{a.user}</span>
+              <span style={{color:a.action.includes("failed")?"#F87171":a.action.includes("completed")?C.green:C.muted,flexShrink:0,minWidth:130}}>{a.action}</span>
+              <span style={{color:"#94A3B8"}}>{a.practice} — {a.detail}</span>
+            </div>
+          ))}
+        </div>}
+      </div>
+
+      {/* ── Practice Table ──────────────────────────────────────── */}
+      <div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+
+        {/* Smart alerts */}
+        {jobs.some(j=>j.status==="critical")&&<div style={{padding:"10px 16px",background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+          <AlertTriangle size={16} color="#F87171"/>
+          <div style={{flex:1,fontSize:12}}><strong style={{color:"#F87171"}}>Action required</strong> <span style={{color:"#FCA5A5"}}>— {jobs.filter(j=>j.status==="critical").map(j=>j.name).join(", ")} has not backed up in over 72 hours. Data is at risk.</span></div>
+          <button onClick={()=>{const j=jobs.find(x=>x.status==="critical");if(j)setLogsModal(j);}} style={{padding:"4px 12px",background:"#EF4444",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700}}>View Logs</button>
+        </div>}
+        {jobs.some(j=>j.status==="offline")&&<div style={{padding:"10px 16px",background:"rgba(100,116,139,0.07)",border:"1px solid rgba(100,116,139,0.25)",borderRadius:12,marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+          <WifiOff size={15} color="#64748B"/>
+          <span style={{fontSize:12,color:"#94A3B8"}}><strong style={{color:"#CBD5E1"}}>Backup agent offline</strong> — {jobs.filter(j=>j.status==="offline").map(j=>j.name).join(", ")} has never completed a backup. Contact the practice to install the backup agent.</span>
+        </div>}
+
+        {/* Table */}
+        <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.12)",borderRadius:16,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 80px 110px 1fr 220px",padding:"9px 16px",background:"rgba(7,20,40,0.9)",borderBottom:"2px solid rgba(80,140,255,0.18)",fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".04em",gap:8}}>
+            {["Practice","Last Backup","Size","Health","Last Error / Note","Actions"].map(h=><span key={h}>{h}</span>)}
+          </div>
+
+          {jobs.map((j,i)=>{
+            const h=BK_HEALTH[j.status]||BK_HEALTH.offline;
+            const isBacking=backingUp.has(j.id);
+            return(
+              <div key={j.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 80px 110px 1fr 220px",padding:"12px 16px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",gap:8,alignItems:"center",background:j.status==="critical"?"rgba(239,68,68,0.025)":j.status==="offline"?"rgba(100,116,139,0.02)":"transparent"}}>
+                {/* Practice */}
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{j.name}</div>
+                  <div style={{fontSize:9,color:C.muted}}>{j.location}</div>
+                </div>
+                {/* Last backup */}
+                <div>
+                  <div style={{fontSize:11,fontFamily:"ui-monospace,monospace",color:"#CBD5E1"}}>{j.lastBackupAgo}</div>
+                  <div style={{fontSize:9,color:"#4B5563"}}>{j.lastBackup}</div>
+                </div>
+                {/* Size */}
+                <span style={{fontSize:11,fontFamily:"ui-monospace,monospace",color:"#94A3B8"}}>{j.sizeFmt}</span>
+                {/* Health badge (clickable → details) */}
+                <button onClick={()=>j.lastError?setLogsModal(j):setDetailsModal(j)} style={{display:"flex",gap:5,alignItems:"center",padding:"4px 10px",borderRadius:8,border:`1px solid ${h.bc}`,background:h.bg,cursor:"pointer",width:"fit-content"}}>
+                  <span style={{fontSize:12,color:h.color,fontWeight:800}}>{h.icon}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:h.color}}>{h.label}</span>
+                </button>
+                {/* Last error */}
+                <div title={j.failReason||""}>
+                  {j.lastError
+                    ?<div style={{fontSize:10,color:"#F87171",display:"flex",gap:4,alignItems:"flex-start"}}>
+                        <AlertTriangle size={10} style={{flexShrink:0,marginTop:1}}/>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{j.lastError}</span>
+                      </div>
+                    :j.failReason
+                    ?<div style={{fontSize:10,color:C.amber}}>{j.failReason.slice(0,60)}{j.failReason.length>60?"…":""}</div>
+                    :<span style={{fontSize:10,color:"#374151"}}>—</span>}
+                  {j.retries>0&&<div style={{fontSize:9,color:"#F59E0B",marginTop:1}}>{j.retries} retry attempt{j.retries!==1?"s":""} exhausted</div>}
+                </div>
+                {/* Actions */}
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  <button disabled={isBacking} onClick={()=>triggerBackup(j)} style={{padding:"4px 9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 8px rgba(0,109,255,0.25)",border:"none",borderRadius:7,cursor:isBacking?"not-allowed":"pointer",fontSize:10,fontWeight:700,opacity:isBacking?0.6:1,whiteSpace:"nowrap"}}>{isBacking?"…":"☁ Now"}</button>
+                  <button onClick={()=>setLogsModal(j)} style={{padding:"4px 9px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:C.text,fontSize:10,cursor:"pointer",whiteSpace:"nowrap"}}>Logs</button>
+                  <button onClick={()=>setHistModal(j)} style={{padding:"4px 9px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:C.text,fontSize:10,cursor:"pointer",whiteSpace:"nowrap"}}>History</button>
+                  <button onClick={()=>setDetailsModal(j)} style={{padding:"4px 9px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:C.text,fontSize:10,cursor:"pointer",whiteSpace:"nowrap"}}>Details</button>
+                  {(j.status==="critical"||j.status==="warning")&&<button onClick={()=>retryBackup(j)} style={{padding:"4px 9px",background:"linear-gradient(135deg,#EF4444,#DC2626)",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,display:"flex",gap:3,alignItems:"center",whiteSpace:"nowrap"}}><RefreshCw size={8}/>Retry</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Failure pattern alert */}
+        {jobs.filter(j=>j.status==="critical").some(j=>j.retries>=3)&&<div style={{marginTop:12,padding:"12px 16px",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:12,fontSize:11,color:"#FCA5A5",lineHeight:1.8}}>
+          <strong style={{color:"#F87171"}}>🔍 Failure Pattern Detected</strong> — Repeated backup failures on the same endpoint suggest a persistent network or credential issue. Recommended: rotate AWS credentials, verify bucket policy, and check VPC route tables.
+        </div>}
+
+        <div style={{marginTop:12,padding:"10px 14px",background:"rgba(80,140,255,0.04)",border:"1px solid rgba(80,140,255,0.1)",borderRadius:10,fontSize:10,color:"#64748B",lineHeight:1.7}}>
+          ⚡ Future: Point-in-time restore · Backup verification tests · Immutable snapshots · Multi-region replication policy · Disaster recovery dashboard · Automated restore testing
+        </div>
+      </div>
     </div>
-  </div>
   );
 }
 
