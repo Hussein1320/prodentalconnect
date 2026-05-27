@@ -1614,7 +1614,7 @@ const ALL_NAV_ITEMS=[
   {id:"teamchat",     l:"Team Chat",       Icon:MessageSquare,g:"Communication", roles:["reception","dentist","hygienist","manager"],badge:"chat"},
   {id:"whatsapp",     l:"WhatsApp",        Icon:MessageSquare,g:"Communication", roles:["reception","manager"],badge:"unread"},
   {id:"receptionai",  l:"Reception AI",    Icon:Phone,        g:"Communication", roles:["reception","manager"],badge:"rxai"},
-  {id:"comms",        l:"Comms Hub",       Icon:Inbox,        g:"Communication", roles:["manager"]},
+  {id:"comms",        l:"Inbox",           Icon:Inbox,        g:"Communication", roles:["reception","manager"],badge:"unread_email"},
   // ─── GROWTH ───────────────────────────────────────────────────────────────
   {id:"recovery",     l:"Revenue Recovery",Icon:TrendingUp,   g:"Growth",        roles:["reception","manager"],badge:"recovery"},
   {id:"shortnotice",  l:"Short Notice",    Icon:Zap,          g:"Growth",        roles:["reception","manager"]},
@@ -1673,7 +1673,7 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
   const ul=tasks.filter(t=>t.priority==="urgent"&&!t.done).length;
 
-  const badges={waiting:wl,pending:0,unread,tasks:ul,rxai:0,recovery:0,nba:0,chat:0,tickets:7};
+  const badges={waiting:wl,pending:0,unread,tasks:ul,rxai:0,recovery:0,nba:0,chat:0,tickets:7,unread_email:2};
 
   // Build filtered nav from user permissions
 
@@ -21435,34 +21435,284 @@ function ShortNoticePage(){
 // ══════════════════════════════════════════════════════════════════════════════
 // COMMS HUB — outgoing communications overview
 // ══════════════════════════════════════════════════════════════════════════════
-function CommsPage(){
-  const COMMS=[
-    {type:"WhatsApp",icon:"💬",sent:43,opened:41,replied:28,pending:2,color:"#25d366"},
-    {type:"SMS",icon:"📱",sent:87,opened:null,replied:null,pending:5,color:C.blue},
-    {type:"Email",icon:"✉️",sent:124,opened:89,replied:34,pending:8,color:C.purple},
+function CommsPage({user}){
+  const [tab,setTab]=useState("email");
+  const [selId,setSelId]=useState(null);
+  const [search,setSearch]=useState("");
+  const [replyBody,setReplyBody]=useState("");
+  const [composeOpen,setComposeOpen]=useState(false);
+  const [composeTo,setComposeTo]=useState("");
+  const [composeSubj,setComposeSubj]=useState("");
+  const [composeBody,setComposeBody]=useState("");
+  const [toast,setToast]=useState(null);
+  const [readIds,setReadIds]=useState(new Set());
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+  const isManager=user?.role==="manager"||user?.role==="superadmin";
+  const ini=n=>n.split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();
+
+  const EMAILS=[
+    {id:"E1",from:"James Wilson",email:"j.wilson@email.com",subject:"New Patient — Appointment Enquiry",
+     body:"Hello,\n\nI was referred by John Mills and would like to book an initial appointment for a new patient examination. I'm available most weekday mornings or Friday afternoons.\n\nCould you let me know your next available slot?\n\nMany thanks,\nJames Wilson",
+     time:"10:22",date:"Today",unread:true,tag:"enquiry",color:"#2563FF"},
+    {id:"E2",from:"Amy Torres",email:"amy.torres@email.com",subject:"Treatment Plan Query — Crown UR6",
+     body:"Hi,\n\nI've reviewed the treatment plan you sent over and have a few questions about the crown procedure for UR6.\n\n1. How long does the procedure take?\n2. Will I need two appointments?\n3. Is there a payment plan option?\n\nThanks,\nAmy",
+     time:"09:15",date:"Today",unread:true,tag:"query",color:"#22C55E"},
+    {id:"E3",from:"David Park",email:"d.park@email.com",subject:"Re: Recall Reminder — Check-up Due",
+     body:"Thank you for the reminder.\n\nI'd like to book in for next Tuesday if possible — any time after 2pm works for me.\n\nBest,\nDavid Park",
+     time:"Yesterday",date:"Yesterday",unread:false,tag:"recall",color:"#F59E0B"},
+    {id:"E4",from:"Sophie Clarke",email:"s.clarke@email.com",subject:"Teeth Whitening — Pre-appointment Questions",
+     body:"Hi there,\n\nI have my whitening consultation next week and just wanted to ask a few questions:\n\n- Should I avoid any foods beforehand?\n- How long does whitening last?\n- What's included in the £299 package?\n\nLooking forward to it!\nSophie",
+     time:"Yesterday",date:"Yesterday",unread:false,tag:"enquiry",color:"#8B5CF6"},
+    {id:"E5",from:"Lisa White",email:"l.white@email.com",subject:"Outstanding Balance — Payment Query",
+     body:"Hello,\n\nI received a notification about an outstanding balance of £150 and wanted to check — is this for my last hygiene appointment?\n\nI thought that was paid on the day. Could you check your records?\n\nThank you,\nLisa White",
+     time:"2 days ago",date:"Mon",unread:false,tag:"billing",color:"#EF4444"},
+    {id:"E6",from:"Robert Hall",email:"r.hall@email.com",subject:"Re: Appointment Confirmation — 10 Jun 10:00",
+     body:"Confirmed — I'll be there at 10:00.\n\nQuick question: is there a car park nearby or is street parking the best option?\n\nThanks,\nRobert Hall",
+     time:"Mon",date:"Mon",unread:false,tag:"confirmation",color:"#38BDF8"},
+    {id:"E7",from:"NHS BSA",email:"nhsbsa@nhs.net",subject:"FP17 Claim Batch — Processing Complete",
+     body:"Dear Practice,\n\nBatch reference #FP17-2026-MAY-001 has been processed successfully.\n\nTotal value: £8,640.00\nClaims submitted: 47\nClaims approved: 44\nClaims queried: 3 (see attached)\n\nPayment will be processed within 14 working days.\n\nNHS Business Services Authority",
+     time:"Sun",date:"Sun",unread:false,tag:"nhs",color:"#0EA5E9"},
+    {id:"E8",from:"Chrysalis Finance",email:"noreply@chrysalis.co.uk",subject:"Monthly Finance Summary — May 2026",
+     body:"Dear Riverside Dentistry,\n\nYour monthly finance summary for May 2026:\n\nActive finance plans: 3\nTotal exposure: £2,400\nPayments received this month: £800\nPlans in arrears: 0\n\nFull report available in your Chrysalis portal.\n\nChrysalis Finance Team",
+     time:"Sat",date:"Sat",unread:false,tag:"finance",color:"#64748B"},
   ];
+
+  const SMS_CONVS=[
+    {id:"S1",from:"07700 900334",name:"Unknown",preview:"Hi is this the dentist? I have a bad toothache",time:"11:01",date:"Today",unread:true},
+    {id:"S2",from:"07700 900111",name:"John Mills",preview:"YES confirmed — see you tomorrow 😊",time:"09:10",date:"Today",unread:false},
+    {id:"S3",from:"07700 900222",name:"Priya Sharma",preview:"Can I change my appointment to 3pm?",time:"Yesterday",date:"Yesterday",unread:false},
+  ];
+
+  const TAG_COLOR={enquiry:"#2563FF",query:"#F59E0B",recall:"#8B5CF6",billing:"#EF4444",confirmation:"#22C55E",nhs:"#0EA5E9",finance:"#64748B"};
+
+  const emailList=EMAILS.filter(e=>!search||e.from.toLowerCase().includes(search.toLowerCase())||e.subject.toLowerCase().includes(search.toLowerCase()));
+  const smsList=SMS_CONVS.filter(s=>!search||s.name.toLowerCase().includes(search.toLowerCase()));
+  const selEmail=EMAILS.find(e=>e.id===selId);
+  const selSms=SMS_CONVS.find(s=>s.id===selId);
+  const isUnread=(e)=>e.unread&&!readIds.has(e.id);
+  const unreadEmailCount=EMAILS.filter(e=>isUnread(e)).length;
+  const unreadSmsCount=SMS_CONVS.filter(s=>s.unread&&!readIds.has(s.id)).length;
+
+  const openItem=(id)=>{setSelId(id);setReplyBody("");setReadIds(p=>new Set([...p,id]));};
+
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-      <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Communications Hub</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
-        {COMMS.map(c=><div key={c.type} onClick={()=>alert(c.type+" channel — sent "+c.sent+" this month\n\nClick on a recent message below to view conversation.")} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16,cursor:"pointer",transition:"transform .15s"}} onMouseOver={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseOut={e=>e.currentTarget.style.transform="none"}>
-          <div style={{display:"flex",gap:9,alignItems:"center",marginBottom:12}}><span style={{fontSize:22}}>{c.icon}</span><span style={{fontSize:14,fontWeight:700,color:c.color}}>{c.type}</span></div>
-          {[["Sent this month",c.sent],c.opened!=null&&["Opened",`${c.opened} (${Math.round(c.opened/c.sent*100)}%)`],c.replied!=null&&["Replied",c.replied],["Pending",c.pending]].filter(Boolean).map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:"1px solid rgba(80,140,255,0.08)",fontSize:12}}><span style={{color:C.muted}}>{l}</span><span style={{fontWeight:700}}>{v}</span></div>)}
-        </div>)}
-      </div>
-      <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16}}>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:12}}>Recent Communications</div>
-        {[{type:"WhatsApp",patient:"Sandra Okafor",msg:"Hi Sandra, your appointment tomorrow...",sent:"2h ago",status:"Read"},
-          {type:"SMS",patient:"John Mills",msg:"Reminder: your appointment is tomorrow at 09:30",sent:"3h ago",status:"Sent"},
-          {type:"Email",patient:"Amy Torres",msg:"Treatment plan summary — Crown UR6",sent:"Yesterday",status:"Opened"},
-          {type:"WhatsApp",patient:"Tom Bright",msg:"We missed you today — please call to rebook",sent:"Yesterday",status:"Delivered"}].map((c,i)=>(
-          <div key={i} onClick={()=>alert(c.type+" · "+c.patient+"\n\n"+c.msg+"\n\nSent: "+c.sent+" · Status: "+c.status)} style={{display:"flex",gap:10,padding:"8px 0",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="rgba(80,140,255,0.04)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-            <span style={{fontSize:16,flexShrink:0}}>{c.type==="WhatsApp"?"💬":c.type==="SMS"?"📱":"✉️"}</span>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{c.patient}</div><div style={{fontSize:11,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.msg}</div></div>
-            <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:10,color:"#CBD5E1"}}>{c.sent}</div><div style={{fontSize:10,fontWeight:600,color:c.status==="Read"?C.teal:c.status==="Opened"?C.blue:C.muted}}>{c.status}</div></div>
-          </div>
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
+      {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:500,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
+
+      {/* Tab bar */}
+      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px 0",background:"#0D1E35",borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0,height:46}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginRight:16}}>Inbox</div>
+        {[
+          {id:"email",label:"Email",icon:"✉️",count:unreadEmailCount},
+          {id:"sms",label:"SMS",icon:"📱",count:unreadSmsCount},
+          {id:"whatsapp",label:"WhatsApp",icon:"💬",count:0},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSearch("");}}
+            style={{height:"100%",padding:"0 14px",border:"none",background:"transparent",
+              color:tab===t.id?"#F8FAFC":"#64748B",fontSize:12,fontWeight:700,cursor:"pointer",
+              borderBottom:tab===t.id?"2px solid #2563FF":"2px solid transparent",
+              display:"flex",alignItems:"center",gap:5,transition:"color .12s"}}>
+            <span>{t.icon}</span>
+            {t.label}
+            {t.count>0&&<span style={{background:"#EF4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:9,fontWeight:800,boxShadow:"0 0 6px rgba(239,68,68,0.4)"}}>{t.count}</span>}
+          </button>
         ))}
+        <div style={{flex:1}}/>
+        {tab!=="whatsapp"&&<button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeSubj("");setComposeBody("");}}
+          style={{padding:"6px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.3)"}}>
+          + Compose
+        </button>}
       </div>
+
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
+        {/* ── WhatsApp redirect hint ── */}
+        {tab==="whatsapp"&&(
+          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,color:"#475569"}}>
+            <div style={{width:60,height:60,borderRadius:16,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>💬</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#94A3B8"}}>WhatsApp conversations</div>
+            <div style={{fontSize:11,color:"#475569",textAlign:"center",maxWidth:260}}>Open the WhatsApp section in the sidebar to view and reply to patient messages.</div>
+          </div>
+        )}
+
+        {/* ── SMS tab ── */}
+        {tab==="sms"&&(
+          <>
+            <div style={{width:300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
+                <input placeholder="Search SMS…" value={search} onChange={e=>setSearch(e.target.value)}
+                  style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{flex:1,overflowY:"auto"}}>
+                {smsList.map(s=>{
+                  const unrd=s.unread&&!readIds.has(s.id);
+                  return(
+                    <div key={s.id} onClick={()=>openItem(s.id)}
+                      style={{padding:"11px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",
+                        background:selId===s.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",
+                        borderLeft:`3px solid ${selId===s.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                        <span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1"}}>{s.name||s.from}</span>
+                        <span style={{fontSize:10,color:"#64748B"}}>{s.time}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.preview}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              {selSms?(
+                <>
+                  <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0}}>
+                    <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginBottom:2}}>{selSms.name||selSms.from}</div>
+                    <div style={{fontSize:10,color:"#64748B"}}>{selSms.from} · {selSms.date}</div>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+                    <div style={{display:"inline-block",maxWidth:"70%",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.18)",borderRadius:"12px 12px 12px 4px",padding:"8px 12px",fontSize:13,color:"#CBD5E1",lineHeight:1.6}}>{selSms.preview}</div>
+                  </div>
+                  <div style={{padding:"12px 16px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0F1C34"}}>
+                    <div style={{display:"flex",gap:8}}>
+                      <input value={replyBody} onChange={e=>setReplyBody(e.target.value)} placeholder="Type SMS reply…"
+                        style={{flex:1,background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+                      <button onClick={()=>{if(!replyBody.trim())return;doToast("✓ SMS sent");setReplyBody("");}}
+                        style={{padding:"8px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Send</button>
+                    </div>
+                  </div>
+                </>
+              ):(
+                <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:"#475569"}}>
+                  <span style={{fontSize:32}}>📱</span>
+                  <div style={{fontSize:13,fontWeight:600,color:"#64748B"}}>Select a message to view</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Email tab ── */}
+        {tab==="email"&&(
+          <>
+            {/* Email list */}
+            <div style={{width:320,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
+                <input placeholder="Search email…" value={search} onChange={e=>setSearch(e.target.value)}
+                  style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{flex:1,overflowY:"auto"}}>
+                {emailList.map(e=>{
+                  const unrd=isUnread(e);
+                  return(
+                    <div key={e.id} onClick={()=>openItem(e.id)}
+                      style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",
+                        background:selId===e.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",
+                        borderLeft:`3px solid ${selId===e.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}
+                      onMouseOver={ev=>{if(selId!==e.id)ev.currentTarget.style.background="rgba(80,140,255,0.05)";}}
+                      onMouseOut={ev=>{if(selId!==e.id)ev.currentTarget.style.background=unrd?"rgba(37,99,255,0.04)":"transparent";}}>
+                      <div style={{display:"flex",gap:9,alignItems:"flex-start"}}>
+                        <div style={{width:34,height:34,borderRadius:"50%",background:e.color+"22",border:`1.5px solid ${e.color}44`,
+                          display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:e.color,flexShrink:0}}>
+                          {ini(e.from)}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                            <span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:145}}>{e.from}</span>
+                            <span style={{fontSize:10,color:"#64748B",flexShrink:0}}>{e.time}</span>
+                          </div>
+                          <div style={{fontSize:11,fontWeight:unrd?700:400,color:unrd?"#E2E8F0":"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:4}}>{e.subject}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:(TAG_COLOR[e.tag]||"#64748B")+"22",color:TAG_COLOR[e.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{e.tag}</span>
+                            {unrd&&<span style={{width:6,height:6,borderRadius:"50%",background:"#2563FF",display:"inline-block",boxShadow:"0 0 4px rgba(37,99,255,0.6)"}}/>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {emailList.length===0&&<div style={{padding:20,textAlign:"center",color:"#475569",fontSize:12}}>No emails match your search</div>}
+              </div>
+            </div>
+
+            {/* Email thread / preview */}
+            <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              {selEmail?(
+                <>
+                  <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0}}>
+                    <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC",marginBottom:8}}>{selEmail.subject}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:selEmail.color+"22",border:`1.5px solid ${selEmail.color}44`,
+                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:selEmail.color}}>
+                        {ini(selEmail.from)}
+                      </div>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{selEmail.from}</div>
+                        <div style={{fontSize:10,color:"#64748B"}}>{selEmail.email} · {selEmail.date} {selEmail.time}</div>
+                      </div>
+                      <div style={{flex:1}}/>
+                      <span style={{fontSize:9,padding:"2px 8px",borderRadius:6,background:(TAG_COLOR[selEmail.tag]||"#64748B")+"22",color:TAG_COLOR[selEmail.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{selEmail.tag}</span>
+                      {isManager&&<span style={{fontSize:10,color:"#64748B",cursor:"pointer"}} title="View patient record">View patient</span>}
+                    </div>
+                  </div>
+
+                  <div style={{flex:1,overflowY:"auto",padding:"20px 24px",fontSize:13,color:"#CBD5E1",lineHeight:1.75,whiteSpace:"pre-wrap",fontFamily:"ui-sans-serif,system-ui,sans-serif"}}>
+                    {selEmail.body}
+                  </div>
+
+                  <div style={{padding:"12px 16px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0D1E35"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#64748B",marginBottom:6}}>Reply to {selEmail.from}</div>
+                    <textarea value={replyBody} onChange={e=>setReplyBody(e.target.value)}
+                      placeholder="Type your reply…" rows={3}
+                      style={{width:"100%",background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
+                    <div style={{display:"flex",gap:8,marginTop:8,justifyContent:"flex-end"}}>
+                      <button onClick={()=>setReplyBody("")}
+                        style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Clear</button>
+                      <button onClick={()=>{if(!replyBody.trim())return;doToast("✓ Reply sent to "+selEmail.from);setReplyBody("");}}
+                        style={{padding:"6px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.25)"}}>Send Reply</button>
+                    </div>
+                  </div>
+                </>
+              ):(
+                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,color:"#475569"}}>
+                  <div style={{width:56,height:56,borderRadius:14,background:"rgba(80,140,255,0.08)",border:"1px solid rgba(80,140,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✉️</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#64748B"}}>Select an email to read</div>
+                  <div style={{fontSize:11,color:"#475569"}}>{emailList.filter(e=>isUnread(e)).length} unread · {emailList.length} total</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Compose modal */}
+      {composeOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}}
+          onClick={e=>{if(e.target===e.currentTarget)setComposeOpen(false);}}>
+          <div style={{background:"#132238",borderRadius:16,width:560,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(59,130,246,0.2)"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+              <span style={{fontSize:14,fontWeight:800}}>New Email</span>
+              <button onClick={()=>setComposeOpen(false)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:18,color:"#94A3B8",lineHeight:1}}>✕</button>
+            </div>
+            <div style={{padding:20,display:"flex",flexDirection:"column",gap:10,flex:1,overflow:"hidden"}}>
+              {[[composeTo,setComposeTo,"To","patient@email.com"],[composeSubj,setComposeSubj,"Subject","e.g. Appointment Confirmation"]].map(([v,set,l,ph])=>(
+                <div key={l} style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54}}>{l}</span>
+                  <input value={v} onChange={e=>set(e.target.value)} placeholder={ph}
+                    style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+                </div>
+              ))}
+              <textarea value={composeBody} onChange={e=>setComposeBody(e.target.value)}
+                placeholder="Write your message…" rows={9}
+                style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button onClick={()=>setComposeOpen(false)}
+                  style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Discard</button>
+                <button onClick={()=>{if(!composeBody.trim()||!composeTo.trim()){doToast("⚠ To and body are required");return;}doToast("✓ Email sent successfully");setComposeOpen(false);}}
+                  style={{padding:"8px 20px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,109,255,0.3)"}}>Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -30576,7 +30826,7 @@ export default function App(){
       teamchat:<TeamChat user={user}/>,
       whatsapp:<WhatsAppPage/>,
       receptionai:<ReceptionAIPage rxEnabled={true} user={user}/>,
-      comms:<CommsPage/>,
+      comms:<CommsPage user={user}/>,
       recovery:<RevenueRecoveryPage/>,
       shortnotice:<ShortNoticePage/>,
       lab:<LabPage/>,
