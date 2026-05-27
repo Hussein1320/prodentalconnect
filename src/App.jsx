@@ -1467,7 +1467,7 @@ function LoginScreen({onLogin}){
 
 
 
-                  &nbsp;·&nbsp; PIN examples: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>9999</code> (Dr. Chen) <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>1111</code> (Amy)
+                  Admin 2FA: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3,color:"#F8FAFC",fontWeight:700}}>123456</code>&nbsp;·&nbsp; PIN examples: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>9999</code> (Dr. Chen) <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>1111</code> (Amy)
 
                 </div>
 
@@ -1485,6 +1485,14 @@ function LoginScreen({onLogin}){
 
                 <div style={{fontSize:12,color:"#CBD5E1",lineHeight:1.6}}>Super Admin access requires 2FA. Enter the 6-digit code from your authenticator app.</div>
 
+              </div>
+
+              <div style={{padding:"10px 14px",background:"rgba(80,140,255,0.08)",border:"1px solid rgba(56,189,248,0.2)",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18,flexShrink:0}}>💡</span>
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#38BDF8",letterSpacing:".06em",textTransform:"uppercase",marginBottom:2}}>Demo Environment</div>
+                  <div style={{fontSize:11,color:"#CBD5E1"}}>Use code <code style={{background:"#0F1C34",padding:"2px 7px",borderRadius:5,fontFamily:"ui-monospace,monospace",fontWeight:700,color:"#F8FAFC",fontSize:13,letterSpacing:4}}>123456</code> to enter the Admin Console.</div>
+                </div>
               </div>
 
               <input
