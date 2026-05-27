@@ -24,7 +24,7 @@ import {
 
   HelpCircle, MessageCircle, Ticket, Clock3, Filter, Edit,
 
-  Mic, MicOff, Volume2, FileCheck, Layers as LayersIcon
+  Mic, MicOff, Volume2, FileCheck, Layers as LayersIcon, Upload
 
 } from "lucide-react";
 
@@ -3777,6 +3777,34 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
           </select>
           <div style={{fontSize:10,color:"#94A3B8",marginBottom:10}}>Blocks: {booking?.time} → until {(()=>{if(!booking?.time)return"";const[h,m]=booking.time.split(":").map(Number);const end=h*60+m+parseInt(bForm.duration||30);return `${String(Math.floor(end/60)).padStart(2,"0")}:${String(end%60).padStart(2,"0")}`;})()}</div>
         </div>
+        {/* Available Slots */}
+        {(()=>{
+          const slots=[];
+          for(let h=8;h<=17;h++){for(let m=0;m<60;m+=30){if(h===17&&m>30)continue;slots.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);}}
+          const bookedTimes=new Set(appts.filter(a=>a.col===booking.col&&a.status!=="cancelled").map(a=>a.time));
+          return(
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:5}}>Available Slots — {DCOLS[booking.col]}</label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,maxHeight:80,overflowY:"auto",padding:"6px 8px",background:"rgba(7,20,40,0.8)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)"}}>
+                {slots.map(s=>{
+                  const isBooked=bookedTimes.has(s);
+                  const isSel=booking.time===s;
+                  return(
+                    <button key={s} disabled={isBooked} onClick={()=>setBooking(b=>({...b,time:s}))}
+                      style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${isSel?"#38BDF8":isBooked?"rgba(80,140,255,0.08)":"rgba(80,140,255,0.2)"}`,
+                        background:isSel?"rgba(0,109,255,0.3)":isBooked?"rgba(80,140,255,0.03)":"rgba(80,140,255,0.06)",
+                        color:isSel?"#38BDF8":isBooked?"#374151":"#CBD5E1",
+                        fontSize:10,fontWeight:isSel?700:400,cursor:isBooked?"not-allowed":"pointer",
+                        textDecoration:isBooked?"line-through":"none",opacity:isBooked?0.45:1}}>
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:9,color:"#64748B",marginTop:3}}>Click a slot to change start time · Strikethrough = already booked</div>
+            </div>
+          );
+        })()}
         {/* Notes field */}
         <div style={{marginBottom:10}}>
           <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Notes (optional)</label>
@@ -17207,7 +17235,7 @@ const REC_STATUS={
   declined:      {l:"Declined",    bg:"rgba(80,140,255,0.1)",c:"#64748b"},
 };
 
-function RecoveryRow({item,type,onAction,onPreview}){
+function RecoveryRow({item,type,onAction,onPreview,selected,onToggle}){
   const s=REC_STATUS[item.status]||REC_STATUS.not_contacted;
   const needsAction=item.status==="not_contacted";
   const isDNA=type==="dna";
@@ -17219,9 +17247,11 @@ function RecoveryRow({item,type,onAction,onPreview}){
   const ws=wfStatusColors[item.workflowStatus];
 
   return(
-    <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",transition:"background .1s",background:"transparent"}}
-      onMouseOver={e=>e.currentTarget.style.background="rgba(56,189,248,0.03)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
+    <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",transition:"background .1s",background:selected?"rgba(0,109,255,0.06)":"transparent"}}
+      onMouseOver={e=>e.currentTarget.style.background=selected?"rgba(0,109,255,0.08)":"rgba(56,189,248,0.03)"} onMouseOut={e=>e.currentTarget.style.background=selected?"rgba(0,109,255,0.06)":"transparent"}>
       <div style={{display:"flex",gap:10,padding:isDNA&&item.workflow?"10px 14px 6px":"10px 14px",alignItems:"center"}}>
+        {/* Checkbox */}
+        <input type="checkbox" checked={!!selected} onChange={onToggle} onClick={e=>e.stopPropagation()} style={{width:14,height:14,accentColor:"#38BDF8",cursor:"pointer",flexShrink:0}}/>
         {/* Value */}
         <div style={{minWidth:68,textAlign:"right",flexShrink:0}}>
           {item.value?<div style={{fontSize:14,fontWeight:800,color:isDNA?"#F87171":"#38BDF8",fontFamily:"ui-monospace,monospace"}}>£{item.value.toLocaleString()}</div>:<div style={{fontSize:11,color:"#CBD5E1"}}>Unknown</div>}
@@ -17366,6 +17396,9 @@ function RevenueRecoveryPage(){
   const [toast,setToast]=useState(null);
   const [sentCount,setSentCount]=useState(7);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+  const [selected,setSelected]=useState(new Set());
+  const toggleSelect=(id)=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+  React.useEffect(()=>setSelected(new Set()),[tab]);
 
   const markStatus=(type,id,status)=>{
     setData(prev=>({...prev,[type]:prev[type].map(r=>r.id===id?{...r,status}:r)}));
@@ -17532,22 +17565,32 @@ function RevenueRecoveryPage(){
 
       {/* ════ SOURCE TABS ════ */}
       {["plans","recalls","cancellations","dnas","missed"].includes(tab)&&<div style={{flex:1,overflowY:"auto"}}>
-        <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"8px 14px",display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
+        <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"8px 14px",display:"flex",gap:10,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
           <span style={{fontSize:12,fontWeight:600,color:C.muted}}>Filter:</span>
           {Object.entries(REC_STATUS).map(([k,s])=>{const cnt=(srcData[tab]||[]).filter(r=>r.status===k).length;return cnt>0&&<span key={k} style={{fontSize:10,fontWeight:700,padding:"2px 9px",borderRadius:12,background:s.bg,color:s.c,cursor:"pointer"}}>{s.l} {cnt}</span>;})}
+          {selected.size>0&&<button onClick={()=>{
+            const items=(srcData[tab]||[]).filter(r=>selected.has(r.id));
+            items.forEach(r=>{if(r.status==="not_contacted")markStatus(tab,r.id,"contacted");});
+            setSentCount(n=>n+items.length);
+            setSelected(new Set());
+            doToast(`✓ ${items.length} message${items.length!==1?"s":""} queued for selected patients`);
+          }} style={{padding:"5px 14px",background:"linear-gradient(135deg,#F59E0B,#D97706)",color:"#132238",border:"none",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={11}/>Contact Selected ({selected.size})</button>}
           <button onClick={()=>{
             const toSend=(srcData[tab]||[]).filter(r=>r.status==="not_contacted");
             toSend.forEach(r=>markStatus(tab,r.id,"contacted"));
             setSentCount(n=>n+toSend.length);
             doToast(`✓ ${toSend.length} messages queued — sending via WhatsApp & SMS`);
-          }} style={{marginLeft:"auto",padding:"5px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Send size={11}/>Contact All Not Contacted</button>
+          }} style={{marginLeft:selected.size>0?"0":"auto",padding:"5px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Send size={11}/>Contact All Not Contacted</button>
         </div>
         <div style={{background:"#132238",margin:14,borderRadius:16,border:"1px solid rgba(56,189,248,0.12)",overflow:"hidden"}}>
           <div style={{padding:"8px 14px",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:12,fontWeight:700,color:C.muted}}>{TABS.find(t=>t.id===tab)?.l} · {(srcData[tab]||[]).length} patients</span>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input type="checkbox" checked={(srcData[tab]||[]).length>0&&(srcData[tab]||[]).every(r=>selected.has(r.id))} onChange={()=>{const all=(srcData[tab]||[]);const allSel=all.every(r=>selected.has(r.id));setSelected(allSel?new Set():new Set(all.map(r=>r.id)));}} style={{width:13,height:13,accentColor:"#38BDF8",cursor:"pointer"}}/>
+              <span style={{fontSize:12,fontWeight:700,color:C.muted}}>{TABS.find(t=>t.id===tab)?.l} · {(srcData[tab]||[]).length} patients{selected.size>0?` · ${selected.size} selected`:""}</span>
+            </div>
             <span style={{fontSize:12,fontWeight:800,color:C.red,fontFamily:"ui-monospace,monospace"}}>£{(srcData[tab]||[]).reduce((s,r)=>s+(r.value||0),0).toLocaleString()} at risk</span>
           </div>
-          {(srcData[tab]||[]).map(item=> <RecoveryRow key={item.id} item={item} type={srcType[tab]} onAction={handleAction} onPreview={handlePreview}/>)}
+          {(srcData[tab]||[]).map(item=><RecoveryRow key={item.id} item={item} type={srcType[tab]} onAction={handleAction} onPreview={handlePreview} selected={selected.has(item.id)} onToggle={()=>toggleSelect(item.id)}/>)}
         </div>
       </div>}
     </div>
@@ -20685,17 +20728,32 @@ function ShortNoticePage(){
     {name:"Mark Davis",   phone:"07700 900555",type:"Check-up", pref:"SMS",     responded:false,booked:false,wait:"Afternoons preferred"},
     {name:"Emma Brown",   phone:"07711 234567",type:"Hygiene",  pref:"WhatsApp",responded:true, booked:false,wait:"Morning only"},
   ];
+  const [selected,setSelected]=useState(new Set());
+  const toggleSelect=(name)=>setSelected(prev=>{const n=new Set(prev);n.has(name)?n.delete(name):n.add(name);return n;});
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2000);};
+  const allSel=patients.length>0&&patients.every(p=>selected.has(p.name));
   return(
     <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:15,fontWeight:800}}>Short Notice List</div><div style={{fontSize:12,color:"#CBD5E1"}}>Patients opted in to receive last-minute slot notifications</div></div>
-        <button onClick={()=>doToast("Message sent to all 5 patients on short notice list")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Send size={12}/>Contact All</button>
+        <div style={{display:"flex",gap:8}}>
+          {selected.size>0&&<button onClick={()=>{
+            const names=[...selected];
+            setSelected(new Set());
+            doToast(`✓ Message sent to ${names.length} selected patient${names.length!==1?"s":""}`);
+          }} style={{padding:"7px 16px",background:"linear-gradient(135deg,#F59E0B,#D97706)",color:"#132238",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Contact Selected ({selected.size})</button>}
+          <button onClick={()=>doToast("Message sent to all 5 patients on short notice list")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Send size={12}/>Contact All</button>
+        </div>
       </div>
       <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
-        {patients.map((p,i)=><div key={p.name} style={{display:"flex",gap:12,padding:"12px 16px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",alignItems:"center"}}>
+        <div style={{display:"flex",gap:10,padding:"9px 16px",borderBottom:"1px solid rgba(80,140,255,0.08)",alignItems:"center",background:"rgba(80,140,255,0.04)"}}>
+          <input type="checkbox" checked={allSel} onChange={()=>setSelected(allSel?new Set():new Set(patients.map(p=>p.name)))} style={{width:13,height:13,accentColor:"#38BDF8",cursor:"pointer"}}/>
+          <span style={{fontSize:11,fontWeight:600,color:C.muted}}>Select all{selected.size>0?` · ${selected.size} selected`:""}</span>
+        </div>
+        {patients.map((p,i)=><div key={p.name} style={{display:"flex",gap:12,padding:"12px 16px",borderTop:"1px solid rgba(80,140,255,0.06)",alignItems:"center",background:selected.has(p.name)?"rgba(0,109,255,0.05)":"transparent",transition:"background .1s"}}>
+          <input type="checkbox" checked={selected.has(p.name)} onChange={()=>toggleSelect(p.name)} style={{width:14,height:14,accentColor:"#38BDF8",cursor:"pointer",flexShrink:0}}/>
           <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,marginBottom:2}}>{p.name}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{p.phone} · {p.pref} · {p.type} · {p.wait}</div></div>
           {p.booked&&<Chip color={C.green}>Booked ✓</Chip>}
           {p.responded&&!p.booked&&<Chip color={C.amber}>Responded</Chip>}
@@ -21637,11 +21695,13 @@ function UserManagementPage({plan="Growth"}){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-function FinancePage({openPatient}){
+function FinancePage({openPatient,user}){
+  const isManager=user?.role==="manager"||user?.role==="superadmin";
   const [tab,setTab]=useState("applications");
   const [sendModal,setSendModal]=useState(null);
   const [providers,setProviders]=useState(FINANCE_PROVIDERS);
   const [apps,setApps]=useState(FINANCE_APPS);
+  const [providerForms,setProviderForms]=useState({});
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [sendForm,setSendForm]=useState({patient:"",email:"",amount:"",provider:"chrysalis",treatment:""});
@@ -21757,6 +21817,16 @@ function FinancePage({openPatient}){
                 <button onClick={()=>p.connected?doToast("Disconnecting "+p.name):setProviders(prev=>prev.map(x=>x.id===p.id?{...x,connected:true,apiConnected:true}:x))} style={{width:"100%",marginTop:14,padding:"8px",border:`1px solid ${p.connected?"#fecaca":p.color}`,borderRadius:9,background:p.connected?"#fef2f2":`${p.color}15`,color:p.connected?C.red:p.color,cursor:"pointer",fontSize:12,fontWeight:700}}>
                   {p.connected?"Disconnect":"Connect & Integrate"}
                 </button>
+                {isManager&&<>
+                  <input type="file" accept=".pdf" id={`form-upload-${p.id}`} style={{display:"none"}} onChange={e=>{
+                    const file=e.target.files[0];
+                    if(file){setProviderForms(prev=>({...prev,[p.id]:file.name}));doToast(`✓ Application form uploaded for ${p.name}: ${file.name}`);}
+                    e.target.value="";
+                  }}/>
+                  <label htmlFor={`form-upload-${p.id}`} style={{display:"flex",gap:6,alignItems:"center",justifyContent:"center",marginTop:8,padding:"7px 10px",border:"1px dashed rgba(80,140,255,0.3)",borderRadius:9,color:providerForms[p.id]?C.green:"#94A3B8",cursor:"pointer",fontSize:11,fontWeight:600,background:"rgba(80,140,255,0.04)"}}>
+                    {providerForms[p.id]?<><Check size={11} color={C.green}/>📎 {providerForms[p.id]}</>:<><Upload size={11}/>Upload Application Form PDF</>}
+                  </label>
+                </>}
               </div>
             </div>
           ))}
@@ -29456,7 +29526,7 @@ export default function App(){
       integrations:<IntegrationsPage/>,
       settings:<SettingsPage user={user}/>,
       usermgmt:<UserManagementPage plan="Growth"/>,
-      finance:<FinancePage openPatient={openPatient}/>,
+      finance:<FinancePage openPatient={openPatient} user={user}/>,
       huddle:<MorningHuddlePage openPatient={openPatient}/>,
       online_booking:<OnlineBookingPage setPage={p=>{setPage(p);setPatientId(null);}}/>,
       // daily_priorities: alias for nba — handled by GenericPage fallback
