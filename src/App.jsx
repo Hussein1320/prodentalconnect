@@ -1699,6 +1699,8 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
     {g:"Platform",items:[{id:"admin_ai",l:"Platform AI",Icon:Cpu},{id:"admin_data",l:"Data Manager",Icon:Database},{id:"admin_monitoring",l:"System Monitoring",Icon:Activity},{id:"admin_security",l:"Security & Compliance",Icon:Shield},{id:"admin_backup",l:"Cloud Backup",Icon:Server},{id:"admin_tx_plans",l:"Treatment Plans",Icon:Clipboard},{id:"admin_receptionai",l:"Reception AI",Icon:Phone},{id:"admin_updates",l:"Software Updates",Icon:Server}]},
 
+    {g:"Communications",items:[{id:"admin_announcements",l:"Announcements",Icon:Bell}]},
+
     {g:"People",items:[{id:"admin_users",l:"Admin Users",Icon:Users2},{id:"admin_support_config",l:"Support Channels",Icon:Settings}]},
 
     {g:"Support",items:[{id:"admin_tickets",l:"Support Tickets",Icon:HelpCircle,badge:"tickets"},{id:"admin_support",l:"Support Access",Icon:Headphones},{id:"admin_integrations",l:"Integrations",Icon:Globe},{id:"admin_audit",l:"Activity Log",Icon:Shield},{id:"admin_appt_audit",l:"Appointment Audit",Icon:Activity}]},
@@ -5123,6 +5125,464 @@ const PRACTICES=[
   {id:8,name:"Coastal Dentistry",location:"Brighton BN1",plan:"Starter",users:4,patients:1100,uda:1600,mrr:99,status:"active",joined:"Aug 2024",addons:[]},
 
 ];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLATFORM ANNOUNCEMENT SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+const ANN_TYPES=["General","New Feature","Software Update","Maintenance","Billing","Urgent Service Alert","Training","Compliance"];
+const ANN_DISPLAY_MODES=["banner","modal","blocking","bell"];
+const ANN_REAPPEAR_RULES=["once","every_login","every_login_until_expiry","daily","every_x_hours","until_dismissed","until_billing_resolved","until_disabled"];
+const ANN_TARGET_SCOPES=["all","selected_practices","individual","selected_roles","trial_only","overdue_billing","beta_only"];
+const ANN_TYPE_META={
+  "General":             {icon:"📢",color:"#38BDF8",bg:"rgba(56,189,248,0.1)"},
+  "New Feature":         {icon:"✨",color:"#A78BFA",bg:"rgba(167,139,250,0.1)"},
+  "Software Update":     {icon:"🔄",color:"#34D399",bg:"rgba(52,211,153,0.1)"},
+  "Maintenance":         {icon:"🔧",color:"#F59E0B",bg:"rgba(245,158,11,0.1)"},
+  "Billing":             {icon:"💳",color:"#F87171",bg:"rgba(248,113,113,0.12)"},
+  "Urgent Service Alert":{icon:"🚨",color:"#EF4444",bg:"rgba(239,68,68,0.12)"},
+  "Training":            {icon:"🎓",color:"#60A5FA",bg:"rgba(96,165,250,0.1)"},
+  "Compliance":          {icon:"🛡️",color:"#FBBF24",bg:"rgba(251,191,36,0.1)"},
+};
+const INIT_ANNOUNCEMENTS=[
+  {id:"AN1",title:"ProDentalConnect v4.0 — Major Release",
+   body:"We've launched our biggest update yet:\n\n• Digital Signature Capture (tablet, SMS link, QR code)\n• Enhanced calendar appointment preview with live slot picker\n• Patient Activity Timeline — unified CRM-style interaction log\n• Reception AI Dashboard with live call stats and queue\n• Multi-select bulk actions in Revenue Recovery & Short Notice\n\nAll existing features have been improved for speed and reliability. View the full release notes below.",
+   type:"New Feature",priority:"Normal",display_mode:"modal",target_scope:"all",
+   target_practice_ids:[],target_role_ids:[],target_user_ids:[],
+   start_at:"2026-05-01",expires_at:"2026-06-30",recurrence_rule:"once",
+   require_acknowledgement:false,dismissible:true,blocking:false,
+   action_label:"View Release Notes",action_url:"#",attachment:null,release_version:"v4.0",
+   created_by:"superadmin",status:"active",created_at:"2026-05-01"},
+
+  {id:"AN2",title:"Scheduled Maintenance — 28 May 02:00–04:00 BST",
+   body:"ProDentalConnect will undergo scheduled maintenance on Wednesday 28 May 2026 from 02:00–04:00 BST.\n\nThe platform will be unavailable during this window. Please save all clinical notes before 01:55.\n\nWe apologise for any inconvenience. Status updates will be posted to status.prodentalconnect.co.uk.",
+   type:"Maintenance",priority:"High",display_mode:"banner",target_scope:"all",
+   target_practice_ids:[],target_role_ids:[],target_user_ids:[],
+   start_at:"2026-05-26",expires_at:"2026-05-29",recurrence_rule:"every_login_until_expiry",
+   require_acknowledgement:false,dismissible:true,blocking:false,
+   action_label:"Status Page",action_url:"#",attachment:null,release_version:null,
+   created_by:"superadmin",status:"active",created_at:"2026-05-26"},
+
+  {id:"AN3",title:"GDPR Annual Compliance Review Required by 31 May",
+   body:"All practices must complete the annual GDPR compliance review by 31 May 2026.\n\nNavigate to Settings > Compliance to confirm your data processing records, consent policies, and staff access controls are up to date.\n\nThis is a regulatory requirement under UK GDPR Article 30. Non-completion will be flagged in your compliance audit trail.",
+   type:"Compliance",priority:"High",display_mode:"modal",target_scope:"all",
+   target_practice_ids:[],target_role_ids:[],target_user_ids:[],
+   start_at:"2026-05-10",expires_at:"2026-05-31",recurrence_rule:"every_login_until_expiry",
+   require_acknowledgement:true,dismissible:false,blocking:false,
+   action_label:"Complete Review",action_url:"#",attachment:null,release_version:null,
+   created_by:"superadmin",status:"active",created_at:"2026-05-10"},
+
+  {id:"AN4",title:"New Training: Dental Charting Module Walkthrough",
+   body:"A 10-minute guided walkthrough for the dental charting module is now available in Help & Support.\n\nTopics covered: FDI tooth notation, colour-coded treatment statuses, treatment planning workflow, and generating patient treatment reports.",
+   type:"Training",priority:"Low",display_mode:"bell",target_scope:"selected_roles",
+   target_practice_ids:[],target_role_ids:["dentist","hygienist"],target_user_ids:[],
+   start_at:"2026-05-15",expires_at:"2026-06-30",recurrence_rule:"once",
+   require_acknowledgement:false,dismissible:true,blocking:false,
+   action_label:"Open Training",action_url:"#",attachment:null,release_version:null,
+   created_by:"superadmin",status:"active",created_at:"2026-05-15"},
+
+  {id:"AN5",title:"⚠️ Billing Notice — Subscription Payment Overdue",
+   body:"Your subscription payment for ProDentalConnect is overdue. To avoid interruption of service, please update your payment details immediately.\n\nIf payment is not received within 7 days, access to the platform will be suspended. Please contact billing@prodentalconnect.co.uk if you have any questions.",
+   type:"Billing",priority:"Critical",display_mode:"banner",target_scope:"overdue_billing",
+   target_practice_ids:[],target_role_ids:["manager"],target_user_ids:[],
+   start_at:"2026-05-01",expires_at:null,recurrence_rule:"every_login",
+   require_acknowledgement:true,dismissible:false,blocking:false,
+   action_label:"Update Payment",action_url:"#",attachment:null,release_version:null,
+   created_by:"superadmin",status:"draft",created_at:"2026-05-01"},
+];
+const INIT_ANN_DELIVERY_STATS={
+  AN1:{targeted:127,delivered:119,viewed:94,acknowledged:0,dismissed:61,not_seen:33},
+  AN2:{targeted:127,delivered:127,viewed:98,acknowledged:0,dismissed:23,not_seen:29},
+  AN3:{targeted:127,delivered:127,viewed:74,acknowledged:41,dismissed:0,not_seen:53},
+  AN4:{targeted:34,delivered:34,viewed:18,acknowledged:0,dismissed:6,not_seen:16},
+  AN5:{targeted:1,delivered:1,viewed:1,acknowledged:0,dismissed:0,not_seen:0},
+};
+const ANN_AUDIT_ROWS=[
+  {practice:"Riverside Dentistry",user:"Dr. S. Patel",role:"dentist",annId:"AN1",viewed:"27 May 10:14",acked:null,dismissed:"27 May 10:15",channel:"modal",device:"Chrome / macOS"},
+  {practice:"Riverside Dentistry",user:"Emma Wilson",role:"reception",annId:"AN1",viewed:"27 May 09:33",acked:null,dismissed:"27 May 09:35",channel:"modal",device:"Chrome / Windows"},
+  {practice:"Smiles & Co",user:"Dr. J. Adams",role:"dentist",annId:"AN1",viewed:"26 May 14:22",acked:null,dismissed:null,channel:"modal",device:"Safari / iPhone"},
+  {practice:"Bayview Dentists",user:"S. Williams",role:"manager",annId:"AN1",viewed:"26 May 11:07",acked:null,dismissed:"26 May 11:08",channel:"modal",device:"Firefox / Windows"},
+  {practice:"Riverside Dentistry",user:"Emma Wilson",role:"reception",annId:"AN3",viewed:"27 May 09:33",acked:"27 May 09:34",dismissed:null,channel:"modal",device:"Chrome / Windows"},
+  {practice:"Riverside Dentistry",user:"Dr. M. Chen",role:"dentist",annId:"AN3",viewed:"27 May 10:01",acked:null,dismissed:null,channel:"modal",device:"Chrome / Windows"},
+  {practice:"Smiles & Co",user:"Dr. J. Adams",role:"dentist",annId:"AN3",viewed:"26 May 14:22",acked:"26 May 14:24",dismissed:null,channel:"modal",device:"Safari / iPhone"},
+  {practice:"Bayview Dentists",user:"S. Williams",role:"manager",annId:"AN2",viewed:"27 May 08:01",acked:null,dismissed:"27 May 08:02",channel:"banner",device:"Firefox / Windows"},
+  {practice:"Smile Studio",user:"Dr. K. Lee",role:"dentist",annId:"AN2",viewed:"27 May 09:15",acked:null,dismissed:null,channel:"banner",device:"Chrome / macOS"},
+  {practice:"Riverside Dentistry",user:"Dr. M. Chen",role:"dentist",annId:"AN4",viewed:"20 May 11:30",acked:null,dismissed:"20 May 11:31",channel:"bell",device:"Chrome / Windows"},
+  {practice:"Dental House",user:"T. Richards",role:"reception",annId:"AN4",viewed:"20 May 13:45",acked:null,dismissed:null,channel:"bell",device:"Chrome / Windows"},
+];
+
+function AnnouncementBanner({ann,onDismiss,onAck}){
+  const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["General"];
+  const isBilling=ann.type==="Billing";
+  const isUrgent=ann.type==="Urgent Service Alert";
+  const bc=isBilling?"#EF4444":isUrgent?"#F59E0B":meta.color;
+  return(
+    <div style={{background:isBilling?"rgba(239,68,68,0.08)":isUrgent?"rgba(245,158,11,0.06)":meta.bg,borderBottom:`2px solid ${bc}`,padding:"7px 16px",display:"flex",gap:10,alignItems:"center",flexShrink:0,zIndex:90}}>
+      <span style={{fontSize:15,flexShrink:0}}>{meta.icon}</span>
+      <div style={{flex:1,minWidth:0,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <span style={{fontSize:12,fontWeight:700,color:isBilling||isUrgent?"#F8FAFC":meta.color,whiteSpace:"nowrap"}}>{ann.title}</span>
+        <span style={{fontSize:11,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{ann.body.split("\n")[0]}</span>
+      </div>
+      {ann.action_label&&<button onClick={()=>{}} style={{padding:"4px 12px",background:bc,color:"#132238",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>{ann.action_label}</button>}
+      {ann.require_acknowledgement&&onAck&&<button onClick={onAck} style={{padding:"4px 12px",background:"transparent",color:meta.color,border:`1px solid ${meta.color}`,borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}><Check size={10}/> Acknowledge</button>}
+      {ann.dismissible&&<button onClick={onDismiss} style={{border:"none",background:"transparent",cursor:"pointer",color:"#64748B",padding:"2px 4px",flexShrink:0}}><X size={13}/></button>}
+    </div>
+  );
+}
+
+function AnnouncementModal({ann,onDismiss,onAck,onClose}){
+  const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["General"];
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.68)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:420}}>
+      <div style={{background:"#132238",borderRadius:20,width:540,maxWidth:"95vw",boxShadow:`0 0 0 1px ${meta.color}40,0 28px 80px rgba(0,0,0,0.55)`,overflow:"hidden"}}>
+        <div style={{height:4,background:`linear-gradient(90deg,${meta.color},${meta.color}60)`}}/>
+        <div style={{padding:"22px 24px 20px"}}>
+          <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:16}}>
+            <div style={{width:44,height:44,borderRadius:14,background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,border:`1px solid ${meta.color}30`}}>{meta.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:10,fontWeight:800,padding:"1px 8px",borderRadius:8,background:meta.bg,color:meta.color,textTransform:"uppercase",letterSpacing:".04em"}}>{ann.type}</span>
+                {ann.release_version&&<span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:8,background:"rgba(80,140,255,0.12)",color:"#38BDF8"}}>{ann.release_version}</span>}
+                {ann.priority==="Critical"&&<span style={{fontSize:10,fontWeight:800,padding:"1px 7px",borderRadius:8,background:"rgba(239,68,68,0.15)",color:"#EF4444"}}>CRITICAL</span>}
+                {ann.priority==="High"&&<span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:8,background:"rgba(245,158,11,0.12)",color:"#F59E0B"}}>HIGH</span>}
+              </div>
+              <div style={{fontSize:17,fontWeight:800,color:"#F8FAFC",lineHeight:1.25}}>{ann.title}</div>
+            </div>
+            {(ann.dismissible||!ann.require_acknowledgement)&&<button onClick={onClose||onDismiss} style={{border:"none",background:"rgba(80,140,255,0.08)",cursor:"pointer",color:"#64748B",borderRadius:8,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><X size={13}/></button>}
+          </div>
+          <div style={{fontSize:12,color:"#CBD5E1",lineHeight:1.9,whiteSpace:"pre-wrap",marginBottom:16,padding:"12px 14px",background:"rgba(7,20,40,0.7)",borderRadius:12,border:"1px solid rgba(80,140,255,0.1)",maxHeight:220,overflowY:"auto"}}>{ann.body}</div>
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+            {ann.expires_at&&<span style={{fontSize:10,color:"#64748B"}}>⏰ Expires {ann.expires_at}</span>}
+            <span style={{fontSize:10,color:"#64748B"}}>· Sent by ProDentalConnect Platform</span>
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            {ann.dismissible&&!ann.require_acknowledgement&&<button onClick={onDismiss} style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#64748B",fontFamily:"inherit"}}>Dismiss</button>}
+            {ann.action_label&&<button onClick={()=>{}} style={{padding:"8px 16px",border:`1px solid ${meta.color}40`,borderRadius:10,background:meta.bg,cursor:"pointer",fontSize:12,fontWeight:700,color:meta.color,fontFamily:"inherit"}}>{ann.action_label}</button>}
+            {ann.require_acknowledgement&&<button onClick={()=>{onAck&&onAck();}} style={{padding:"9px 22px",background:`linear-gradient(135deg,${meta.color},${meta.color}cc)`,border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:"#132238",fontFamily:"inherit",display:"flex",gap:7,alignItems:"center"}}><Check size={12}/>I Acknowledge</button>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BlockingNotice({ann,onAck}){
+  const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["Billing"];
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(7,14,28,0.97)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:960,padding:32}}>
+      <div style={{width:"100%",height:3,background:`linear-gradient(90deg,${meta.color},${meta.color}40)`,position:"absolute",top:0,left:0}}/>
+      <div style={{maxWidth:560,textAlign:"center",width:"100%"}}>
+        <div style={{width:80,height:80,borderRadius:28,background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,margin:"0 auto 20px",border:`2px solid ${meta.color}40`,boxShadow:`0 0 40px ${meta.color}20`}}>{meta.icon}</div>
+        <div style={{fontSize:11,fontWeight:800,color:meta.color,textTransform:"uppercase",letterSpacing:".12em",marginBottom:10}}>{ann.type}</div>
+        <div style={{fontSize:26,fontWeight:900,color:"#F8FAFC",marginBottom:18,lineHeight:1.2}}>{ann.title}</div>
+        <div style={{fontSize:13,color:"#CBD5E1",lineHeight:2,whiteSpace:"pre-wrap",marginBottom:28,padding:"18px 22px",background:"rgba(80,140,255,0.04)",border:"1px solid rgba(80,140,255,0.12)",borderRadius:16,textAlign:"left"}}>{ann.body}</div>
+        {ann.action_label&&<button onClick={()=>{}} style={{width:"100%",padding:"13px",background:meta.color,border:"none",borderRadius:12,cursor:"pointer",fontSize:14,fontWeight:700,color:"#132238",marginBottom:10,fontFamily:"inherit",boxShadow:`0 0 24px ${meta.color}40`}}>{ann.action_label}</button>}
+        {ann.require_acknowledgement&&<button onClick={onAck} style={{width:"100%",padding:"13px",background:"rgba(80,140,255,0.1)",border:"1px solid rgba(80,140,255,0.3)",borderRadius:12,cursor:"pointer",fontSize:13,fontWeight:600,color:"#CBD5E1",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Check size={14}/>I have read and acknowledge this notice</button>}
+        <div style={{fontSize:10,color:"#374151",marginTop:14}}>This notice was issued by ProDentalConnect Platform Administration · {ann.created_at}</div>
+      </div>
+    </div>
+  );
+}
+
+function AnnouncementsAdminPage({announcements,setAnnouncements}){
+  const [tab,setTab]=useState("list");
+  const [builder,setBuilder]=useState(null);
+  const [preview,setPreview]=useState(null);
+  const [filterType,setFilterType]=useState("all");
+  const [filterStatus,setFilterStatus]=useState("all");
+  const [auditFilter,setAuditFilter]=useState({annId:"all",practice:"all",acked:"all"});
+  const [toast,setToast]=useState(null);
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+  const BLANK={id:"",title:"",body:"",type:"General",priority:"Normal",display_mode:"banner",target_scope:"all",target_practice_ids:[],target_role_ids:[],target_user_ids:[],start_at:new Date().toISOString().slice(0,10),expires_at:"",recurrence_rule:"once",require_acknowledgement:false,dismissible:true,blocking:false,action_label:"",action_url:"",attachment:null,release_version:"",created_by:"superadmin",status:"draft",created_at:""};
+  const [form,setForm]=useState(BLANK);
+  const fld=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  const openBuilder=(ann=null)=>{setForm(ann?{...ann}:{...BLANK});setBuilder({mode:ann?"edit":"new"});};
+  const saveAnn=(statusOverride)=>{
+    const f={...form,status:statusOverride||form.status};
+    if(!f.title.trim()||!f.body.trim()){doToast("⚠ Title and message are required");return;}
+    if(f.id){setAnnouncements(prev=>prev.map(a=>a.id===f.id?f:a));doToast("✓ Announcement updated");}
+    else{const n={...f,id:"AN"+Date.now(),created_at:new Date().toISOString().slice(0,10)};setAnnouncements(prev=>[n,...prev]);doToast(statusOverride==="active"?"✓ Announcement sent — now live":"✓ Draft saved");}
+    setBuilder(null);
+  };
+  const deleteAnn=(id)=>{if(!window.confirm("Delete this announcement?"))return;setAnnouncements(prev=>prev.filter(a=>a.id!==id));doToast("Announcement deleted");};
+  const toggleStatus=(id)=>setAnnouncements(prev=>prev.map(a=>a.id===id?{...a,status:a.status==="active"?"paused":"active"}:a));
+  const sendNow=(id)=>{setAnnouncements(prev=>prev.map(a=>a.id===id?{...a,status:"active",start_at:new Date().toISOString().slice(0,10)}:a));doToast("✓ Announcement is now active across targeted practices");};
+
+  const filteredAnns=announcements.filter(a=>(filterStatus==="all"||a.status===filterStatus)&&(filterType==="all"||a.type===filterType));
+  const filteredAudit=ANN_AUDIT_ROWS.filter(r=>{
+    if(auditFilter.annId!=="all"&&r.annId!==auditFilter.annId)return false;
+    if(auditFilter.practice!=="all"&&r.practice!==auditFilter.practice)return false;
+    if(auditFilter.acked==="yes"&&!r.acked)return false;
+    if(auditFilter.acked==="no"&&r.acked)return false;
+    return true;
+  });
+
+  const delivStats=INIT_ANN_DELIVERY_STATS;
+  const totalTargeted=Object.values(delivStats).reduce((s,d)=>s+d.targeted,0);
+  const totalViewed=Object.values(delivStats).reduce((s,d)=>s+d.viewed,0);
+  const totalAcked=Object.values(delivStats).reduce((s,d)=>s+d.acknowledged,0);
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:600,boxShadow:"0 4px 14px rgba(0,0,0,.2)",display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
+
+      {/* Preview overlay */}
+      {preview&&(preview.display_mode==="blocking"
+        ?<BlockingNotice ann={preview} onAck={()=>setPreview(null)}/>
+        :preview.display_mode==="modal"
+        ?<AnnouncementModal ann={preview} onDismiss={()=>setPreview(null)} onAck={()=>setPreview(null)} onClose={()=>setPreview(null)}/>
+        :preview.display_mode==="banner"
+        ?<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",flexDirection:"column",zIndex:420}} onClick={()=>setPreview(null)}>
+          <div onClick={e=>e.stopPropagation()}><AnnouncementBanner ann={preview} onDismiss={()=>setPreview(null)} onAck={()=>setPreview(null)}/></div>
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:13,color:"#94A3B8"}}>Click outside to close preview</div></div>
+         </div>
+        :<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:420}} onClick={()=>setPreview(null)}>
+          <div style={{background:"#132238",borderRadius:16,padding:24,maxWidth:380,textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:10}}>{ANN_TYPE_META[preview.type]?.icon}</div>
+            <div style={{fontSize:14,fontWeight:800,marginBottom:6}}>{preview.title}</div>
+            <div style={{fontSize:11,color:"#CBD5E1",marginBottom:14}}>🔔 Bell notification — appears in notification tray</div>
+            <button onClick={()=>setPreview(null)} style={{padding:"8px 20px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,cursor:"pointer",fontSize:12,color:"#CBD5E1",fontFamily:"inherit"}}>Close</button>
+          </div>
+        </div>)}
+
+      {/* Builder modal */}
+      {builder&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:700,overflow:"auto",padding:"20px 16px"}}>
+        <div style={{background:"#0F1C34",borderRadius:20,width:700,maxWidth:"98vw",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.65)",border:"1px solid rgba(80,140,255,0.2)",margin:"auto"}}>
+          <div style={{padding:"18px 22px",borderBottom:"1px solid rgba(80,140,255,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:800}}>{builder.mode==="new"?"New Announcement":"Edit Announcement"}</div>
+              <div style={{fontSize:11,color:C.muted}}>Platform-wide announcement builder · Software Owner only</div>
+            </div>
+            <button onClick={()=>setBuilder(null)} style={{border:"none",background:"rgba(80,140,255,0.08)",cursor:"pointer",color:C.muted,borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={15}/></button>
+          </div>
+          <div style={{padding:"18px 22px",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:14}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>Title *</label>
+              <input value={form.title} onChange={e=>fld("title",e.target.value)} placeholder="Announcement title…" style={{width:"100%",padding:"9px 12px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>Message Body * <span style={{fontWeight:400}}>(supports line breaks)</span></label>
+              <textarea rows={5} value={form.body} onChange={e=>fld("body",e.target.value)} placeholder="Message content…" style={{width:"100%",padding:"9px 12px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none",resize:"vertical",lineHeight:1.75,boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {[{l:"Type",k:"type",opts:ANN_TYPES},{l:"Priority",k:"priority",opts:["Low","Normal","High","Critical"]},{l:"Display Mode",k:"display_mode",opts:[["banner","📌 Banner"],["modal","📋 Modal"],["blocking","🚫 Blocking"],["bell","🔔 Bell"]]}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>{f.l}</label>
+                  <select value={form[f.k]} onChange={e=>fld(f.k,e.target.value)} style={{width:"100%",padding:"8px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none"}}>
+                    {f.opts.map(o=>Array.isArray(o)?<option key={o[0]} value={o[0]}>{o[1]}</option>:<option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>Target Audience</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <select value={form.target_scope} onChange={e=>fld("target_scope",e.target.value)} style={{padding:"8px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none"}}>
+                  {[["all","All Practices & Users"],["selected_practices","Selected Practices"],["individual","Individual Practice"],["selected_roles","Selected Roles"],["trial_only","Trial Practices Only"],["overdue_billing","Overdue Billing Practices"],["beta_only","Beta Practices Only"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                </select>
+                {form.target_scope==="selected_roles"&&<div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {["reception","dentist","hygienist","manager","superadmin"].map(r=>(
+                    <button key={r} onClick={()=>fld("target_role_ids",form.target_role_ids.includes(r)?form.target_role_ids.filter(x=>x!==r):[...form.target_role_ids,r])} style={{padding:"3px 10px",borderRadius:7,border:`1px solid ${form.target_role_ids.includes(r)?C.teal:"rgba(80,140,255,0.2)"}`,background:form.target_role_ids.includes(r)?"rgba(56,189,248,0.1)":"transparent",color:form.target_role_ids.includes(r)?C.teal:C.muted,fontSize:10,fontWeight:600,cursor:"pointer"}}>{r}</button>
+                  ))}
+                </div>}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[{l:"Start Date",k:"start_at",t:"date"},{l:"Expiry Date (optional)",k:"expires_at",t:"date"}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>{f.l}</label>
+                  <input type={f.t} value={form[f.k]||""} onChange={e=>fld(f.k,e.target.value)} style={{width:"100%",padding:"8px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              ))}
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>Reappearance Rule</label>
+              <select value={form.recurrence_rule} onChange={e=>fld("recurrence_rule",e.target.value)} style={{width:"100%",padding:"8px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none"}}>
+                {[["once","Show once only"],["every_login","Every login"],["every_login_until_expiry","Every login until expiry date"],["daily","Once per day"],["every_x_hours","Every X hours"],["until_dismissed","Until dismissed by user"],["until_billing_resolved","Until billing issue resolved"],["until_disabled","Until disabled by Super Admin"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div style={{display:"flex",gap:20,flexWrap:"wrap",padding:"10px 14px",background:"rgba(80,140,255,0.04)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)"}}>
+              {[{k:"require_acknowledgement",l:"Require acknowledgement"},{k:"dismissible",l:"Dismissible by user"},{k:"blocking",l:"Blocking (prevents all access)"}].map(cb=>(
+                <label key={cb.k} style={{display:"flex",gap:7,alignItems:"center",cursor:"pointer",fontSize:12,fontWeight:500}}>
+                  <input type="checkbox" checked={!!form[cb.k]} onChange={e=>fld(cb.k,e.target.checked)} style={{width:14,height:14,accentColor:"#38BDF8",cursor:"pointer"}}/>
+                  {cb.l}
+                </label>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {[{l:"Action Button Label",k:"action_label",ph:"e.g. View Details"},{l:"Action URL",k:"action_url",ph:"https://…"},{l:"Release Version",k:"release_version",ph:"e.g. v4.1"}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:11,fontWeight:700,color:C.muted,display:"block",marginBottom:4}}>{f.l}</label>
+                  <input value={form[f.k]||""} onChange={e=>fld(f.k,e.target.value)} placeholder={f.ph} style={{width:"100%",padding:"7px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:C.text,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              ))}
+            </div>
+            <div style={{padding:"10px 14px",background:"rgba(80,140,255,0.05)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)"}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.muted,marginBottom:6}}>Display Mode Guide</div>
+              {[["📌 Banner","Thin persistent bar below the header — ideal for maintenance & billing notices"],["📋 Modal","Overlay popup on login — ideal for compliance reviews & new features"],["🚫 Blocking","Full-screen block — use only for critical billing suspension or legal notices"],["🔔 Bell","Silent notification in the bell — ideal for training, tips, low-priority updates"]].map(([m,d])=>(
+                <div key={m} style={{display:"flex",gap:8,fontSize:10,color:"#94A3B8",marginBottom:2}}><span style={{minWidth:90,fontWeight:600,color:"#CBD5E1"}}>{m}</span>{d}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{padding:"14px 22px",borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8,justifyContent:"space-between",flexShrink:0}}>
+            <button onClick={()=>setPreview({...form,id:form.id||"PREVIEW"})} style={{padding:"8px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:12,color:C.text,fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}><Eye size={12}/>Preview</button>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setBuilder(null)} style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.15)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Cancel</button>
+              <button onClick={()=>saveAnn("draft")} style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"rgba(80,140,255,0.08)",cursor:"pointer",fontSize:12,fontWeight:600,color:C.text,fontFamily:"inherit"}}>Save Draft</button>
+              <button onClick={()=>saveAnn("active")} style={{padding:"8px 20px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.35)",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}><Send size={12}/>Send Now</button>
+            </div>
+          </div>
+        </div>
+      </div>}
+
+      {/* Page header */}
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px 0",flexShrink:0}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+          <div style={{width:42,height:42,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>📣</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:800}}>Platform Announcements</div>
+            <div style={{fontSize:11,color:"#CBD5E1"}}>Create and broadcast announcements, release notes, billing notices, and compliance alerts across all practices</div>
+          </div>
+          <button onClick={()=>openBuilder()} style={{padding:"9px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.35)",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}><Plus size={13}/>New Announcement</button>
+        </div>
+        {/* KPI strip */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {l:"Total",v:announcements.length,c:C.teal},
+            {l:"Active",v:announcements.filter(a=>a.status==="active").length,c:C.green},
+            {l:"Drafts",v:announcements.filter(a=>a.status==="draft").length,c:C.muted},
+            {l:"Targeted Users",v:totalTargeted,c:C.blue},
+            {l:"Views",v:totalViewed,c:C.purple},
+            {l:"Acknowledged",v:totalAcked,c:C.amber},
+          ].map(s=><div key={s.l} style={{padding:"8px 10px",background:"rgba(7,20,40,0.8)",borderRadius:10,border:"1px solid rgba(80,140,255,0.1)"}}>
+            <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:1}}>{s.l}</div>
+            <div style={{fontSize:18,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+          </div>)}
+        </div>
+        <div style={{display:"flex",gap:0}}>
+          {[{id:"list",l:"Announcements"},{id:"audit",l:"Audit Log"}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 18px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1}}>{t.l}</button>)}
+        </div>
+      </div>
+
+      {/* ── ANNOUNCEMENTS LIST ── */}
+      {tab==="list"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:11,color:C.muted,fontWeight:600}}>Type:</span>
+          {["all",...ANN_TYPES].slice(0,6).map(t=>{const cnt=t==="all"?announcements.length:announcements.filter(a=>a.type===t).length;return cnt>0&&<button key={t} onClick={()=>setFilterType(t)} style={{padding:"3px 10px",borderRadius:8,border:`1px solid ${filterType===t?C.teal:"rgba(80,140,255,0.15)"}`,background:filterType===t?"rgba(56,189,248,0.1)":"transparent",color:filterType===t?C.teal:C.muted,fontSize:10,fontWeight:600,cursor:"pointer"}}>{t==="all"?"All":t} {t==="all"?"":cnt}</button>;})}
+          <div style={{width:1,height:14,background:"rgba(80,140,255,0.2)"}}/>
+          <span style={{fontSize:11,color:C.muted,fontWeight:600}}>Status:</span>
+          {["all","active","draft","paused","archived"].map(s=><button key={s} onClick={()=>setFilterStatus(s)} style={{padding:"3px 10px",borderRadius:8,border:`1px solid ${filterStatus===s?"#38BDF8":"rgba(80,140,255,0.15)"}`,background:filterStatus===s?"rgba(56,189,248,0.08)":"transparent",color:filterStatus===s?"#38BDF8":C.muted,fontSize:10,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{s}</button>)}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filteredAnns.map(ann=>{
+            const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["General"];
+            const stats=delivStats[ann.id];
+            const sc={active:C.green,draft:C.muted,paused:C.amber,archived:"#374151"}[ann.status]||C.muted;
+            return(
+              <div key={ann.id} style={{background:"#132238",border:`1px solid ${ann.status==="active"?`${meta.color}35`:"rgba(80,140,255,0.12)"}`,borderRadius:14,overflow:"hidden"}}>
+                <div style={{display:"flex",gap:12,padding:"14px 16px",alignItems:"flex-start"}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0,border:`1px solid ${meta.color}20`}}>{meta.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                      <span style={{fontSize:13,fontWeight:800,color:"#F8FAFC"}}>{ann.title}</span>
+                      {ann.release_version&&<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:7,background:"rgba(80,140,255,0.12)",color:"#38BDF8"}}>{ann.release_version}</span>}
+                    </div>
+                    <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:5,flexWrap:"wrap"}}>
+                      <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:7,background:meta.bg,color:meta.color}}>{meta.icon} {ann.type}</span>
+                      <span style={{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:7,background:`${sc}18`,color:sc,textTransform:"capitalize"}}>{ann.status}</span>
+                      <span style={{fontSize:10,padding:"1px 7px",borderRadius:7,background:"rgba(80,140,255,0.06)",color:"#94A3B8"}}>{ann.display_mode==="banner"?"📌 Banner":ann.display_mode==="modal"?"📋 Modal":ann.display_mode==="blocking"?"🚫 Blocking":"🔔 Bell"}</span>
+                      <span style={{fontSize:10,color:C.muted}}>{ann.target_scope==="all"?"→ All practices":ann.target_scope==="selected_roles"?`→ Roles: ${ann.target_role_ids.join(", ")||"none"}`:ann.target_scope==="overdue_billing"?"→ Overdue billing":ann.target_scope}</span>
+                      {ann.require_acknowledgement&&<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"rgba(245,158,11,0.1)",color:C.amber}}>ACK REQUIRED</span>}
+                      {ann.blocking&&<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"rgba(239,68,68,0.1)",color:C.red}}>BLOCKING</span>}
+                    </div>
+                    <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{ann.body.split("\n")[0].slice(0,110)}</div>
+                    <div style={{fontSize:10,color:"#64748B"}}>{ann.start_at&&`From ${ann.start_at}`}{ann.expires_at&&` · Expires ${ann.expires_at}`} · {ann.recurrence_rule.replace(/_/g," ")}</div>
+                  </div>
+                  {/* Delivery stats */}
+                  {stats&&<div style={{display:"flex",gap:14,flexShrink:0}}>
+                    {[{l:"Targeted",v:stats.targeted,c:C.muted},{l:"Viewed",v:stats.viewed,c:C.blue},{l:"Acked",v:stats.acknowledged,c:C.green},{l:"Dismissed",v:stats.dismissed,c:C.amber}].map(s=>(
+                      <div key={s.l} style={{textAlign:"center",minWidth:44}}>
+                        <div style={{fontSize:17,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+                        <div style={{fontSize:9,color:"#64748B",fontWeight:600}}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0,alignItems:"flex-end"}}>
+                    <div style={{display:"flex",gap:4}}>
+                      <button onClick={()=>setPreview(ann)} style={{padding:"4px 9px",borderRadius:7,border:"1px solid rgba(80,140,255,0.15)",background:"rgba(80,140,255,0.05)",color:C.muted,fontSize:10,cursor:"pointer",display:"flex",gap:3,alignItems:"center"}}><Eye size={9}/>Preview</button>
+                      <button onClick={()=>openBuilder(ann)} style={{padding:"4px 9px",borderRadius:7,border:"1px solid rgba(80,140,255,0.15)",background:"rgba(80,140,255,0.05)",color:C.text,fontSize:10,cursor:"pointer",display:"flex",gap:3,alignItems:"center"}}><Edit size={9}/>Edit</button>
+                      {ann.status!=="active"&&<button onClick={()=>sendNow(ann.id)} style={{padding:"4px 9px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 8px rgba(0,109,255,0.25)",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",gap:3,alignItems:"center"}}><Send size={9}/>Send</button>}
+                    </div>
+                    <div style={{display:"flex",gap:4}}>
+                      <button onClick={()=>toggleStatus(ann.id)} style={{padding:"3px 9px",borderRadius:7,border:`1px solid ${ann.status==="active"?"rgba(245,158,11,0.25)":"rgba(34,197,94,0.25)"}`,background:ann.status==="active"?"rgba(245,158,11,0.06)":"rgba(34,197,94,0.06)",color:ann.status==="active"?C.amber:C.green,fontSize:9,fontWeight:600,cursor:"pointer"}}>{ann.status==="active"?"Pause":"Activate"}</button>
+                      <button onClick={()=>deleteAnn(ann.id)} style={{padding:"3px 9px",borderRadius:7,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.05)",color:C.red,fontSize:9,cursor:"pointer"}}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+                {stats&&stats.targeted>0&&<div style={{padding:"6px 16px 10px",borderTop:"1px solid rgba(80,140,255,0.06)"}}>
+                  <div style={{display:"flex",gap:10,marginBottom:4,alignItems:"center"}}>
+                    {[{l:"Acknowledged",pct:Math.round(stats.acknowledged/stats.targeted*100),c:C.green},{l:"Viewed",pct:Math.round((stats.viewed-stats.acknowledged)/stats.targeted*100),c:C.blue},{l:"Dismissed",pct:Math.round(stats.dismissed/stats.targeted*100),c:C.amber},{l:"Not seen",pct:Math.round(stats.not_seen/stats.targeted*100),c:"#1e293b"}].map(p=>(
+                      <div key={p.l} style={{display:"flex",gap:4,alignItems:"center",fontSize:9,color:p.l==="Not seen"?"#374151":p.c}}><div style={{width:6,height:6,borderRadius:2,background:p.c}}/>{p.l}: {p.pct}%</div>
+                    ))}
+                  </div>
+                  <div style={{height:4,background:"rgba(80,140,255,0.08)",borderRadius:2,overflow:"hidden",display:"flex"}}>
+                    {[{w:stats.acknowledged/stats.targeted,c:C.green},{w:(stats.viewed-stats.acknowledged)/stats.targeted,c:C.blue},{w:stats.dismissed/stats.targeted,c:C.amber},{w:stats.not_seen/stats.targeted,c:"#1e293b"}].map((b,i)=>(
+                      <div key={i} style={{width:`${Math.max(0,b.w*100)}%`,height:"100%",background:b.c}}/>
+                    ))}
+                  </div>
+                </div>}
+              </div>
+            );
+          })}
+          {filteredAnns.length===0&&<div style={{textAlign:"center",padding:"48px",color:C.muted,fontSize:13}}>No announcements match the current filters</div>}
+        </div>
+      </div>}
+
+      {/* ── AUDIT LOG ── */}
+      {tab==="audit"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+        <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center",background:"#132238",padding:"10px 14px",borderRadius:12,border:"1px solid rgba(80,140,255,0.12)"}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.muted}}>Filter:</span>
+          <select value={auditFilter.annId} onChange={e=>setAuditFilter(p=>({...p,annId:e.target.value}))} style={{padding:"5px 9px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,color:C.text,fontSize:11,fontFamily:"inherit",outline:"none"}}>
+            <option value="all">All Announcements</option>
+            {announcements.map(a=><option key={a.id} value={a.id}>{a.title.slice(0,45)}</option>)}
+          </select>
+          <select value={auditFilter.practice} onChange={e=>setAuditFilter(p=>({...p,practice:e.target.value}))} style={{padding:"5px 9px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,color:C.text,fontSize:11,fontFamily:"inherit",outline:"none"}}>
+            <option value="all">All Practices</option>
+            {[...new Set(ANN_AUDIT_ROWS.map(r=>r.practice))].map(p=><option key={p}>{p}</option>)}
+          </select>
+          <select value={auditFilter.acked} onChange={e=>setAuditFilter(p=>({...p,acked:e.target.value}))} style={{padding:"5px 9px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,color:C.text,fontSize:11,fontFamily:"inherit",outline:"none"}}>
+            <option value="all">All Acknowledgement Status</option>
+            <option value="yes">Acknowledged ✓</option>
+            <option value="no">Not Acknowledged</option>
+          </select>
+          <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>{filteredAudit.length} records</span>
+          <button onClick={()=>doToast("Audit log exported as CSV")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,background:"rgba(80,140,255,0.06)",color:C.text,cursor:"pointer",fontSize:11,display:"flex",gap:4,alignItems:"center"}}><Download size={10}/>Export CSV</button>
+        </div>
+        <div style={{background:"#132238",border:"1px solid rgba(80,140,255,0.12)",borderRadius:14,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr",padding:"8px 14px",borderBottom:"1px solid rgba(80,140,255,0.08)",background:"rgba(7,20,40,0.8)"}}>
+            {["User / Practice","Role","Announcement","Viewed","Acknowledged","Dismissed","Device / Channel"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".04em"}}>{h}</div>)}
+          </div>
+          {filteredAudit.map((r,i)=>{
+            const ann=announcements.find(a=>a.id===r.annId);
+            const meta=ann?ANN_TYPE_META[ann.type]:ANN_TYPE_META["General"];
+            return(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr",padding:"10px 14px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none",alignItems:"center",background:i%2===0?"transparent":"rgba(80,140,255,0.015)"}}>
+                <div><div style={{fontSize:12,fontWeight:600}}>{r.user}</div><div style={{fontSize:10,color:C.muted}}>{r.practice}</div></div>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:7,background:"rgba(80,140,255,0.08)",color:"#94A3B8",width:"fit-content"}}>{r.role}</span>
+                <div style={{fontSize:10,color:meta?.color||C.muted,display:"flex",gap:4,alignItems:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{meta?.icon} {ann?.title?.slice(0,35)||r.annId}</div>
+                <div style={{fontSize:10,color:"#CBD5E1"}}>{r.viewed||"—"}</div>
+                <div style={{fontSize:10,color:r.acked?C.green:"#374151",display:"flex",gap:3,alignItems:"center"}}>{r.acked?<><Check size={9}/>{r.acked}</>:"—"}</div>
+                <div style={{fontSize:10,color:r.dismissed?C.amber:"#374151"}}>{r.dismissed||"—"}</div>
+                <div style={{fontSize:10,color:"#64748B"}}>{r.device}<br/><span style={{color:"#374151"}}>{r.channel}</span></div>
+              </div>
+            );
+          })}
+          {filteredAudit.length===0&&<div style={{textAlign:"center",padding:"32px",color:C.muted,fontSize:12}}>No audit records match the current filters</div>}
+        </div>
+      </div>}
+    </div>
+  );
+}
 
 function AdminDashboard(){
   const [toast,setToast]=useState(null);
@@ -29452,6 +29912,9 @@ export default function App(){
   const [waiting,setWaiting]=useState(WAITING_INIT);
   const [copilotOpen,setCopilotOpen]=useState(false);
   const [copilotSubscribed,setCopilotSubscribed]=useState(false);
+  const [announcements,setAnnouncements]=useState(INIT_ANNOUNCEMENTS);
+  const [annDismissed,setAnnDismissed]=useState(new Set());
+  const [annAcked,setAnnAcked]=useState(new Set());
 
   const tasks=useMemo(()=>[{title:"Submit FP17 — Amy Torres",priority:"urgent",done:false,src:"auto"},{title:"Confirm tomorrow's appointments",priority:"urgent",done:false,src:"auto"},{title:"Chase lab — Sarah Chen",priority:"normal",done:false,src:"auto"}],[]);
 
@@ -29491,6 +29954,7 @@ export default function App(){
         admin_audit:<AdminActivityLog/>,
         admin_appt_audit:<AdminActivityLog/>,
         admin_integrations:<IntegrationsPage/>,
+        admin_announcements:<AnnouncementsAdminPage announcements={announcements} setAnnouncements={setAnnouncements}/>,
       };
       return AP[page]||<GenericPage page={page}/>;
     }
@@ -29536,7 +30000,26 @@ export default function App(){
 
   if(!user)return <LoginScreen onLogin={u=>{setUser(u);setPage(u.role==="superadmin"?"admin_dash":"dashboard");}}/>;
 
+  // ── Compute which announcements to surface for current user ──
+  const today=new Date().toISOString().slice(0,10);
+  const activeAnns=announcements.filter(ann=>{
+    if(ann.status!=="active")return false;
+    if(ann.start_at&&ann.start_at>today)return false;
+    if(ann.expires_at&&ann.expires_at<today)return false;
+    if(ann.target_scope==="selected_roles"&&ann.target_role_ids.length>0&&!ann.target_role_ids.includes(user?.role))return false;
+    if(annAcked.has(ann.id)&&ann.require_acknowledgement)return false;
+    if(annDismissed.has(ann.id)&&(ann.recurrence_rule==="once"||ann.recurrence_rule==="until_dismissed"))return false;
+    return true;
+  });
+  const blockingAnn=user?.role!=="superadmin"?activeAnns.find(a=>a.display_mode==="blocking")||null:null;
+  const modalAnn=user?.role!=="superadmin"&&!blockingAnn?activeAnns.find(a=>a.display_mode==="modal"&&!annDismissed.has(a.id))||null:null;
+  const bannerAnns=user?.role!=="superadmin"?activeAnns.filter(a=>a.display_mode==="banner"&&!annDismissed.has(a.id)):[];
+
   return <div style={{display:"flex",height:"100vh",overflow:"hidden",fontFamily:"'Inter',system-ui,sans-serif",color:C.text,background:"#071428",backgroundImage:"radial-gradient(ellipse at 20% 50%,rgba(59,130,246,0.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 10%,rgba(80,140,255,0.05) 0%,transparent 45%)",WebkitFontSmoothing:"antialiased",MozOsxFontSmoothing:"grayscale",backgroundImage:"radial-gradient(ellipse at 15% 60%,rgba(0,109,255,0.05) 0%,transparent 55%),radial-gradient(ellipse at 85% 15%,rgba(80,140,255,0.04) 0%,transparent 50%)"}}>
+    {/* Platform announcement — blocking notice (highest z-index) */}
+    {blockingAnn&&<BlockingNotice ann={blockingAnn} onAck={()=>setAnnAcked(prev=>new Set([...prev,blockingAnn.id]))}/>}
+    {/* Platform announcement — modal */}
+    {!blockingAnn&&modalAnn&&<AnnouncementModal ann={modalAnn} onDismiss={()=>setAnnDismissed(prev=>new Set([...prev,modalAnn.id]))} onAck={()=>{setAnnAcked(prev=>new Set([...prev,modalAnn.id]));setAnnDismissed(prev=>new Set([...prev,modalAnn.id]));}} onClose={()=>setAnnDismissed(prev=>new Set([...prev,modalAnn.id]))}/>}
     {alertQueue[0]&&<AlertModal patient={alertQueue[0]} onAck={ackAlert} onCancel={()=>{setAlertQueue([]);setPatientId(prevPatientId||null);setPrevPatientId(null);}}/>}
     <BusinessCopilot open={copilotOpen} onClose={()=>setCopilotOpen(false)} subscribed={copilotSubscribed} onSubscribe={()=>setCopilotSubscribed(true)}/>
     
@@ -29558,6 +30041,8 @@ export default function App(){
     </div>}
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
       <Header user={user} notifs={notifs} onClearNotifs={()=>setNotifs(p=>p.map(n=>({...n,read:true})))} onCopilot={()=>setCopilotOpen(true)} copilotSubscribed={copilotSubscribed}/>
+      {/* Platform announcement banners (below header, above content) */}
+      {bannerAnns.map(ann=><AnnouncementBanner key={ann.id} ann={ann} onDismiss={()=>setAnnDismissed(prev=>new Set([...prev,ann.id]))} onAck={()=>{setAnnAcked(prev=>new Set([...prev,ann.id]));setAnnDismissed(prev=>new Set([...prev,ann.id]));}}/>)}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>{renderContent()}</div>
     </div>
   </div>;
