@@ -5284,7 +5284,7 @@ function AnnouncementModal({ann,onClose,onDismiss,onSnooze,onDontShowAgain,onAck
   const canClose=ann.dismissible&&!ann.require_acknowledgement;
   const canSnooze=ann.allow_snooze&&pm.canSnooze;
   const canDontShow=ann.allow_dont_show_again&&pm.canDontShow;
-  React.useEffect(()=>{
+  useEffect(()=>{
     const h=(e)=>{if(e.key==="Escape"&&canClose)(onClose||onDismiss)();};
     document.addEventListener("keydown",h);
     return()=>document.removeEventListener("keydown",h);
@@ -5351,7 +5351,7 @@ function BlockingNotice({ann,onAck}){
 function ReleaseNotesPanel({ann,onClose}){
   const meta=ANN_TYPE_META[ann.type]||ANN_TYPE_META["General"];
   const notes=ANN_RELEASE_NOTES[ann.id]||null;
-  React.useEffect(()=>{
+  useEffect(()=>{
     const h=(e)=>{if(e.key==="Escape")onClose();};
     document.addEventListener("keydown",h);
     return()=>document.removeEventListener("keydown",h);
@@ -10565,7 +10565,7 @@ function AdminUsers(){
         </div>
         <div style={{padding:"16px 20px"}}>
           <div style={{fontSize:11,fontWeight:800,color:"rgba(56,189,248,0.6)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:14}}>Access Permissions</div>
-          {(()=>{const [localPerms,setLocalPerms]=React.useState({...permModal.perms});
+          {(()=>{const [localPerms,setLocalPerms]=useState({...permModal.perms});
           return(<>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {PERM_DEFS.map(p=>(
@@ -17943,10 +17943,10 @@ function RecoveryRow({item,type,onAction,onPreview,selected,onToggle}){
       {/* DNA workflow chain */}
       {isDNA&&item.workflow&&<div style={{padding:"0 14px 10px 92px",display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
         {item.workflow.map((step,i)=>(
-          <React.Fragment key={i}>
+          <> key={i}>
             <span style={{fontSize:9,fontWeight:600,padding:"2px 7px",borderRadius:6,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.18)",color:"#4ADE80",whiteSpace:"nowrap"}}>{step}</span>
             {i<item.workflow.length-1&&<span style={{color:"rgba(80,140,255,0.25)",fontSize:9}}>→</span>}
-          </React.Fragment>
+          </>
         ))}
         {item.workflowStatus==="awaiting_reply"&&<><span style={{color:"rgba(80,140,255,0.25)",fontSize:9}}>→</span><span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",color:"#F59E0B",whiteSpace:"nowrap"}}>💰 Revenue Recovery active</span></>}
         {item.workflowStatus==="rebooked"&&<><span style={{color:"rgba(80,140,255,0.25)",fontSize:9}}>→</span><span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",color:"#4ADE80",whiteSpace:"nowrap"}}>✓ Slot filled · Revenue recovered</span></>}
@@ -18060,7 +18060,7 @@ function RevenueRecoveryPage(){
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [selected,setSelected]=useState(new Set());
   const toggleSelect=(id)=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
-  React.useEffect(()=>setSelected(new Set()),[tab]);
+  useEffect(()=>setSelected(new Set()),[tab]);
 
   const markStatus=(type,id,status)=>{
     setData(prev=>({...prev,[type]:prev[type].map(r=>r.id===id?{...r,status}:r)}));
