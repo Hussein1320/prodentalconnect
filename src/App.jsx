@@ -1085,25 +1085,11 @@ function LoginScreen({onLogin}){
   };
 
   const quickLogin=u=>{
-
     const usr=USERS.find(x=>x.email===u.email);
-
-    setUsername(usr.username);
-
-    if(authMode==="password"){setPass("demo");}
-
-    else{setPin(usr.pin||"");}
-
+    if(!usr)return;
     setErr("");
-
-    setTimeout(()=>{
-
-      if(usr.role==="superadmin"){setPass("admin");setStep("2fa");return;}
-
-      onLogin(usr);
-
-    },450);
-
+    if(usr.role==="superadmin"){setUsername(usr.username);setPass("admin");setStep("2fa");return;}
+    onLogin(usr);
   };
 
   const do2FA=()=>{
