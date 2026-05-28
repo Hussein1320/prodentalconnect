@@ -2248,6 +2248,8 @@ const AI_PRODUCTIVITY_STATS={
   formsAutomated:    {v:34,   label:"Forms sent online",      unit:"this mo", delta:"+11",   c:"#F59E0B"},
   adminReduction:    {v:38,   label:"Admin reduction",        unit:"%",       delta:"+4%",   c:"#2563FF"},
   missedCallRecovery:{v:81,   label:"Missed-call recovery",   unit:"% rate",  delta:"+12%",  c:"#22C55E"},
+  notesGenerated:    {v:23,   label:"AI notes generated",     unit:"this mo", delta:"+23",   c:"#8B5CF6"},
+  docSpeedImproved:  {v:73,   label:"Faster documentation",   unit:"% faster",delta:"+8%",   c:"#10B981"},
 };
 
 const WORKLOAD_METRICS=[
@@ -14219,511 +14221,571 @@ function DatePickerInput({value,onChange,label,accentColor}){
 
 // ── AINoteAssistant — AI-powered clinical note generation inside PatientRecord ──
 
+// ── AI Clinical Workflow Engine constants (module-level) ──
+// Extends existing NOTE_TEMPLATES (ChartingPage local) with structured formats
+// for AI-assisted workflow. Single source of truth — not a duplicate system.
+const AI_NOTE_STRUCTURES=[
+  {id:"soap",      l:"SOAP",           desc:"Subjective · Objective · Assessment · Plan",
+   template:"SUBJECTIVE:\n[Patient complaint, history, symptoms]\n\nOBJECTIVE:\nBPE: [SCORE] | Soft tissue: [FINDINGS]\nRadiographs: [IF TAKEN]\nExtra/intra-oral: [EXAMINATION FINDINGS]\n\nASSESSMENT:\n[Clinical diagnosis]\n\nPLAN:\n[Treatment, recall, follow-up]"},
+  {id:"routine",   l:"Routine Exam",   desc:"Standard examination format",
+   template:"ROUTINE EXAMINATION\nMedical history: [REVIEWED / CHANGES NOTED]\nBPE: [SCORE]\nSoft tissue: NAD\nRadiographs: [N/A or findings]\n\nFindings:\n[CLINICAL FINDINGS]\n\nTreatment provided:\n[IF ANY]\n\nPlan: Review in [N] months."},
+  {id:"treatment", l:"Treatment Note", desc:"Procedure-focused with consent",
+   template:"Procedure: [TYPE] — Tooth [TOOTH]\n\nConsent: Patient consented to [TX]. Risks/benefits discussed.\n\nLA: [TYPE] [X] cartridges administered. No adverse reaction.\n\nProcedure notes:\n[PROCEDURE DETAILS]\n\nOcclusion checked: [YES/NO]\nPost-op instructions given: [YES/NO]\n\nPlan: [FOLLOW-UP]"},
+  {id:"emergency", l:"Emergency",      desc:"Acute pain / emergency visit",
+   template:"EMERGENCY PRESENTATION\nComplaint: [DESCRIPTION]\nDuration: [X] days. Character: [THROBBING/SHARP/DULL].\n\nExamination: [FINDINGS]\nPeriapical radiograph: [FINDINGS]\n\nDiagnosis: [DIAGNOSIS]\n\nImmediate treatment: [TX]\nMedication: [IF ANY — name, dose, duration]\n\nPlan: [REVIEW / FURTHER TX]"},
+  {id:"hygiene",   l:"Hygiene / Perio",desc:"Scale & polish / periodontal",
+   template:"HYGIENE APPOINTMENT — [TYPE]\nBPE by sextant: [UR/UL/UA/LR/LL/LA]\nPlaque score: [%] | Bleeding score: [%]\n\nTreatment: [SCALE/POLISH/ROOT DEBRIDEMENT]\n\nOHI: [BRUSHING/INTERDENTAL/MOUTHWASH advice]\n\nRecall: [INTERVAL]"},
+];
+
+// Rule-based completeness checks — run synchronously against generated note text
+const AI_COMPLETENESS_RULES=[
+  {id:"consent",   label:"Consent documented",       severity:"high",
+   check:t=>/consent|agreed|patient (was |)informed|discussed (risk|benefit|option)|verbal consent/i.test(t),
+   suggestion:"Add: 'Patient consented to [treatment]. Risks and benefits discussed and understood.'"},
+  {id:"la",        label:"LA details",               severity:"medium",
+   check:t=>/local anaes|articaine|lignocaine|lidocaine|no LA|topical|no adverse|LA administered/i.test(t),
+   suggestion:"If LA was used, document: type (e.g. Articaine), volume, any adverse reactions."},
+  {id:"bpe",       label:"BPE / soft tissue exam",   severity:"low",
+   check:t=>/BPE|soft tissue|periodon|NAD|within normal|gingival|mucosa/i.test(t),
+   suggestion:"Include BPE score and brief soft tissue / mucosal examination note."},
+  {id:"plan",      label:"Follow-up plan documented",severity:"high",
+   check:t=>/plan:|recall|review in|follow.up|next appointment|return in|monitor/i.test(t),
+   suggestion:"Add a clear follow-up plan or recall interval (e.g. 'Review in 6 months')."},
+  {id:"diagnosis", label:"Diagnosis / clinical finding stated",severity:"high",
+   check:t=>/diagnosis|caries|fracture|abscess|gingivitis|periodontitis|pulpitis|NAD|no pathology|within normal limits/i.test(t),
+   suggestion:"State a clinical diagnosis or 'No pathology detected / within normal limits'."},
+  {id:"xray",      label:"Radiograph justification", severity:"low",
+   check:t=>/IRMER|justif|radiograph (taken|indicated)|no radiograph required|x-ray/i.test(t),
+   suggestion:"If radiograph taken, add brief IRMER clinical justification. If not taken, no action needed."},
+];
+
+// Aftercare text bundles — extend existing communication templates
+const AI_AFTERCARE_TEMPLATES={
+  "Composite Restoration":"Your filling is now complete.\n\nYou may experience some sensitivity for a few days — this is normal and should settle. Avoid very hot or cold foods for 24 hours.\n\nIf your bite feels uneven, please contact us and we can adjust it at no charge. Maintain good oral hygiene — brush twice daily and floss regularly.\n\nIf you experience severe pain or swelling, please call us immediately.",
+  "Extraction":"Your tooth has been removed today.\n\nDo NOT rinse for 24 hours as this disturbs the healing clot. After 24 hours, gentle warm salt water rinses will help healing. Avoid smoking, alcohol, and strenuous exercise for 48 hours.\n\nTake recommended pain relief as directed. If bleeding restarts, bite on a clean folded cloth for 20 minutes. Severe swelling or increasing pain after 48 hours — contact us.",
+  "Root Canal Treatment":"Your root canal appointment is now complete.\n\nThe treated tooth may feel tender for a few days — ibuprofen or paracetamol can help. Please avoid chewing on this side until the permanent restoration is in place, as the tooth is temporarily sealed.\n\nA crown or permanent filling is needed to protect the tooth long-term. Please book your follow-up appointment soon.",
+  "Crown Preparation":"Your crown preparation is complete and a temporary crown has been placed.\n\nAvoid sticky or hard foods on the temporary crown. If it comes off, keep it safe and call us to re-cement — do not leave the prepared tooth exposed. Sensitivity is normal with a temporary crown.",
+  "Crown Fit":"Your new crown has been fitted today.\n\nThe area may feel slightly tender for a day or two. Avoid very sticky foods for 24 hours while the cement fully sets. If your bite feels significantly uneven after a week, please contact us.",
+  "Scale & Polish":"Your teeth and gums have been professionally cleaned. Your gums may feel tender or bleed slightly for a day or two — this is normal and means the cleaning is working.\n\nContinue brushing twice daily with fluoride toothpaste and clean between teeth daily. Your next hygiene appointment is recommended in [INTERVAL].",
+  "Hygiene Appointment":"Your teeth and gums have been professionally cleaned. Your gums may feel tender or bleed slightly for a day or two — this is normal and means the cleaning is working.\n\nContinue brushing twice daily with fluoride toothpaste and clean between teeth daily. Your next hygiene appointment is recommended in [INTERVAL].",
+  "Routine Examination":"Thank you for your check-up today. Your oral health has been reviewed and any findings have been discussed with you.\n\nPlease maintain good oral hygiene by brushing twice daily with fluoride toothpaste. Any recommended treatment has been noted in your treatment plan. Your next check-up is recommended in [INTERVAL].",
+  default:"Thank you for your appointment today.\n\nPlease continue with your normal oral hygiene routine. If you experience any concerns following today's treatment, please do not hesitate to contact us.\n\nWe look forward to seeing you at your next appointment.",
+};
+
 function AINoteAssistant({patient,user}){
 
-  // Stages: list | new | recording | generating | review | saved
-
+  // All state at top level — no conditional hooks
   const [stage,setStage]=useState("list");
-
   const [notes,setNotes]=useState([
-
     {id:"CN1",date:"Today · In Progress",by:"Dr. S. Patel",s:"draft",
-
-     body:"Patient presents for routine check-up. Complaint: mild cold sensitivity UR6 over 2 weeks.\n\nExamination: caries noted UR6 (occlusal). BPE Score 1. Soft tissue — NAD.\n\nTreatment: Composite restoration UR6. Polish completed.\n\nPlan: Review 6 months.",
-
-     aiGenerated:true,approvedBy:"Dr. S. Patel",apptType:"Routine Examination"},
-
-    {id:"CN2",date:"15 Jan 2026 · 09:30",by:"Dr. S. Patel",s:"locked",body:"",aiGenerated:false,apptType:"Crown Prep"},
-
-    {id:"CN3",date:"08 Jul 2025 · 14:00",by:"Dr. S. Patel",s:"locked",body:"",aiGenerated:false,apptType:"Scale & Polish"},
-
+     body:"Patient presents for routine check-up. Complaint: mild cold sensitivity UR6 over 2 weeks.\n\nExamination: caries noted UR6 (occlusal). BPE Score 1. Soft tissue — NAD.\n\nConsent: Patient consented to composite restoration UR6. Risks and benefits discussed.\nLA: Articaine 4% 1 cartridge administered. No adverse reaction.\n\nTreatment: Composite restoration UR6. Polish completed.\n\nPlan: Review 6 months.",
+     aiGenerated:true,approvedBy:"Dr. S. Patel",apptType:"Routine Examination",structure:"soap"},
+    {id:"CN2",date:"15 Jan 2026 · 09:30",by:"Dr. S. Patel",s:"locked",body:"Crown preparation UR6. Temporisation completed. Patient tolerating well.",aiGenerated:false,apptType:"Crown Preparation",structure:"treatment"},
+    {id:"CN3",date:"08 Jul 2025 · 14:00",by:"Dr. S. Patel",s:"locked",body:"Scale & polish. BPE 1|1|1|1|1|1. Oral hygiene instruction given. Recall 6 months.",aiGenerated:false,apptType:"Scale & Polish",structure:"hygiene"},
   ]);
-
   const [apptType,setApptType]=useState("");
-
+  const [noteStructure,setNoteStructure]=useState("soap");
   const [roughNotes,setRoughNotes]=useState("");
-
   const [isRecording,setIsRecording]=useState(false);
-
   const [recordSec,setRecordSec]=useState(0);
-
   const [aiDraft,setAiDraft]=useState("");
-
   const [editedDraft,setEditedDraft]=useState("");
-
   const [generating,setGenerating]=useState(false);
-
   const [toast,setToast]=useState(null);
-
   const [auditLog,setAuditLog]=useState([]);
-
   const [showAudit,setShowAudit]=useState(false);
-
+  const [completenessFlags,setCompletenessFlags]=useState([]);
+  const [dismissedFlags,setDismissedFlags]=useState(new Set());
+  const [patientSummary,setPatientSummary]=useState("");
+  const [summaryLoading,setSummaryLoading]=useState(false);
+  const [summaryGenerated,setSummaryGenerated]=useState(false);
+  const [aftercareText,setAftercareText]=useState("");
+  const [showAftercare,setShowAftercare]=useState(false);
+  const [ambientEnabled,setAmbientEnabled]=useState(false);
   const timerRef=useRef(null);
 
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
 
   const APPT_TYPES=[
-
     "Routine Examination","Emergency Appointment","Scale & Polish",
-
     "Composite Restoration","Crown Preparation","Crown Fit",
-
     "Root Canal Treatment","Extraction","Implant Consultation",
-
     "Denture Review","Orthodontic Review","Hygiene Appointment",
-
     "New Patient Examination","Post-Operative Review","Periodontal Assessment",
-
   ];
 
-  // Recording timer
-
   const startRecording=()=>{
-
     setIsRecording(true);setRecordSec(0);
-
     timerRef.current=setInterval(()=>setRecordSec(s=>s+1),1000);
-
   };
-
   const stopRecording=()=>{
-
     setIsRecording(false);clearInterval(timerRef.current);
-
-    // Simulate transcript added to rough notes
-
-    setRoughNotes(r=>r+(r?" ":"")+"[Voice]: Patient reports sensitivity upper right molar, worse with cold. No spontaneous pain. Examination — caries present UR6 occlusal surface. Periapical radiograph taken, no periapical pathology. Treatment discussed, patient consented to composite restoration. Local anaesthetic administered, restoration completed, occlusion checked and adjusted.");
-
+    setRoughNotes(r=>r+(r?" ":"")+"[Voice transcript]: Patient reports sensitivity upper right molar, worse with cold, no spontaneous pain. Examination — caries present UR6 occlusal surface, periapical radiograph taken, no periapical pathology. Treatment discussed, patient consented to composite restoration. LA Articaine 4% one cartridge, no adverse reaction. Composite restoration completed, occlusion checked and adjusted. OHI reinforced.");
   };
-
   const fmt=s=>`${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
 
-  // AI generation via Anthropic API
-
-  const generateNote=async()=>{
-
-    if(!apptType){doToast("Please select an appointment type first");return;}
-
-    if(!roughNotes.trim()){doToast("Please add some notes or record audio first");return;}
-
-    setGenerating(true);setStage("generating");
-
-    try{
-
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-
-        method:"POST",
-
-        headers:{"Content-Type":"application/json"},
-
-        body:JSON.stringify({
-
-          model:"claude-sonnet-4-20250514",
-
-          max_tokens:1000,
-
-          system:`You are a UK dental clinical notes assistant. Generate a structured, professional dental clinical note in standard UK dental format. Use SOAP structure where appropriate. Be concise, clinically accurate, and use correct UK dental terminology. Include: Chief complaint, Examination findings, Diagnosis, Treatment provided, Plan/Recall. Return only the note text with no preamble.`,
-
-          messages:[{role:"user",content:`Patient: ${patient.name}, DOB: ${patient.dob}\nAppointment type: ${apptType}\nDentist rough notes: ${roughNotes}\n\nGenerate a structured clinical note for this appointment.`}]
-
-        })
-
-      });
-
-      const data=await res.json();
-
-      const generated=data.content?.find(b=>b.type==="text")?.text||"Unable to generate note. Please type manually.";
-
-      setAiDraft(generated);setEditedDraft(generated);setStage("review");
-
-    }catch(e){
-
-      // Fallback demo note if API fails
-
-      const fallback=`${apptType.toUpperCase()} — ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}\n\nPatient: ${patient.name}\nDentist: ${user?.name||"Dr. S. Patel"}\n\nChief Complaint:\n${roughNotes.includes("sensitivity")?"Patient reports sensitivity, worse with cold stimuli.":"Patient presents as per appointment type."}\n\nExamination:\nIntra-oral examination performed. ${roughNotes.slice(0,120)}...\n\nDiagnosis:\nCaries noted. No periapical pathology evident on radiograph.\n\nTreatment Provided:\nLocal anaesthetic administered. Composite restoration completed. Occlusion checked.\n\nPlan:\nReview in 6 months. Patient advised on oral hygiene and dietary advice.\n\nBPE: 1 | Soft tissue: NAD`;
-
-      setAiDraft(fallback);setEditedDraft(fallback);setStage("review");
-
-    }
-
-    setGenerating(false);
-
+  const runCompletenessCheck=(text)=>{
+    const flags=AI_COMPLETENESS_RULES.filter(r=>!r.check(text));
+    setCompletenessFlags(flags);
+    setDismissedFlags(new Set());
+    return flags;
   };
 
-  // Approve and save
+  const buildFallbackNote=()=>{
+    const struct=AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure);
+    return `${apptType.toUpperCase()} — ${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}\nPatient: ${patient.name} | Clinician: ${user?.name||"Dr. S. Patel"}\n\n${struct?struct.template:"Rough notes: "+roughNotes.slice(0,300)}\n\nPlan: Review as clinically indicated.`;
+  };
+
+  const generateNote=async()=>{
+    if(!apptType){doToast("Select an appointment type first");return;}
+    if(!roughNotes.trim()){doToast("Add notes or record audio first");return;}
+    setGenerating(true);setStage("generating");
+    const structRef=AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({
+          model:"claude-opus-4-7",
+          max_tokens:1200,
+          system:`You are a UK dental clinical notes assistant. Generate a structured, professional dental clinical note. ${noteStructure==="soap"?"Use strict SOAP format (Subjective, Objective, Assessment, Plan).":""} Be concise, clinically precise, and use correct UK dental terminology. ALWAYS include: (1) consent documentation, (2) LA type and quantity if applicable, (3) BPE and soft tissue findings, (4) clear diagnosis, (5) follow-up plan. Return only the note text — no preamble or explanation.`,
+          messages:[{role:"user",content:`Patient: ${patient.name}, DOB: ${patient.dob||"on record"}\nAppointment type: ${apptType}\nNote structure: ${structRef?.l||noteStructure}\nClinician rough notes:\n${roughNotes}\n\nGenerate a complete, medico-legally sound clinical note.`}]
+        })
+      });
+      const data=await res.json();
+      const generated=data.content?.find(b=>b.type==="text")?.text||buildFallbackNote();
+      setAiDraft(generated);setEditedDraft(generated);
+      runCompletenessCheck(generated);
+    }catch(e){
+      const fallback=buildFallbackNote();
+      setAiDraft(fallback);setEditedDraft(fallback);
+      runCompletenessCheck(fallback);
+    }
+    setGenerating(false);setStage("review");
+  };
 
   const approveAndSave=()=>{
-
     const now=new Date();
-
     const dateStr=now.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})+" · "+now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-
-    const newNote={
-
-      id:"CN"+Date.now(),date:dateStr,by:user?.name||"Dr. S. Patel",
-
-      s:"draft",body:editedDraft,aiGenerated:true,
-
-      approvedBy:user?.name||"Dr. S. Patel",apptType,
-
-    };
-
+    const newNote={id:"CN"+Date.now(),date:dateStr,by:user?.name||"Dr. S. Patel",s:"draft",body:editedDraft,aiGenerated:true,approvedBy:user?.name||"Dr. S. Patel",apptType,structure:noteStructure};
     setNotes(p=>[newNote,...p]);
-
-    // Silent AI audit log — dentist never needs to manually save this
-
+    // Write to module-level patient audit timeline (reuses existing infrastructure)
+    PATIENT_AUDIT_LOG=[
+      {id:"PAL"+Date.now(),pid:patient.id||patient.pid,type:"ai_note",field:"clinical_note",
+       oldVal:"",newVal:editedDraft.slice(0,100)+"…",
+       by:user?.id||"U1",byName:user?.name||"Dr. S. Patel",
+       at:now.toLocaleString("en-GB"),date:now.toLocaleDateString("en-GB"),
+       action:"AI Clinical Note approved",
+       detail:`${apptType} · ${AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure)?.l||noteStructure} · ${aiDraft===editedDraft?"AI draft approved unchanged":"Clinician edited before approval"} · ${completenessFlags.length} flag${completenessFlags.length!==1?"s":""} checked`},
+      ...PATIENT_AUDIT_LOG
+    ];
+    // Increment AI productivity counter (extends existing AI_PRODUCTIVITY_STATS object)
+    if(AI_PRODUCTIVITY_STATS.notesGenerated)AI_PRODUCTIVITY_STATS.notesGenerated.v++;
+    // Local AI audit trail
     setAuditLog(p=>[...p,{
-
-      id:"AL"+Date.now(),at:now.toISOString(),
-
-      action:"AI_NOTE_APPROVED",patient:patient.id,
-
-      dentist:user?.name,apptType,
-
-      roughInput:roughNotes.slice(0,200),
-
-      aiOutput:aiDraft.slice(0,200),
-
-      editedOutput:editedDraft.slice(0,200),
-
-      identical:aiDraft===editedDraft,
-
-      model:"claude-sonnet-4-20250514",
-
+      id:"AL"+Date.now(),at:now.toISOString(),action:"AI_NOTE_APPROVED",
+      patient:patient.id,dentist:user?.name,apptType,structure:noteStructure,
+      roughInput:roughNotes.slice(0,200),aiOutput:aiDraft.slice(0,200),
+      editedOutput:editedDraft.slice(0,200),identical:aiDraft===editedDraft,
+      flagsDetected:completenessFlags.length,flagsDismissed:dismissedFlags.size,
+      model:"claude-opus-4-7",
     }]);
+    setAftercareText(AI_AFTERCARE_TEMPLATES[apptType]||AI_AFTERCARE_TEMPLATES.default);
+    doToast("✓ Clinical note saved · Generating post-visit materials…");
+    setStage("postclinical");
+  };
 
-    doToast("✓ Clinical note saved to patient record");
-
-    setStage("list");setRoughNotes("");setApptType("");setAiDraft("");setEditedDraft("");setRecordSec(0);
-
+  const generatePatientSummary=async()=>{
+    setSummaryLoading(true);
+    const fallbackParts=editedDraft.toLowerCase();
+    const fallback=`Dear ${patient.name},\n\nThank you for attending your ${apptType.toLowerCase()} appointment with us today. This is a brief summary of what took place.\n\n${fallbackParts.includes("composite")||fallbackParts.includes("filling")?"We completed a tooth restoration. The treated area may be mildly sensitive for a few days — this is normal and will settle.":fallbackParts.includes("extraction")?"We removed the tooth as discussed. Please follow the post-operative care instructions we provided.":fallbackParts.includes("hygiene")||fallbackParts.includes("scale")?"Your teeth and gums have been professionally cleaned. Your gums may feel tender briefly — this is normal.":"Your appointment has been completed and your clinical records updated."}\n\nIf you have any questions or concerns following today's visit, please do not hesitate to contact us. We look forward to seeing you at your next appointment.\n\nKind regards,\n${user?.name||"Your Dental Team"}\nRiverside Dentistry`;
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({
+          model:"claude-opus-4-7",
+          max_tokens:500,
+          system:"You are a UK dental practice patient communications assistant. Convert a clinical dental note into a clear, warm patient summary letter. Use simple, reassuring language — no jargon. 3-4 short paragraphs. Start 'Dear [name],' end with 'Kind regards, [dentist] / Riverside Dentistry'. Do not invent clinical details.",
+          messages:[{role:"user",content:`Patient: ${patient.name}\nAppointment: ${apptType}\nDentist: ${user?.name||"Dr. S. Patel"}\n\nClinical note:\n${editedDraft}\n\nGenerate patient summary letter.`}]
+        })
+      });
+      const data=await res.json();
+      setPatientSummary(data.content?.find(b=>b.type==="text")?.text||fallback);
+    }catch(e){setPatientSummary(fallback);}
+    setSummaryLoading(false);setSummaryGenerated(true);
   };
 
   const finaliseNote=(id)=>setNotes(p=>p.map(n=>n.id===id?{...n,s:"locked"}:n));
-
   const deleteNote=(id)=>setNotes(p=>p.filter(n=>n.id!==id));
 
-  // ── STAGE: LIST ──
+  const resetWorkflow=()=>{
+    setStage("list");setRoughNotes("");setApptType("");setAiDraft("");
+    setEditedDraft("");setRecordSec(0);setCompletenessFlags([]);
+    setDismissedFlags(new Set());setPatientSummary("");
+    setSummaryGenerated(false);setAftercareText("");setNoteStructure("soap");
+    setShowAftercare(false);
+  };
 
-  if(stage==="list")return(
+  const STEPPER_LABELS=["Context","Type & Notes","Review","Done"];
 
+  // ── STAGE: LIST ──────────────────────────────────────────────────────
+  if(stage==="list") return(
     <div style={{padding:18}}>
-
-      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",borderRadius:14,fontSize:12,fontWeight:700,zIndex:600,boxShadow:"0 4px 20px rgba(0,0,0,.2)",display:"flex",gap:7,alignItems:"center"}}><Check size={13}/>{toast}</div>}
-
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",borderRadius:14,fontSize:12,fontWeight:700,zIndex:600,display:"flex",gap:7,alignItems:"center"}}><Check size={13}/>{toast}</div>}
       {/* Header */}
-
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-
         <div>
-
           <div style={{fontSize:14,fontWeight:800}}>Clinical Notes</div>
-
-          <div style={{fontSize:11,color:"#CBD5E1"}}>{notes.length} note{notes.length!==1?"s":""} · {notes.filter(n=>n.s==="draft").length} draft</div>
-
+          <div style={{fontSize:11,color:"#CBD5E1"}}>{notes.length} note{notes.length!==1?"s":""} · {notes.filter(n=>n.s==="draft").length} draft · {notes.filter(n=>n.aiGenerated).length} AI-assisted</div>
         </div>
-
-        <div style={{display:"flex",gap:7}}>
-
-          <button onClick={()=>setStage("new")} style={{padding:"8px 16px",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}>
-
-            <Sparkles size={13}/>AI Note Assistant
-
-          </button>
-
-        </div>
-
+        <button onClick={()=>setStage("preappt")} style={{padding:"8px 16px",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}>
+          <Sparkles size={13}/>AI Clinical Workflow
+        </button>
       </div>
-
       {/* Notes list */}
-
-      {notes.map((n,i)=>{
-
-        const sc={draft:{bg:"rgba(99,102,241,0.08)",b:C.amber,l:"DRAFT",Icon:PenLine},locked:{bg:"#132238",b:"#64748b",l:"LOCKED",Icon:Lock}}[n.s];
-
+      {notes.map(n=>{
+        const sc={draft:{bg:"rgba(99,102,241,0.08)",b:C.amber,l:"DRAFT",Icon:PenLine},locked:{bg:"#132238",b:"#64748b",l:"LOCKED",Icon:Lock}}[n.s]||{bg:"rgba(99,102,241,0.08)",b:C.amber,l:"DRAFT",Icon:PenLine};
         return(
-
-          <div key={n.id} style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(80,140,255,0.1)",borderLeft:`4px solid ${sc.b}`,borderRadius:11,padding:"12px 14px",marginBottom:10}}>
-
+          <div key={n.id} style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35)",borderLeft:`4px solid ${sc.b}`,borderRadius:11,padding:"12px 14px",marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-
                 <sc.Icon size={11} color={sc.b}/>
-
                 <Chip color={sc.b}>{sc.l}</Chip>
-
                 <span style={{fontSize:12,fontWeight:600}}>{n.date}</span>
-
                 {n.aiGenerated&&<span style={{fontSize:9,padding:"1px 7px",borderRadius:5,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",fontWeight:700}}>✦ AI</span>}
-
+                {n.structure&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(80,140,255,0.12)",color:"#94A3B8",textTransform:"uppercase"}}>{n.structure}</span>}
                 <span style={{fontSize:10,color:"#CBD5E1"}}>{n.apptType}</span>
-
               </div>
-
               <div style={{display:"flex",gap:5,alignItems:"center"}}>
-
                 <span style={{fontSize:11,color:"#CBD5E1"}}>{n.by}</span>
-
-                {n.s==="draft"&&<button onClick={()=>finaliseNote(n.id)} style={{padding:"3px 9px",border:"none",borderRadius:8,background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",cursor:"pointer",fontSize:10,fontWeight:700}}>Finalise</button>}
-
-                {n.s==="draft"&&<button onClick={()=>deleteNote(n.id)} style={{padding:"3px 7px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:8,background:"#132238",cursor:"pointer",fontSize:10,color:"#CBD5E1"}}>✕</button>}
-
+                {n.s==="draft"&&<button onClick={()=>finaliseNote(n.id)} style={{padding:"3px 9px",border:"none",borderRadius:8,background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",cursor:"pointer",fontSize:10,fontWeight:700}}>Finalise</button>}
+                {n.s==="draft"&&<button onClick={()=>deleteNote(n.id)} style={{padding:"3px 7px",border:"1.5px solid rgba(59,130,246,0.35)",borderRadius:8,background:"#132238",cursor:"pointer",fontSize:10,color:"#CBD5E1"}}>✕</button>}
               </div>
-
             </div>
-
             {n.body?<div style={{fontSize:12,color:C.text,lineHeight:1.7,whiteSpace:"pre-wrap",background:"#0F1C34",borderRadius:7,padding:"8px 10px",maxHeight:120,overflow:"hidden"}}>{n.body.slice(0,280)}{n.body.length>280?"…":""}</div>
-
               :<div style={{fontSize:11,color:"#CBD5E1",fontStyle:"italic"}}>Note content — click to view</div>}
-
-            {n.s==="draft"&&<div style={{fontSize:10,color:"#F59E0B",marginTop:5}}>⏱ Draft — not yet part of the official record</div>}
-
-            {n.s==="locked"&&<div style={{fontSize:10,color:"#CBD5E1",marginTop:5}}>🔒 Locked 24h after finalisation · Approved by {n.approvedBy||n.by}</div>}
-
+            {n.s==="draft"&&<div style={{fontSize:10,color:"#F59E0B",marginTop:5}}>⏱ Draft — must be finalised within 24 hours · Not yet part of the official record</div>}
+            {n.s==="locked"&&<div style={{fontSize:10,color:"#CBD5E1",marginTop:5}}>🔒 Locked · Approved by {n.approvedBy||n.by}</div>}
           </div>
-
         );
-
       })}
-
-      {/* Hidden audit log — manager/admin only, small link */}
-
-      <div style={{marginTop:16,textAlign:"right"}}>
-
-        <button onClick={()=>setShowAudit(v=>!v)} style={{fontSize:10,color:"#CBD5E1",background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>
-
-          {showAudit?"Hide":"View"} AI audit log ({auditLog.length})
-
-        </button>
-
-        {showAudit&&auditLog.length>0&&<div style={{marginTop:8,background:"#0F1C34",borderRadius:9,padding:"10px 12px",textAlign:"left"}}>
-
-          {auditLog.map(a=>(
-
-            <div key={a.id} style={{fontSize:10,color:"#CBD5E1",marginBottom:6,paddingBottom:6,borderBottom:"1px solid rgba(56,189,248,0.12)"}}>
-
-              <div style={{fontWeight:700,color:"#CBD5E1"}}>{a.action} · {new Date(a.at).toLocaleString("en-GB")}</div>
-
-              <div>Patient: {a.patient} · Dentist: {a.dentist} · Type: {a.apptType}</div>
-
-              <div style={{color:a.identical?"#64748b":"#2563FF"}}>{a.identical?"Note approved unchanged from AI draft":"Note was edited before approval"}</div>
-
-            </div>
-
-          ))}
-
-        </div>}
-
-      </div>
-
-    </div>
-
-  );
-
-  // ── STAGE: NEW — select appointment type & enter notes ──
-
-  if(stage==="new")return(
-
-    <div style={{padding:18}}>
-
-      {/* Progress stepper */}
-
-      <div style={{display:"flex",gap:0,marginBottom:20,background:"#0F1C34",borderRadius:14,padding:4}}>
-
-        {["Type","Notes","Review","Done"].map((s,i)=>(
-
-          <div key={s} style={{flex:1,textAlign:"center",padding:"6px",borderRadius:12,background:i===0?"#132238":"transparent",boxShadow:i===0?"0 1px 4px rgba(0,0,0,.08)":"none"}}>
-
-            <div style={{fontSize:9,fontWeight:700,color:i===0?"#2563FF":"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>{s}</div>
-
-          </div>
-
-        ))}
-
-      </div>
-
-      <div style={{fontSize:14,fontWeight:800,marginBottom:4}}>1 — Select Appointment Type</div>
-
-      <div style={{fontSize:11,color:"#CBD5E1",marginBottom:14}}>This helps the AI generate a correctly structured note</div>
-
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>
-
-        {APPT_TYPES.map(t=>(
-
-          <button key={t} onClick={()=>setApptType(t)}
-
-            style={{padding:"7px 13px",borderRadius:12,border:`1.5px solid ${apptType===t?"#2563FF":"rgba(80,140,255,0.2)"}`,background:apptType===t?"#2563FF":"#132238",color:apptType===t?"#132238":"#94A3B8",cursor:"pointer",fontSize:11,fontWeight:apptType===t?700:400,transition:"all .1s"}}>
-
-            {t}
-
-          </button>
-
-        ))}
-
-      </div>
-
-      <div style={{fontSize:14,fontWeight:800,marginBottom:4}}>2 — Add Rough Notes</div>
-
-      <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>Type notes, dictate, or record — the AI will structure them into a proper clinical note</div>
-
-      {/* Voice recording */}
-
-      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
-
-        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-
-          <button onClick={isRecording?stopRecording:startRecording}
-
-            style={{padding:"8px 16px",background:isRecording?"#dc2626":"#132238",color:isRecording?"#132238":"#94A3B8",border:`1.5px solid ${isRecording?"#dc2626":"rgba(80,140,255,0.2)"}`,borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}>
-
-            <Mic size={13} style={{animation:isRecording?"waitPulse 1s infinite":"none"}}/>{isRecording?"Stop Recording":"🎙 Record Voice"}
-
-          </button>
-
-          {isRecording&&<span style={{fontSize:12,fontFamily:"ui-monospace,monospace",color:"#EF4444",fontWeight:700}}>{fmt(recordSec)}</span>}
-
-          {!isRecording&&recordSec>0&&<span style={{fontSize:11,color:"#38BDF8",fontWeight:600}}>✓ {fmt(recordSec)} recorded</span>}
-
-        </div>
-
-        <textarea value={roughNotes} onChange={e=>setRoughNotes(e.target.value)}
-
-          placeholder="Or type rough notes here… e.g. 'patient has cold sensitivity UR6, caries occlusal surface, composite done, BPE 1'"
-
-          rows={5} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,fontSize:12,fontFamily:"inherit",outline:"none",resize:"vertical",lineHeight:1.7,boxSizing:"border-box"}}/>
-
-        <div style={{fontSize:10,color:"#CBD5E1",marginTop:4}}>Rough notes are only used to generate the AI draft — they are not saved to the patient record</div>
-
-      </div>
-
-      <div style={{display:"flex",gap:8}}>
-
-        <button onClick={()=>setStage("list")} style={{padding:"9px 16px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>← Back</button>
-
-        <button onClick={generateNote} disabled={!apptType||!roughNotes.trim()}
-
-          style={{flex:1,padding:"10px",background:(!apptType||!roughNotes.trim())?"rgba(80,140,255,0.2)":"linear-gradient(135deg,#006DFF,#8B5CF6)",color:(!apptType||!roughNotes.trim())?"#94A3B8":"#132238",border:"none",borderRadius:9,cursor:(!apptType||!roughNotes.trim())?"not-allowed":"pointer",fontSize:13,fontWeight:800,letterSpacing:"-.01em",display:"flex",gap:7,alignItems:"center",justifyContent:"center"}}>
-
-          <Sparkles size={14}/>Generate Clinical Note with AI
-
-        </button>
-
-      </div>
-
-    </div>
-
-  );
-
-  // ── STAGE: GENERATING ──
-
-  if(stage==="generating")return(
-
-    <div style={{padding:40,display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
-
-      <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-
-        <Sparkles size={24} color="#132238" style={{}}/>
-
-      </div>
-
-      <div style={{fontSize:14,fontWeight:700,color:"#2563FF"}}>Generating Clinical Note…</div>
-
-      <div style={{fontSize:11,color:"#CBD5E1",textAlign:"center",maxWidth:300}}>AI is structuring your notes into a professional clinical record for {patient.name}</div>
-
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes waitPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}`}</style>
-
-    </div>
-
-  );
-
-  // ── STAGE: REVIEW — edit and approve ──
-
-  if(stage==="review")return(
-
-    <div style={{padding:18}}>
-
-      {/* Stepper */}
-
-      <div style={{display:"flex",gap:0,marginBottom:20,background:"#0F1C34",borderRadius:14,padding:4}}>
-
-        {["Type","Notes","Review","Done"].map((s,i)=>(
-
-          <div key={s} style={{flex:1,textAlign:"center",padding:"6px",borderRadius:12,background:i===2?"#132238":"transparent",boxShadow:i===2?"0 1px 4px rgba(0,0,0,.08)":"none"}}>
-
-            <div style={{fontSize:9,fontWeight:700,color:i<=2?"#2563FF":"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>{s}</div>
-
-          </div>
-
-        ))}
-
-      </div>
-
-      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:4}}>
-
-        <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-
-          <Sparkles size={14} color="#132238"/>
-
-        </div>
-
+      {/* Ambient Intelligence — future-ready feature flag */}
+      <div style={{marginTop:14,padding:"10px 14px",background:"#0F1C34",borderRadius:12,border:"1px solid rgba(80,140,255,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-
-          <div style={{fontSize:13,fontWeight:800}}>3 — Review & Edit AI Draft</div>
-
-          <div style={{fontSize:10,color:"#CBD5E1"}}>{apptType} · {patient.name} · Clinician must approve before saving</div>
-
+          <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",display:"flex",gap:6,alignItems:"center"}}><Mic size={11} color="#8B5CF6"/>Ambient Clinical Intelligence</div>
+          <div style={{fontSize:9,color:"#64748b",marginTop:2}}>Passive consultation transcription · Always-on structured notes · Coming soon</div>
         </div>
-
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:9,color:"#64748b",padding:"2px 8px",borderRadius:20,background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#A78BFA",fontWeight:700}}>BETA</span>
+          <div onClick={()=>doToast("Ambient mode — launching in next release")} style={{width:36,height:20,borderRadius:10,background:ambientEnabled?"#8B5CF6":"rgba(80,140,255,0.18)",cursor:"pointer",position:"relative",transition:"background .2s"}}>
+            <div style={{position:"absolute",top:3,left:ambientEnabled?18:3,width:14,height:14,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+          </div>
+        </div>
       </div>
-
-      {/* Diff indicator */}
-
-      {editedDraft!==aiDraft&&<div style={{padding:"6px 12px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,marginBottom:10,fontSize:10,color:C.green,fontWeight:600,display:"flex",gap:5,alignItems:"center"}}>
-
-        <PenLine size={11}/>You have edited the AI draft — your changes are highlighted
-
-      </div>}
-
-      {editedDraft===aiDraft&&<div style={{padding:"6px 12px",background:"#132238",border:"1px solid #bae6fd",borderRadius:7,marginBottom:10,fontSize:10,color:"#0369a1"}}>
-
-        AI draft unchanged — edit as needed before approving
-
-      </div>}
-
-      <textarea value={editedDraft} onChange={e=>setEditedDraft(e.target.value)}
-
-        rows={16} style={{width:"100%",padding:"12px 14px",border:"1.5px solid #0d9488",borderRadius:14,fontSize:12,fontFamily:"'Courier New',monospace",outline:"none",resize:"vertical",lineHeight:1.8,boxSizing:"border-box",color:"#F8FAFC",background:"#132238"}}/>
-
-      <div style={{fontSize:10,color:"#CBD5E1",marginBottom:12}}>
-
-        ✦ AI generated · Clinician must review and approve · Raw notes are not saved · Approval creates an automatic audit entry
-
-      </div>
-
-      <div style={{display:"flex",gap:8}}>
-
-        <button onClick={()=>setStage("new")} style={{padding:"9px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>← Edit Notes</button>
-
-        <button onClick={()=>{setEditedDraft(aiDraft);}} style={{padding:"9px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>↺ Reset to AI</button>
-
-        <button onClick={approveAndSave}
-
-          style={{flex:1,padding:"10px",background:"linear-gradient(135deg,#22C55E,#006DFF)",color:"#132238",border:"none",borderRadius:9,cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",gap:7,alignItems:"center",justifyContent:"center",boxShadow:"0 4px 14px rgba(0,109,255,0.3)"}}>
-
-          <Check size={15}/>Approve & Save to Clinical Notes
-
+      {/* AI audit log */}
+      <div style={{marginTop:14,textAlign:"right"}}>
+        <button onClick={()=>setShowAudit(v=>!v)} style={{fontSize:10,color:"#CBD5E1",background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>
+          {showAudit?"Hide":"View"} AI audit log ({auditLog.length})
         </button>
-
+        {showAudit&&auditLog.length>0&&(
+          <div style={{marginTop:8,background:"#0F1C34",borderRadius:9,padding:"10px 12px",textAlign:"left"}}>
+            {auditLog.map(a=>(
+              <div key={a.id} style={{fontSize:10,color:"#CBD5E1",marginBottom:6,paddingBottom:6,borderBottom:"1px solid rgba(56,189,248,0.12)"}}>
+                <div style={{fontWeight:700,color:"#F8FAFC"}}>{a.action} · {new Date(a.at).toLocaleString("en-GB")}</div>
+                <div>{a.dentist} · {a.apptType} · {a.structure?.toUpperCase()} structure</div>
+                <div style={{color:a.identical?"#64748b":"#38BDF8"}}>{a.identical?"AI draft approved unchanged":"Clinician edited before approval"}</div>
+                {a.flagsDetected>0&&<div style={{color:"#F59E0B"}}>{a.flagsDetected} completeness check{a.flagsDetected!==1?"s":""} · {a.flagsDismissed} dismissed by clinician</div>}
+              </div>
+            ))}
+          </div>
+        )}
+        {showAudit&&auditLog.length===0&&<div style={{marginTop:6,fontSize:10,color:"#64748b"}}>No AI sessions recorded in this view yet</div>}
       </div>
-
     </div>
+  );
 
+  // ── STAGE: PRE-APPOINTMENT CONTEXT ──────────────────────────────────
+  if(stage==="preappt") return(
+    <div style={{padding:18}}>
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",borderRadius:14,fontSize:12,fontWeight:700,zIndex:600,display:"flex",gap:7,alignItems:"center"}}><Check size={13}/>{toast}</div>}
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:16}}>
+        <button onClick={()=>setStage("list")} style={{background:"none",border:"none",cursor:"pointer",color:"#CBD5E1",fontSize:11,padding:0}}>← Back</button>
+        <div>
+          <div style={{fontSize:14,fontWeight:800}}>Pre-Appointment Context</div>
+          <div style={{fontSize:11,color:"#CBD5E1"}}>AI review of {patient.name}'s history before you start</div>
+        </div>
+      </div>
+      {/* Medical alerts */}
+      <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.red,marginBottom:8,display:"flex",gap:6,alignItems:"center"}}>
+          <AlertTriangle size={12} color={C.red}/>Medical Alerts — Verify before treatment
+        </div>
+        {ACTIVE_MED_HX_QUESTIONS.filter(q=>q.alertLabel&&q.enabled!==false).slice(0,6).map(q=>(
+          <div key={q.id} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"3px 0",borderBottom:"1px solid rgba(239,68,68,0.06)"}}>
+            <span style={{fontSize:9,fontWeight:800,color:"#FCA5A5",minWidth:82,flexShrink:0,background:"rgba(239,68,68,0.08)",padding:"1px 5px",borderRadius:4,marginTop:1}}>{q.alertLabel}</span>
+            <span style={{fontSize:10,color:"#CBD5E1"}}>{q.label}</span>
+          </div>
+        ))}
+        <div style={{fontSize:9,color:"#64748b",marginTop:6}}>Always verify current medical history and allergy status before proceeding with treatment</div>
+      </div>
+      {/* Previous notes */}
+      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#38BDF8",marginBottom:8}}>📋 Previous Clinical Notes</div>
+        {notes.filter(n=>n.body).slice(0,2).map(n=>(
+          <div key={n.id} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid rgba(56,189,248,0.07)"}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
+              <span style={{fontSize:10,fontWeight:700,color:"#F8FAFC"}}>{n.apptType}</span>
+              <span style={{fontSize:9,color:"#64748b"}}>{n.date}</span>
+              {n.aiGenerated&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"rgba(139,92,246,0.15)",color:"#A78BFA",fontWeight:700}}>✦ AI</span>}
+            </div>
+            <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.5}}>{n.body.slice(0,180)}{n.body.length>180?"…":""}</div>
+          </div>
+        ))}
+        {!notes.filter(n=>n.body).length&&<div style={{fontSize:11,color:"#64748b",fontStyle:"italic"}}>No previous note content available</div>}
+      </div>
+      {/* Outstanding treatment */}
+      <div style={{background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.15)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#F59E0B",marginBottom:7}}>⚠ Outstanding Treatment Items</div>
+        {[{l:"Composite restoration UR6",n:"Identified at last check-up"},{l:"Recall overdue",n:"6+ months since last full examination"}].map((item,i)=>(
+          <div key={i} style={{fontSize:11,color:"#F8FAFC",marginBottom:4}}>• {item.l} <span style={{color:"#94A3B8",fontSize:10}}>— {item.n}</span></div>
+        ))}
+      </div>
+      {/* CQC reminder */}
+      <div style={{padding:"8px 12px",background:"rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.12)",borderRadius:9,marginBottom:16,fontSize:10,color:"#94A3B8",lineHeight:1.5}}>
+        📋 <strong style={{color:"#CBD5E1"}}>CQC / Medico-legal:</strong> Notes must be finalised within 24 hours of treatment. AI drafts require clinician review and approval before saving — raw dictation is never stored.
+      </div>
+      <button onClick={()=>setStage("new")} style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",gap:8,alignItems:"center",justifyContent:"center"}}>
+        <Sparkles size={14}/>Start AI Clinical Note →
+      </button>
+    </div>
+  );
+
+  // ── STAGE: NEW ───────────────────────────────────────────────────────
+  if(stage==="new") return(
+    <div style={{padding:18}}>
+      {/* Stepper */}
+      <div style={{display:"flex",gap:0,marginBottom:18,background:"#0F1C34",borderRadius:14,padding:4}}>
+        {STEPPER_LABELS.map((s,i)=>(
+          <div key={s} style={{flex:1,textAlign:"center",padding:"6px",borderRadius:12,background:i===1?"#132238":"transparent"}}>
+            <div style={{fontSize:9,fontWeight:700,color:i<=1?"#2563FF":"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>{i===0?"✓ "+s:s}</div>
+          </div>
+        ))}
+      </div>
+      {/* Note structure */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>1 — Note Structure</div>
+        <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>Choose how the AI should structure the note</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
+          {AI_NOTE_STRUCTURES.map(s=>(
+            <button key={s.id} onClick={()=>setNoteStructure(s.id)}
+              style={{padding:"8px 10px",borderRadius:10,border:`1.5px solid ${noteStructure===s.id?"#2563FF":"rgba(80,140,255,0.2)"}`,background:noteStructure===s.id?"rgba(37,99,255,0.1)":"#0F1C34",cursor:"pointer",textAlign:"left",transition:"all .1s"}}>
+              <div style={{fontSize:11,fontWeight:700,color:noteStructure===s.id?"#60A5FA":"#F8FAFC"}}>{s.l}</div>
+              <div style={{fontSize:9,color:"#64748b",marginTop:2}}>{s.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Appointment type */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>2 — Appointment Type</div>
+        <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>Guides the AI to use the correct clinical format</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {APPT_TYPES.map(t=>(
+            <button key={t} onClick={()=>setApptType(t)}
+              style={{padding:"6px 12px",borderRadius:12,border:`1.5px solid ${apptType===t?"#2563FF":"rgba(80,140,255,0.2)"}`,background:apptType===t?"#2563FF":"#132238",color:apptType===t?"#132238":"#94A3B8",cursor:"pointer",fontSize:11,fontWeight:apptType===t?700:400,transition:"all .1s"}}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Voice + notes */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>3 — Add Notes</div>
+        <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>Dictate, type, or record — the AI structures it into a professional clinical note</div>
+        <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:14,padding:"12px 14px"}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+            <button onClick={isRecording?stopRecording:startRecording}
+              style={{padding:"8px 16px",background:isRecording?"#dc2626":"#132238",color:isRecording?"#fff":"#94A3B8",border:`1.5px solid ${isRecording?"#dc2626":"rgba(80,140,255,0.2)"}`,borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}>
+              <Mic size={13}/>{isRecording?"⬛ Stop":"🎙 Record Voice"}
+            </button>
+            {isRecording&&<span style={{fontSize:12,fontFamily:"ui-monospace,monospace",color:"#EF4444",fontWeight:700}}>{fmt(recordSec)}</span>}
+            {!isRecording&&recordSec>0&&<span style={{fontSize:11,color:"#38BDF8",fontWeight:600}}>✓ {fmt(recordSec)} recorded</span>}
+            <button onClick={()=>setRoughNotes(r=>r+(r?"\n\n":"")+(AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure)?.template||""))}
+              style={{padding:"6px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:10,color:"#CBD5E1",marginLeft:"auto"}}>
+              📋 Insert Template
+            </button>
+          </div>
+          <textarea value={roughNotes} onChange={e=>setRoughNotes(e.target.value)}
+            placeholder={`Type rough notes or fill in the template above… e.g. 'patient cold sensitivity UR6, caries occlusal, composite done, consented, LA Articaine 1 cart, BPE 1, OHI given'`}
+            rows={6} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,fontSize:12,fontFamily:"inherit",outline:"none",resize:"vertical",lineHeight:1.7,boxSizing:"border-box",background:"#071428",color:"#F8FAFC"}}/>
+          <div style={{fontSize:9,color:"#64748b",marginTop:4}}>Rough notes are NOT saved — only the AI-structured draft (after your approval) is added to the patient record</div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setStage("preappt")} style={{padding:"9px 16px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>← Back</button>
+        <button onClick={generateNote} disabled={!apptType||!roughNotes.trim()}
+          style={{flex:1,padding:"10px",background:(!apptType||!roughNotes.trim())?"rgba(80,140,255,0.2)":"linear-gradient(135deg,#006DFF,#8B5CF6)",color:(!apptType||!roughNotes.trim())?"#94A3B8":"#132238",border:"none",borderRadius:9,cursor:(!apptType||!roughNotes.trim())?"not-allowed":"pointer",fontSize:13,fontWeight:800,display:"flex",gap:7,alignItems:"center",justifyContent:"center"}}>
+          <Sparkles size={14}/>Generate Clinical Note with AI
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── STAGE: GENERATING ────────────────────────────────────────────────
+  if(stage==="generating") return(
+    <div style={{padding:40,display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
+      <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Sparkles size={24} color="#132238"/>
+      </div>
+      <div style={{fontSize:14,fontWeight:700,color:"#2563FF"}}>Generating Clinical Note…</div>
+      <div style={{fontSize:11,color:"#CBD5E1",textAlign:"center",maxWidth:320,lineHeight:1.6}}>
+        Structuring into a professional <strong>{AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure)?.l||noteStructure}</strong> note for {patient.name}<br/>
+        <span style={{fontSize:10,color:"#64748b",marginTop:4,display:"block"}}>Completeness check will run automatically on completion</span>
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes waitPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}`}</style>
+    </div>
+  );
+
+  // ── STAGE: REVIEW ────────────────────────────────────────────────────
+  if(stage==="review") return(
+    <div style={{padding:18}}>
+      {/* Stepper */}
+      <div style={{display:"flex",gap:0,marginBottom:16,background:"#0F1C34",borderRadius:14,padding:4}}>
+        {STEPPER_LABELS.map((s,i)=>(
+          <div key={s} style={{flex:1,textAlign:"center",padding:"6px",borderRadius:12,background:i===2?"#132238":"transparent"}}>
+            <div style={{fontSize:9,fontWeight:700,color:i<=2?"#2563FF":"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>{i<2?"✓ "+s:s}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+        <div style={{width:28,height:28,borderRadius:7,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <Sparkles size={14} color="#132238"/>
+        </div>
+        <div>
+          <div style={{fontSize:13,fontWeight:800}}>Review AI Draft — {AI_NOTE_STRUCTURES.find(s=>s.id===noteStructure)?.l} structure</div>
+          <div style={{fontSize:10,color:"#CBD5E1"}}>{apptType} · {patient.name} · Clinician approval required before saving</div>
+        </div>
+      </div>
+      {/* Completeness flags */}
+      {completenessFlags.filter(f=>!dismissedFlags.has(f.id)).map(f=>(
+        <div key={f.id} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 10px",background:f.severity==="high"?"rgba(239,68,68,0.06)":f.severity==="medium"?"rgba(245,158,11,0.06)":"rgba(80,140,255,0.05)",border:`1px solid ${f.severity==="high"?"rgba(239,68,68,0.2)":f.severity==="medium"?"rgba(245,158,11,0.2)":"rgba(80,140,255,0.14)"}`,borderRadius:8,marginBottom:6}}>
+          <span style={{fontSize:12,flexShrink:0}}>{f.severity==="high"?"🔴":f.severity==="medium"?"🟡":"🔵"}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:11,fontWeight:700,color:f.severity==="high"?C.red:f.severity==="medium"?"#F59E0B":"#60A5FA"}}>{f.label}</div>
+            <div style={{fontSize:10,color:"#CBD5E1",marginTop:2}}>{f.suggestion}</div>
+          </div>
+          <button onClick={()=>setDismissedFlags(p=>new Set([...p,f.id]))} style={{fontSize:9,color:"#64748b",background:"none",border:"none",cursor:"pointer",padding:"2px 6px",borderRadius:4,whiteSpace:"nowrap"}}>Dismiss</button>
+        </div>
+      ))}
+      {completenessFlags.length>0&&completenessFlags.every(f=>dismissedFlags.has(f.id))&&(
+        <div style={{padding:"6px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:7,marginBottom:8,fontSize:10,color:C.green,fontWeight:600}}>✓ All completeness flags reviewed by clinician</div>
+      )}
+      {completenessFlags.length===0&&(
+        <div style={{padding:"6px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:7,marginBottom:8,fontSize:10,color:C.green,fontWeight:600}}>✓ Note passes all AI completeness checks</div>
+      )}
+      {/* Diff indicator */}
+      {editedDraft!==aiDraft&&<div style={{padding:"6px 12px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,marginBottom:8,fontSize:10,color:"#38BDF8",fontWeight:600,display:"flex",gap:5,alignItems:"center"}}>
+        <PenLine size={11}/>You have edited the AI draft — your changes are tracked in the audit log
+      </div>}
+      {editedDraft===aiDraft&&<div style={{padding:"6px 12px",background:"#132238",border:"1px solid rgba(56,189,248,0.2)",borderRadius:7,marginBottom:8,fontSize:10,color:"#94A3B8"}}>
+        Showing unmodified AI draft — edit freely before approving
+      </div>}
+      <textarea value={editedDraft} onChange={e=>setEditedDraft(e.target.value)}
+        rows={15} style={{width:"100%",padding:"12px 14px",border:"1.5px solid #0d9488",borderRadius:14,fontSize:12,fontFamily:"'Courier New',monospace",outline:"none",resize:"vertical",lineHeight:1.8,boxSizing:"border-box",color:"#F8FAFC",background:"#132238"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontSize:10,color:"#64748b"}}>✦ AI generated · Raw notes not saved · Approval creates immutable audit entry</div>
+        <div style={{fontSize:10,color:"#94A3B8",fontFamily:"ui-monospace,monospace"}}>{editedDraft.split(/\s+/).filter(Boolean).length} words</div>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setStage("new")} style={{padding:"9px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>← Edit Notes</button>
+        <button onClick={()=>setEditedDraft(aiDraft)} style={{padding:"9px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>↺ Reset AI</button>
+        <button onClick={approveAndSave}
+          style={{flex:1,padding:"10px",background:"linear-gradient(135deg,#22C55E,#006DFF)",color:"#132238",border:"none",borderRadius:9,cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",gap:7,alignItems:"center",justifyContent:"center",boxShadow:"0 4px 14px rgba(0,109,255,0.3)"}}>
+          <Check size={15}/>Approve & Save to Clinical Notes
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── STAGE: POST-CLINICAL ─────────────────────────────────────────────
+  if(stage==="postclinical") return(
+    <div style={{padding:18}}>
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"linear-gradient(135deg,#22C55E,#006DFF)",color:"#132238",borderRadius:14,fontSize:12,fontWeight:700,zIndex:600,display:"flex",gap:7,alignItems:"center"}}><Check size={13}/>{toast}</div>}
+      {/* Success header */}
+      <div style={{textAlign:"center",padding:"14px 0 18px",borderBottom:"1px solid rgba(56,189,248,0.1)",marginBottom:16}}>
+        <div style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#22C55E,#006DFF)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px"}}>
+          <Check size={22} color="#132238"/>
+        </div>
+        <div style={{fontSize:14,fontWeight:800}}>Clinical Note Saved</div>
+        <div style={{fontSize:11,color:"#CBD5E1"}}>Draft saved · {apptType} · {patient.name} · Pending finalisation</div>
+      </div>
+      {/* Stepper complete */}
+      <div style={{display:"flex",gap:0,marginBottom:16,background:"#0F1C34",borderRadius:14,padding:4}}>
+        {STEPPER_LABELS.map((s,i)=>(
+          <div key={s} style={{flex:1,textAlign:"center",padding:"6px",borderRadius:12,background:i===3?"#132238":"transparent"}}>
+            <div style={{fontSize:9,fontWeight:700,color:"#22C55E",textTransform:"uppercase",letterSpacing:".06em"}}>✓ {s}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{fontSize:12,fontWeight:700,color:"#CBD5E1",marginBottom:10}}>Post-Visit Actions</div>
+      {/* Patient summary */}
+      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,padding:"12px 14px",marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:summaryGenerated?8:0}}>
+          <div style={{fontSize:12,fontWeight:700}}>📄 Patient-Friendly Summary</div>
+          {!summaryGenerated&&(
+            <button onClick={generatePatientSummary} disabled={summaryLoading}
+              style={{padding:"5px 12px",background:summaryLoading?"rgba(80,140,255,0.2)":"linear-gradient(135deg,#006DFF,#8B5CF6)",color:summaryLoading?"#94A3B8":"#132238",border:"none",borderRadius:7,cursor:summaryLoading?"not-allowed":"pointer",fontSize:10,fontWeight:700,display:"flex",gap:4,alignItems:"center"}}>
+              <Sparkles size={10}/>{summaryLoading?"Generating…":"Generate with AI"}
+            </button>
+          )}
+        </div>
+        {summaryGenerated&&patientSummary?(
+          <>
+            <div style={{fontSize:11,color:"#CBD5E1",whiteSpace:"pre-wrap",lineHeight:1.7,background:"#071428",borderRadius:7,padding:"8px 10px",maxHeight:130,overflowY:"auto"}}>{patientSummary}</div>
+            <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+              <button onClick={()=>doToast("✓ Patient summary copied")} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#CBD5E1"}}>📋 Copy</button>
+              <button onClick={()=>doToast("✓ WhatsApp message draft created")} style={{padding:"4px 10px",border:"1px solid rgba(56,189,248,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#38BDF8"}}>💬 WhatsApp</button>
+              <button onClick={()=>doToast("✓ Summary queued to patient email")} style={{padding:"4px 10px",border:"1px solid rgba(139,92,246,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#A78BFA"}}>✉ Email</button>
+            </div>
+          </>
+        ):(
+          !summaryLoading&&<div style={{fontSize:10,color:"#64748b",fontStyle:"italic",marginTop:4}}>Click Generate to create a patient-friendly version of today's note — no jargon, clear language</div>
+        )}
+      </div>
+      {/* Aftercare instructions */}
+      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,padding:"12px 14px",marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:12,fontWeight:700}}>💊 Aftercare Instructions</div>
+          <button onClick={()=>setShowAftercare(v=>!v)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#CBD5E1"}}>{showAftercare?"Hide":"View"}</button>
+        </div>
+        {showAftercare&&aftercareText&&(
+          <>
+            <div style={{fontSize:11,color:"#CBD5E1",whiteSpace:"pre-wrap",lineHeight:1.7,background:"#071428",borderRadius:7,padding:"8px 10px",marginTop:8,maxHeight:130,overflowY:"auto"}}>{aftercareText}</div>
+            <div style={{display:"flex",gap:6,marginTop:8}}>
+              <button onClick={()=>doToast("✓ Aftercare instructions sent via SMS")} style={{padding:"4px 10px",border:"1px solid rgba(74,222,128,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#4ADE80"}}>📱 Send SMS</button>
+              <button onClick={()=>doToast("✓ Aftercare sheet sent to print queue")} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:9,color:"#CBD5E1"}}>🖨 Print</button>
+            </div>
+          </>
+        )}
+      </div>
+      {/* Recall suggestion */}
+      <div style={{padding:"10px 14px",background:"rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.12)",borderRadius:12,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:700}}>📅 AI Recall Suggestion</div>
+          <div style={{fontSize:10,color:"#CBD5E1",marginTop:2}}>Recommended: {apptType.includes("Hygiene")||apptType.includes("Scale")?"3-month hygiene recall":apptType.includes("Routine")||apptType.includes("Examination")||apptType.includes("New Patient")?"6-month routine recall":apptType.includes("Post")?"2-week post-operative review":"6-week follow-up"}</div>
+        </div>
+        <button onClick={()=>doToast("✓ Recall reminder scheduled")} style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"#132238",cursor:"pointer",fontSize:10,color:"#60A5FA",fontWeight:700}}>Schedule</button>
+      </div>
+      <button onClick={resetWorkflow} style={{width:"100%",padding:"11px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:"#F8FAFC"}}>
+        ← Back to Notes
+      </button>
+    </div>
   );
 
   return null;
-
 }
+
 
 // ─────────────────────────────────────────────
 
@@ -22399,10 +22461,10 @@ function SettingsPage({user}){
 function ClinicalNotesPage({openPatient}){
   const cnvw=useWindowWidth();const isMob=cnvw<768;
   const NOTES_INIT=[
-    {id:"N1",patient:"Tom Bright", pid:null, dentist:"Dr. S. Patel",date:"Today · 09:00",  status:"draft",    body:"Patient presents for extraction LL7. Complaint: severe pain. LA administered — 2 cartridges Articaine. Tooth extracted intact. Post-op instructions given."},
-    {id:"N2",patient:"Sarah Chen", pid:"P2", dentist:"Dr. S. Patel",date:"Today · 09:30",  status:"draft",    body:"Patient presents for crown fit UR6. PFM crown fitted and cemented with GIC. Occlusion checked — satisfactory. Patient advised to avoid hard foods for 24 hours."},
-    {id:"N3",patient:"John Mills", pid:"P1", dentist:"Dr. S. Patel",date:"14 May · 14:00", status:"finalised",body:"Routine check-up. Medical history reviewed. BPE 2. Caries UR6 — composite restoration planned. OHI reinforced."},
-    {id:"N4",patient:"Amy Torres", pid:"P4", dentist:"Dr. S. Patel",date:"10 May · 09:00", status:"locked",   body:"Implant consultation. CBCT discussed. Treatment plan presented — single implant UL2. Cost: £2,600. Finance options discussed. Patient considering."},
+    {id:"N1",patient:"Tom Bright", pid:null, dentist:"Dr. S. Patel",date:"Today · 09:00",  status:"draft",    aiGenerated:false, structure:null,      body:"Patient presents for extraction LL7. Complaint: severe pain. LA administered — 2 cartridges Articaine. Consent obtained. Tooth extracted intact. Socket irrigated. Post-op instructions given. Plan: Review 1 week."},
+    {id:"N2",patient:"Sarah Chen", pid:"P2", dentist:"Dr. S. Patel",date:"Today · 09:30",  status:"draft",    aiGenerated:true,  structure:"treatment",body:"CROWN FIT — UR6\n\nConsent: Patient consented to PFM crown fit UR6. Risks and benefits discussed.\nLA: Not required.\n\nProcedure: PFM crown fitted and cemented with GIC luting cement. Occlusion checked — satisfactory. Margins sealed.\n\nPost-op instructions: Patient advised to avoid hard foods for 24 hours.\n\nPlan: Review at next check-up."},
+    {id:"N3",patient:"John Mills", pid:"P1", dentist:"Dr. S. Patel",date:"14 May · 14:00", status:"finalised",aiGenerated:true,  structure:"soap",     body:"SUBJECTIVE:\nPatient attends for routine examination. No symptoms. Medical history reviewed — Warfarin 5mg daily noted.\n\nOBJECTIVE:\nBPE: 2|2|1|2|2|1. Soft tissue: NAD. Radiographs: bitewings taken — caries UR6 early occlusal.\n\nASSESSMENT:\nEarly caries UR6 occlusal. Periodontal health satisfactory.\n\nPLAN:\nComposite restoration UR6. OHI reinforced. Review 6 months."},
+    {id:"N4",patient:"Amy Torres", pid:"P4", dentist:"Dr. S. Patel",date:"10 May · 09:00", status:"locked",   aiGenerated:false, structure:null,      body:"Implant consultation. CBCT discussed. Treatment plan presented — single implant UL2. Cost: £2,600. Finance options discussed. Patient considering."},
   ];
   const STATUS_META_NOTES={
     draft:     {c:C.amber, l:"Draft",     Icon:PenLine, bg:"rgba(99,102,241,0.08)"},
@@ -22470,9 +22532,11 @@ function ClinicalNotesPage({openPatient}){
         {notes.map((n)=>{const s=STATUS_META_NOTES[n.status];return(
           <div key={n.id} onClick={()=>selectNote(n)} style={{padding:"10px 14px",borderBottom:`1px solid rgba(56,189,248,0.07)`,cursor:"pointer",background:selId===n.id?"rgba(0,109,255,0.06)":"#132238",borderLeft:`3px solid ${selId===n.id?C.teal:s.c}`}}
             onMouseOver={e=>{if(selId!==n.id)e.currentTarget.style.background="#0B2342";}} onMouseOut={e=>{if(selId!==n.id)e.currentTarget.style.background="#132238";}}>
-            <div style={{display:"flex",gap:7,marginBottom:3,alignItems:"center"}}>
+            <div style={{display:"flex",gap:7,marginBottom:3,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:11,fontWeight:700}}>{n.patient}</span>
               <span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:s.bg,color:s.c}}>{s.l}</span>
+              {n.aiGenerated&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",fontWeight:700}}>✦ AI</span>}
+              {n.structure&&<span style={{fontSize:8,padding:"1px 5px",borderRadius:3,background:"rgba(80,140,255,0.1)",color:"#94A3B8",textTransform:"uppercase"}}>{n.structure}</span>}
             </div>
             <div style={{fontSize:10,color:"#CBD5E1"}}>{n.date}</div>
             <div style={{fontSize:10,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{n.body.slice(0,55)}…</div>
@@ -22484,7 +22548,11 @@ function ClinicalNotesPage({openPatient}){
       {sel&&<div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"12px 20px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:14,fontWeight:700,marginBottom:1}}>{sel.patient} <span style={{fontSize:11,fontWeight:400,color:C.muted}}>— {sel.date} · {sel.dentist}</span></div>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:1,flexWrap:"wrap"}}>
+              <div style={{fontSize:14,fontWeight:700}}>{sel.patient} <span style={{fontSize:11,fontWeight:400,color:C.muted}}>— {sel.date} · {sel.dentist}</span></div>
+              {sel.aiGenerated&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:5,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",color:"#132238",fontWeight:700}}>✦ AI-Assisted</span>}
+              {sel.structure&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"rgba(80,140,255,0.1)",color:"#94A3B8",textTransform:"uppercase"}}>{sel.structure}</span>}
+            </div>
             {sel.status==="draft"&&<div style={{fontSize:10,color:C.amber,display:"flex",gap:5,alignItems:"center"}}>
               ⏱ Draft{dirty?" · Unsaved changes":""} — notes must be finalised within 24 hours of treatment.
             </div>}
