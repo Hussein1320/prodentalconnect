@@ -4580,6 +4580,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 }
 
 function OnlineBookingPage({setPage}){
+  const obvw=useWindowWidth();const isMob=obvw<768;
 
   const [bookings,setBookings]=useState(ONLINE_BOOKINGS);
 
@@ -4693,9 +4694,9 @@ function OnlineBookingPage({setPage}){
 
       {/* Header */}
 
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
 
-        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:12}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:12,...(isMob&&{flexWrap:"wrap",gap:8})}}>
 
           <div style={{width:40,height:40,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🌐</div>
 
@@ -5424,6 +5425,7 @@ function OnlineBookingPage({setPage}){
 }
 
 function IntegrationsPage({practiceName}){
+  const igvw=useWindowWidth();const isMob=igvw<768;
   const [configureModal,setConfigureModal]=useState(null); // integration obj
   const [showRequestModal,setShowRequestModal]=useState(false);
   const [reqForm,setReqForm]=useState({name:"",website:"",reason:""});
@@ -5479,9 +5481,9 @@ function IntegrationsPage({practiceName}){
 
     {toast&&<div style={{position:"absolute",top:10,right:10,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:200,boxShadow:"0 4px 12px rgba(0,0,0,.1)",display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
 
-    <div style={{padding:"12px 18px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",flexShrink:0}}>
+    <div style={{padding:"12px 18px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",flexShrink:0,...(isMob&&{padding:"10px 12px"})}}>
 
-      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12,...(isMob&&{flexWrap:"wrap",gap:8})}}>
 
         <div>
 
@@ -5515,7 +5517,7 @@ function IntegrationsPage({practiceName}){
 
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
 
       {configItem&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:400}}>
 
@@ -19026,6 +19028,7 @@ const CAT_META={
 const URG={high:{c:C.red,l:"Urgent"},medium:{c:C.amber,l:"Today"},low:{c:C.green,l:"This week"}};
 
 function NBAPage({role,setPage,openPatient}){
+  const nbavw=useWindowWidth();const isMob=nbavw<768;
   const [dismissed,setDismissed]=useState(new Set());
   const [done,setDone]=useState(new Set());
   const [toast,setToast]=useState(null);
@@ -19094,8 +19097,8 @@ function NBAPage({role,setPage,openPatient}){
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,boxShadow:"0 4px 24px rgba(0,109,255,0.15)",display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
 
       {/* Header */}
-      <div style={{background:"linear-gradient(90deg,#020817 0%,#050f24 100%)",padding:"18px 22px",flexShrink:0}}>
-        <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
+      <div style={{background:"linear-gradient(90deg,#020817 0%,#050f24 100%)",padding:"18px 22px",flexShrink:0,...(isMob&&{padding:"12px 14px"})}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16,...(isMob&&{flexWrap:"wrap",gap:8})}}>
           <div>
             <div style={{fontSize:20,fontWeight:900,color:"#132238",letterSpacing:"-.01em",marginBottom:4,display:"flex",gap:10,alignItems:"center"}}>
               Today's Priorities
@@ -19129,7 +19132,7 @@ function NBAPage({role,setPage,openPatient}){
       </div>
 
       {/* Priority list */}
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
         {active.length===0&&done.size===0&&<div style={{textAlign:"center",padding:48,color:"#CBD5E1"}}>
           <div style={{fontSize:40,marginBottom:12}}>✅</div>
           <div style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:4}}>All clear!</div>
@@ -21640,6 +21643,7 @@ function SettingsPage({user}){
 // CLINICAL NOTES — draft / finalise / lock workflow
 // ══════════════════════════════════════════════════════════════════════════════
 function ClinicalNotesPage({openPatient}){
+  const cnvw=useWindowWidth();const isMob=cnvw<768;
   const NOTES_INIT=[
     {id:"N1",patient:"Tom Bright", pid:null, dentist:"Dr. S. Patel",date:"Today · 09:00",  status:"draft",    body:"Patient presents for extraction LL7. Complaint: severe pain. LA administered — 2 cartridges Articaine. Tooth extracted intact. Post-op instructions given."},
     {id:"N2",patient:"Sarah Chen", pid:"P2", dentist:"Dr. S. Patel",date:"Today · 09:30",  status:"draft",    body:"Patient presents for crown fit UR6. PFM crown fitted and cemented with GIC. Occlusion checked — satisfactory. Patient advised to avoid hard foods for 24 hours."},
@@ -21682,7 +21686,7 @@ function ClinicalNotesPage({openPatient}){
   };
 
   return(
-    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+    <div style={{flex:1,display:"flex",overflow:"hidden",...(isMob&&{flexDirection:"column"})}}>
       {/* Toast */}
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:toast.type==="finalised"?"#dbeafe":toast.type==="error"?"#fee2e2":"rgba(34,197,94,0.08)",border:`1px solid ${toast.type==="finalised"?"#bfdbfe":toast.type==="error"?"#fecaca":"#bbf7d0"}`,borderRadius:9,fontSize:12,color:toast.type==="finalised"?"#1d4ed8":toast.type==="error"?"#dc2626":"#16a34a",zIndex:999,boxShadow:"0 4px 16px rgba(0,0,0,.1)",fontWeight:600}}>{toast.m}</div>}
 
@@ -21704,7 +21708,7 @@ function ClinicalNotesPage({openPatient}){
       </div>}
 
       {/* Left panel — note list */}
-      <div style={{width:280,flexShrink:0,background:"#132238",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{width:isMob?"100%":280,maxHeight:isMob?180:"none",flexShrink:0,background:"#132238",borderRight:isMob?"none":`1px solid ${C.border}`,borderBottom:isMob?`1px solid ${C.border}`:"none",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Clinical Notes</div>
           {drafts.length>0&&<span style={{fontSize:10,color:C.amber,fontWeight:700,padding:"2px 8px",borderRadius:12,background:"rgba(15,23,42,0.7)"}}>{drafts.length} draft{drafts.length!==1?"s":""} pending</span>}
@@ -21768,6 +21772,7 @@ function ClinicalNotesPage({openPatient}){
 // DAILY TASKS — personalised task list with completion
 // ══════════════════════════════════════════════════════════════════════════════
 function TasksPage({user}){
+  const tpvw=useWindowWidth();const isMob=tpvw<768;
   const [tasks,setTasks]=useState([
     {id:"TK1",title:"Submit FP17 — Amy Torres (Band 2)",priority:"urgent",done:false,cat:"NHS",due:"Today"},
     {id:"TK2",title:"Confirm tomorrow's 8 unconfirmed appointments",priority:"urgent",done:false,cat:"Appointments",due:"Today"},
@@ -21786,9 +21791,9 @@ function TasksPage({user}){
   const pending=tasks.filter(t=>!t.done);const done=tasks.filter(t=>t.done);
   const PRI={urgent:{c:C.red,bg:"#fee2e2"},normal:{c:C.amber,bg:"rgba(99,102,241,0.08)"},low:{c:C.muted,bg:"rgba(80,140,255,0.1)"}};
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"#071428",color:"#132238",borderRadius:20,fontSize:12,zIndex:500}}>{toast}</div>}
-      <div style={{display:"flex",gap:12,marginBottom:16}}>
+      <div style={{display:"flex",gap:12,marginBottom:16,...(isMob&&{flexWrap:"wrap",gap:8})}}>
         {[{l:"Urgent",v:tasks.filter(t=>t.priority==="urgent"&&!t.done).length,c:C.red},{l:"Pending",v:pending.length,c:C.amber},{l:"Completed today",v:done.length,c:C.green}].map(s=><div key={s.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,padding:"10px 14px",flex:1}}><div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{s.l}</div></div>)}
         <div style={{display:"flex",gap:7,flex:2,alignItems:"center"}}>
           <input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()} placeholder="Add a task…" style={{...{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,color:C.text,fontSize:12,padding:"8px 11px",outline:"none",fontFamily:"inherit"},flex:1}}/>
@@ -21819,6 +21824,7 @@ function TasksPage({user}){
 // UDA TRACKER
 // ══════════════════════════════════════════════════════════════════════════════
 function UDAPage(){
+  const udvw=useWindowWidth();const isMob=udvw<768;
   const [period,setPeriod]=useState("Year");
   const dentists=[{name:"Dr. S. Patel",target:2280,done:1872,color:"#38BDF8"},{name:"Dr. M. Chen",target:2280,done:1529,color:C.purple}];
   const month=4;const totalMonths=12;
@@ -21869,6 +21875,7 @@ function UDAPage(){
 // ACCOUNTS — Patient balances and invoices
 // ══════════════════════════════════════════════════════════════════════════════
 function AccountsPage(){
+  const acvw=useWindowWidth();const isMob=acvw<768;
   const ACCS_INIT=[
     {id:"AC1",patient:"John Mills",   type:"NHS",  balance:73.50, overdue:true, lastPaid:"14 Feb 2025",email:"john.mills@email.com",phone:"07700 900111",items:["Band 2 — Composite UR6"]},
     {id:"AC2",patient:"Amy Torres",   type:"Priv", balance:850,   overdue:false,lastPaid:"10 Apr 2025",email:"amy.torres@email.com",phone:"07700 900444",items:["Crown UR6 — £319","Implant deposit — £531"]},
@@ -22117,6 +22124,7 @@ function LabPage(){
 // SHORT NOTICE LIST — opt-in patients for last-minute slots
 // ══════════════════════════════════════════════════════════════════════════════
 function ShortNoticePage(){
+  const snvw=useWindowWidth();const isMob=snvw<768;
   const patients=[
     {name:"Sandra Okafor",phone:"07923 456789",type:"Check-up",pref:"WhatsApp",responded:true,booked:true,wait:"Available immediately"},
     {name:"Grace Park",   phone:"07812 345678",type:"Hygiene",  pref:"SMS",     responded:false,booked:false,wait:"Mon–Wed only"},
@@ -22524,6 +22532,7 @@ function PaymentsPage({user}){
 // REPORTS — practice analytics
 // ══════════════════════════════════════════════════════════════════════════════
 function ReportsPage(){
+  const rpvw=useWindowWidth();const isMob=rpvw<768;
   const {BarChart,Bar,LineChart,Line,PieChart:PC,Pie,Cell,XAxis,YAxis,CartesianGrid,Tooltip,Legend,ResponsiveContainer}=window.Recharts||{};
   const [activeReport,setActiveReport]=useState(null);
   const [selCat,setSelCat]=useState("All");
@@ -22806,7 +22815,7 @@ function ReportsPage(){
         <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
           {rd?<>
             {/* KPIs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8})}}>
               {rd.kpis.map(k=><div key={k.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:"12px 14px"}}>
                 <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{k.l}</div>
                 <div style={{fontSize:20,fontWeight:900,color:k.c,fontFamily:"ui-monospace,monospace"}}>{k.v}</div>
@@ -22894,6 +22903,8 @@ function XRayPage(){
 // WHATSAPP BUSINESS INBOX — two-way patient messaging
 // ══════════════════════════════════════════════════════════════════════════════
 function WhatsAppPage(){
+  const wavw=useWindowWidth();const isMob=wavw<768;
+  const [mobChatOpen,setMobChatOpen]=useState(false);
   const [selConv,setSelConv]=useState(0);
   const [msg,setMsg]=useState("");
   const [toast,setToast]=useState(null);
@@ -23012,7 +23023,7 @@ function WhatsAppPage(){
       {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:500,boxShadow:"0 8px 24px rgba(0,0,0,0.4)",display:"flex",gap:8,alignItems:"center"}}><Check size={12}/>  {toast}</div>}
 
       {/* ── LEFT: Conversation List ── */}
-      <div style={{width:300,flexShrink:0,background:"#132238",borderRight:"1px solid rgba(56,189,248,0.12)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{width:isMob?(mobChatOpen?"0":"100%"):300,flexShrink:0,background:"#132238",borderRight:"1px solid rgba(56,189,248,0.12)",display:isMob&&mobChatOpen?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
         {/* Header */}
         <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(56,189,248,0.12)",background:"#132238",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
@@ -23033,7 +23044,7 @@ function WhatsAppPage(){
           {convData.map((c,i)=>{
             const isActive=selConv===i;
             return(
-              <div key={i} onClick={()=>setSelConv(i)} style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",background:isActive?"rgba(0,109,255,0.1)":"transparent",borderLeft:`3px solid ${isActive?"#2563FF":"transparent"}`,transition:"all .15s",position:"relative"}}
+              <div key={i} onClick={()=>{setSelConv(i);if(isMob)setMobChatOpen(true);}} style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",background:isActive?"rgba(0,109,255,0.1)":"transparent",borderLeft:`3px solid ${isActive?"#2563FF":"transparent"}`,transition:"all .15s",position:"relative"}}
                 onMouseOver={e=>{if(!isActive)e.currentTarget.style.background="rgba(80,140,255,0.04)";}}
                 onMouseOut={e=>{if(!isActive)e.currentTarget.style.background="transparent";}}>
                 <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
@@ -23061,7 +23072,8 @@ function WhatsAppPage(){
       <div style={{flex:1,display:"flex",flexDirection:"column",background:"#0F1C34",overflow:"hidden"}}>
 
         {/* Chat Header */}
-        <div style={{padding:"12px 18px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.15)",display:"flex",gap:12,alignItems:"center",flexShrink:0}}>
+        <div style={{padding:"12px 18px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.15)",display:"flex",gap:12,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",gap:8})}}>
+          {isMob&&<button onClick={()=>setMobChatOpen(false)} style={{border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:18,padding:0,flexShrink:0}}>←</button>}
           <div style={{width:40,height:40,borderRadius:"50%",background:conv.color+"22",border:`1.5px solid ${conv.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:conv.color,flexShrink:0}}>{initials(conv.name)}</div>
           <div style={{flex:1}}>
             <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",letterSpacing:"-.01em"}}>{conv.name}</div>
@@ -23269,6 +23281,7 @@ function UserSsoCard({sel,doToast}){
 }
 
 function UserManagementPage({plan="Growth"}){
+  const umvw=useWindowWidth();const isMob=umvw<768;
   const seatLimit=SEAT_MAP[plan]||5;
   const [staff,setStaff]=useState(UM_STAFF.map(u=>({...u,perms:new Set(ROLE_DEFAULT_PERMS[u.role]||[])})));
   const [selId,setSelId]=useState("U1");
@@ -23350,9 +23363,9 @@ function UserManagementPage({plan="Growth"}){
         </div>
       </div>}
 
-      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+      <div style={{flex:1,display:"flex",overflow:"hidden",...(isMob&&{flexDirection:"column"})}}>
         {/* Staff list */}
-        <div style={{width:260,flexShrink:0,borderRight:`1px solid ${C.border}`,background:"#132238",overflow:"auto"}}>
+        <div style={{width:isMob?"100%":260,maxHeight:isMob?200:"none",flexShrink:0,borderRight:isMob?"none":`1px solid ${C.border}`,borderBottom:isMob?`1px solid ${C.border}`:"none",background:"#132238",overflow:"auto"}}>
           {staff.map(u=>{const rm=ROLE_META[u.role];return(
             <div key={u.id} onClick={()=>setSelId(u.id)} style={{display:"flex",gap:9,padding:"10px 14px",borderBottom:`1px solid rgba(56,189,248,0.07)`,cursor:"pointer",background:selId===u.id?"rgba(79,70,229,0.06)":"#132238",borderLeft:`3px solid ${selId===u.id?"#4f46e5":"transparent"}`,opacity:u.active?1:.6}}
               onMouseOver={e=>{if(selId!==u.id)e.currentTarget.style.background="rgba(80,140,255,0.04)";}} onMouseOut={e=>{if(selId!==u.id)e.currentTarget.style.background="#132238";}}>
