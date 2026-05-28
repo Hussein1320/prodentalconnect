@@ -6047,6 +6047,7 @@ function ReleaseNotesPanel({ann,onClose}){
 }
 
 function AnnouncementsAdminPage({announcements,setAnnouncements}){
+  const aanvw=useWindowWidth();const isMob=aanvw<768;
   const [tab,setTab]=useState("list");
   const [builder,setBuilder]=useState(null);
   const [preview,setPreview]=useState(null);
@@ -6110,7 +6111,7 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
 
       {/* Builder modal */}
       {builder&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:700,overflow:"auto",padding:"20px 16px"}}>
-        <div style={{background:"#0F1C34",borderRadius:20,width:700,maxWidth:"98vw",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.65)",border:"1px solid rgba(80,140,255,0.2)",margin:"auto"}}>
+        <div style={{background:"#0F1C34",borderRadius:20,width:700,maxWidth:"98vw",display:"flex",flexDirection:"column",boxShadow:"0 28px 80px rgba(0,0,0,.65)",border:"1px solid rgba(80,140,255,0.2)",margin:"auto",...(isMob&&{width:"calc(100vw - 12px)",maxWidth:"calc(100vw - 12px)",borderRadius:14})}}>
           <div style={{padding:"18px 22px",borderBottom:"1px solid rgba(80,140,255,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
             <div>
               <div style={{fontSize:16,fontWeight:800}}>{builder.mode==="new"?"New Announcement":"Edit Announcement"}</div>
@@ -7731,7 +7732,7 @@ function AdminMonitoring(){
 
       {/* Header */}
 
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
 
         <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
 
@@ -9635,7 +9636,7 @@ function AdminUpdates(){
 
       {/* Header */}
 
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
 
         <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
 
@@ -10065,6 +10066,7 @@ function AdminUpdates(){
 }
 
 function AppointmentAuditPage(){
+  const aavw=useWindowWidth();const isMob=aavw<768;
 
   const [search,setSearch]=useState("");
 
@@ -10150,7 +10152,7 @@ function AppointmentAuditPage(){
 
       {selEntry&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
 
-        <div style={{background:"#132238",borderRadius:18,width:560,maxHeight:"88vh",overflow:"auto",boxShadow:"0 24px 70px rgba(0,0,0,.3)"}}>
+        <div style={{background:"#132238",borderRadius:18,width:560,maxHeight:"88vh",overflow:"auto",boxShadow:"0 24px 70px rgba(0,0,0,.3)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,maxHeight:"85vh"})}}>
 
           {/* Header */}
 
@@ -10266,9 +10268,9 @@ function AppointmentAuditPage(){
 
         {/* Page header */}
 
-        <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0}}>
+        <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
 
-          <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+          <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12,...(isMob&&{flexWrap:"wrap",gap:8})}}>
 
             <div style={{width:40,height:40,borderRadius:14,background:"linear-gradient(135deg,#0369a1,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>📋</div>
 
@@ -10282,7 +10284,7 @@ function AppointmentAuditPage(){
 
             {/* Stats */}
 
-            {[{l:"Total Events",v:STATS.total,c:C.teal},{l:"Cancellations",v:STATS.cancelled,c:C.red},{l:"DNAs",v:STATS.dna,c:C.amber},{l:"Moves",v:STATS.moved,c:C.blue}].map(s=>(
+            {!isMob&&[{l:"Total Events",v:STATS.total,c:C.teal},{l:"Cancellations",v:STATS.cancelled,c:C.red},{l:"DNAs",v:STATS.dna,c:C.amber},{l:"Moves",v:STATS.moved,c:C.blue}].map(s=>(
 
               <div key={s.l} style={{textAlign:"center",padding:"6px 14px",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9}}>
 
@@ -10482,9 +10484,9 @@ function AppointmentAuditPage(){
 
           {/* ── TABLE VIEW ── */}
 
-          {view==="table"&&<div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
+          {view==="table"&&<div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden",...(isMob&&{overflowX:"auto"})}}>
 
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,...(isMob&&{minWidth:600})}}>
 
               <thead><tr style={{background:"#0F1C34",borderBottom:`2px solid ${C.border}`}}>
 
@@ -10748,7 +10750,7 @@ function AdminSecurity(){
 
       {/* Header */}
 
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
 
         <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
 
@@ -17496,7 +17498,7 @@ function FP17Page(){
   return(
     <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
       {showNewFP17&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-        <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+        <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
           <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>New FP17 NHS Claim</div>
 
           {/* Patient search with live autocomplete from PATIENTS DB */}
@@ -22888,6 +22890,7 @@ function ReportsPage(){
 // X-RAY / IMAGING placeholder with IRMER compliance
 // ══════════════════════════════════════════════════════════════════════════════
 function XRayPage(){
+  const xrvw=useWindowWidth();const isMob=xrvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2000);};
   const XRAYS=[{id:"X1",patient:"John Mills",type:"Bitewings (2 films)",date:"14 May 2025",dentist:"Dr. S. Patel",reason:"Caries detection — UR6 concern",report:"Caries evident UR6 mesial surface. No other pathology."},
@@ -22896,9 +22899,9 @@ function XRayPage(){
   return(
     <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:14,alignItems:"center"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:14,alignItems:"center",...(isMob&&{flexWrap:"wrap",gap:8})}}>
         <div><div style={{fontSize:15,fontWeight:800}}>X-Ray & Imaging</div><div style={{fontSize:11,color:"#CBD5E1"}}>IRMER compliant · Full justification and reporting log</div></div>
-        <button onClick={()=>doToast("New X-ray log entry created")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={12}/>Log X-Ray</button>
+        <button onClick={()=>doToast("New X-ray log entry created")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center",...(isMob&&{width:"100%",justifyContent:"center"})}}><Plus size={12}/>Log X-Ray</button>
       </div>
       <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
         {XRAYS.map((x,i)=><div key={x.id} style={{padding:"14px 16px",borderTop:i>0?"1px solid rgba(80,140,255,0.06)":"none"}}>
@@ -24094,11 +24097,12 @@ ${PRACTICE_CONTEXT}`;
 }
 
 function LoginPage({onLogin}){
+  const lpvw=useWindowWidth();const isMob=lpvw<768;
   const [pin,setPin]=useState("");const [selectedUser,setSelectedUser]=useState(null);const [err,setErr]=useState("");
   const doLogin=()=>{if(!selectedUser){setErr("Select a user");return;}if(selectedUser.pin&&pin!==String(selectedUser.pin)){setErr("Wrong PIN");return;}onLogin(selectedUser);};
   return(
-    <div style={{minHeight:"100vh",background:"#071428",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"linear-gradient(135deg,#132238,#0F1C34)",borderRadius:20,padding:40,width:360,boxShadow:"0 24px 80px rgba(0,0,0,.4)"}}>
+    <div style={{minHeight:"100vh",background:"#071428",display:"flex",alignItems:"center",justifyContent:"center",padding:isMob?"12px":0}}>
+      <div style={{background:"linear-gradient(135deg,#132238,#0F1C34)",borderRadius:20,padding:40,width:360,boxShadow:"0 24px 80px rgba(0,0,0,.4)",...(isMob&&{width:"100%",maxWidth:360,padding:24,borderRadius:16})}}>
         <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:36,marginBottom:8}}>🦷</div><div style={{fontSize:22,fontWeight:800,color:"#F8FAFC"}}><span style={{color:"#F8FAFC",fontWeight:800}}>ProDental</span><span style={{color:"#3B82F6",fontWeight:800}}>Connect</span></div></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
           {USERS.map(u=><button key={u.id} onClick={()=>{setSelectedUser(u);setPin("");setErr("");}} style={{padding:"10px 8px",borderRadius:14,border:`2px solid ${selectedUser?.id===u.id?"#2563FF":"rgba(80,140,255,0.2)"}`,background:selectedUser?.id===u.id?"rgba(80,140,255,0.06)":"#132238",cursor:"pointer",textAlign:"center"}}>
@@ -24366,7 +24370,7 @@ function NHSWalesClaimPage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Page header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20}}>🏴󠁧󠁢󠁷󠁬󠁳󠁿</span>
@@ -24376,9 +24380,9 @@ function NHSWalesClaimPage(){
           </div>
         </div>
       </div>
-      <div style={{display:"flex",gap:6}}>
-        <button onClick={()=>doToast("Exporting Wales claims report…")} style={{padding:"6px 14px",border:"1px solid rgba(255,255,255,.15)",borderRadius:7,background:"rgba(255,255,255,.08)",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:11,fontWeight:600}}>⬇ Export</button>
-        <button onClick={()=>setShowNewClaim(true)} style={{padding:"6px 14px",border:"none",borderRadius:7,background:"#22c55e",color:"#132238",cursor:"pointer",fontSize:11,fontWeight:700}}>+ New Wales Claim</button>
+      <div style={{display:"flex",gap:6,...(isMob&&{width:"100%"})}}>
+        <button onClick={()=>doToast("Exporting Wales claims report…")} style={{padding:"6px 14px",border:"1px solid rgba(255,255,255,.15)",borderRadius:7,background:"rgba(255,255,255,.08)",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:11,fontWeight:600,...(isMob&&{flex:1})}}>⬇ Export</button>
+        <button onClick={()=>setShowNewClaim(true)} style={{padding:"6px 14px",border:"none",borderRadius:7,background:"#22c55e",color:"#132238",cursor:"pointer",fontSize:11,fontWeight:700,...(isMob&&{flex:2})}}>+ New Wales Claim</button>
       </div>
     </div>
 
@@ -24422,10 +24426,10 @@ function NHSWalesClaimPage(){
     </div>
 
     {/* Claims list + review panel */}
-    {activeTab==="claims"&&<div style={{flex:1,overflow:"hidden",display:"flex",minHeight:0}}>
+    {activeTab==="claims"&&<div style={{flex:1,overflow:"hidden",display:"flex",minHeight:0,...(isMob&&{flexDirection:"column"})}}>
 
       {/* Claims list */}
-      <div style={{width:selClaim?380:undefined,flex:selClaim?undefined:1,overflowY:"auto",borderRight:selClaim?"1px solid rgba(80,140,255,0.15)":"none"}}>
+      <div style={{width:isMob?"100%":(selClaim?380:undefined),flex:isMob?(selClaim?0:1):( selClaim?undefined:1),maxHeight:isMob&&selClaim?200:undefined,overflowY:"auto",borderRight:selClaim?"1px solid rgba(80,140,255,0.15)":"none",borderBottom:isMob&&selClaim?"1px solid rgba(80,140,255,0.15)":"none"}}>
         {visibleClaims.length===0&&<div style={{padding:40,textAlign:"center",color:"#CBD5E1",fontSize:13}}>No Wales claims match the current filters</div>}
         {visibleClaims.map(cl=>{
           const errs=validateClaim(cl);
@@ -24835,7 +24839,7 @@ function NHSReconciliationPage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS Reconciliation Command Centre</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Connecting claims · payments · practitioners · issues in one view</div>
@@ -25157,7 +25161,7 @@ function NHSEnglandApr2026Page(){
   <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS England — April 2026 Changes</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Unscheduled Care · Nurse-Led FV · Band Updates · Denture Category Migration</div>
@@ -25419,7 +25423,7 @@ function NHSWalesAdvancedPage(){
   <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS Wales — Advanced Care Package Workflows</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>April 2026 catalogue · Prep-only · NHS Note · Urgent referrals · Warranty · Lab fees</div>
@@ -25734,7 +25738,7 @@ function NHSCDSCompliancePage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS CDS Treatment-Code Enforcement</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>"Other Treatment" deprecation · CDS 9380–9383 · Obturator detection · Cross-region validation</div>
@@ -26051,7 +26055,7 @@ function NHSDentureRepairPage(){
     </div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS Denture Repair — Band 0 Workflow</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>CoT routing · Band 0 · No patient charge · 1 UDA auto-allocated · England & Wales</div>
@@ -26302,7 +26306,7 @@ function NHSNIPage(){
       if(!cl)return null;
       return(
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-        <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+        <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
           <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:4}}>
             <span style={{fontSize:22}}>⚠️</span>
             <div style={{fontSize:15,fontWeight:800,color:"#EF4444"}}>Prior Approval Required</div>
@@ -26353,7 +26357,7 @@ function NHSNIPage(){
     </div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:22}}>🏴󠁧󠁢󠁮󠁩󠁲󠁿</span>
@@ -26612,7 +26616,7 @@ function NHSUDAReportPage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}><span style={{color:"#F8FAFC"}}>ProDental</span><span style={{color:"#3B82F6"}}>Connect</span> — NHS {actType}s/UOAs Performance</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Contract-level · Practitioner analytics · Forecast engine · Compass/WebEDI reconciliation</div>
@@ -26978,7 +26982,7 @@ function NHSClaimCompliancePage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS Claim Compliance Centre</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Invalid · Queried · XML · Tenure · Overlap · Location · Treatment — Pro Dental Connect</div>
@@ -27772,7 +27776,7 @@ function NHSWalesCPEnginePage(){
     {toast&&<div style={{position:"fixed",top:14,right:18,padding:"9px 18px",background:"#2563FF",color:"#ffffff",borderRadius:14,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.2)"}}>{toast}</div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>🏴󠁧󠁢󠁷󠁬󠁳󠁿 NHS Wales — Care Package Engine</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Real-time auto-calculation · Lab fee integration · Warranty · Urgent referral · Transitional pricing</div>
@@ -28213,7 +28217,7 @@ function NHSWalesLabFeePage(){
       </div>
     </div>}
 
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>🏴󠁧󠁢󠁷󠁬󠁳󠁿 NHS Wales — Lab Fee Management</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>NHS vs Private · HC3 logic · Tariff validation · Warranty exclusion · Claim transmission</div>
@@ -29280,7 +29284,7 @@ function HRLeavePage({user}){
 
     {/* New Request Modal */}
     {showNewRequest&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Request Leave</div>
         {isManager&&<div style={{marginBottom:10}}>
           <label style={{fontSize:11,fontWeight:700,color:"#CBD5E1",display:"block",marginBottom:3}}>Staff Member</label>
@@ -29320,7 +29324,7 @@ function HRLeavePage({user}){
     </div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>HR & Staff Leave Management</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Annual leave · Sick days · Allowances · Approvals · Rota integration</div>
@@ -29720,7 +29724,7 @@ function NHSRegionalArchitecturePage({user}){
 
     {/* Add Location Modal */}
     {showAddLocation&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-      <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+      <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Add Practice Location / Site</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>Each location has its own NHS region, contracts, and submission credentials — exactly like Dentally and R4.</div>
         {[{l:"Location Name",k:"name",ph:"e.g. Cardiff Branch"},{l:"Address",k:"address",ph:"Full address"},{l:"ODS Code",k:"odsCode",ph:"e.g. W01234"}].map(f=>(
@@ -29749,7 +29753,7 @@ function NHSRegionalArchitecturePage({user}){
 
     {/* Add Contract Modal */}
     {showAddContract&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-      <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+      <div style={{background:"#132238",borderRadius:16,width:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Add NHS Contract</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginBottom:14}}>The NHS region on this contract automatically determines the claim form, ruleset, and submission endpoint.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -29783,7 +29787,7 @@ function NHSRegionalArchitecturePage({user}){
     </div>}
 
     {/* Header */}
-    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0}}>
+    <div style={{background:"#071428",padding:"14px 20px",display:"flex",gap:14,alignItems:"center",flexShrink:0,...(isMob&&{padding:"10px 12px",flexWrap:"wrap",gap:8})}}>
       <div style={{flex:1}}>
         <div style={{fontSize:16,fontWeight:800,color:"#132238"}}>NHS Regional Architecture — Enterprise Configuration</div>
         <div style={{fontSize:11,color:"#CBD5E1",marginTop:1}}>Practice → Location → Contract → Region auto-resolved · Dentally / EXACT / R4 pattern</div>
@@ -30107,6 +30111,7 @@ const FEATURES_DATA=[
 ];
 
 function AdminFeatures(){
+  const afvw=useWindowWidth();const isMob=afvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [practiceFeatures,setPracticeFeatures]=useState(()=>{
@@ -30249,7 +30254,7 @@ function AdminFeatures(){
 
     {/* Add Feature Modal */}
     {addFeatureModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>Add New Feature Module</div>
         {[{l:"Feature Name",k:"name",ph:"e.g. Online Booking"},{l:"Monthly Price (£)",k:"price",ph:"0 for revenue share"},{l:"Provider",k:"provider",ph:"e.g. Stripe, Internal"},{l:"Description",k:"desc",ph:"Short description…"}].map(f=>(
           <div key={f.k} style={{marginBottom:10}}>
@@ -30328,6 +30333,7 @@ function AdminFeatures(){
 // ADMIN PRACTICES — with working Add Practice + click to manage
 // ════════════════════════════════════════════════════════════════
 function AdminPractices(){
+  const aprvw=useWindowWidth();const isMob=aprvw<768;
   const [practiceAction,setPracticeAction]=useState(null);
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -30405,7 +30411,7 @@ function AdminPractices(){
     {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600}}>{toast}</div>}
 
     {showAddPractice&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
-      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)"}}>
+      <div style={{background:"#132238",borderRadius:16,width:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6),0 0 40px rgba(0,109,255,0.1)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>Add New Practice</div>
         {[{l:"Practice Name *",k:"name",ph:"e.g. Riverside Dentistry"},{l:"Location",k:"location",ph:"e.g. Southampton SO14"},{l:"UDA Target",k:"uda",ph:"0 for private only",type:"number"}].map(f=>(
           <div key={f.k} style={{marginBottom:10}}>
