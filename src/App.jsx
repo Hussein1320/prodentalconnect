@@ -2988,6 +2988,25 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
 
+  const [showInvite,setShowInvite]=useState(false);
+  const [inviteForm,setInviteForm]=useState({name:"",email:"",role:"reception"});
+  const PLAN_SEATS_MGR={Starter:5,Growth:15,Enterprise:999};
+  const atSeatLimit=teamUsers.filter(u=>u.active).length>=maxSeats;
+
+  const submitInvite=()=>{
+    if(!inviteForm.name.trim()||!inviteForm.email.trim())return;
+    if(atSeatLimit){doToast("Seat limit reached — upgrade plan for more staff accounts");return;}
+    const nu={
+      id:"U"+Date.now(),name:inviteForm.name,email:inviteForm.email,role:inviteForm.role,
+      avatar:inviteForm.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase(),
+      color:ROLE_META[inviteForm.role]?.color||"#60A5FA",
+      active:true,lastLogin:"Invite pending",
+    };
+    setTeamUsers(p=>[...p,nu]);
+    setShowInvite(false);setInviteForm({name:"",email:"",role:"reception"});
+    doToast("✓ Invite sent to "+inviteForm.email+" — "+inviteForm.role+" role");
+  };
+
   // ── Role Permissions state (overrides per-role nav access) ──
   const [rolePermsLocal,setRolePermsLocal]=useState(()=>{
     const out={};
@@ -3230,9 +3249,41 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
         {/* ══ STAFF ════════════════════════════════════════════════════════ */}
         {tab==="users"&&(
           <div>
+            {/* Invite modal */}
+            {showInvite&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
+              <div style={{background:"#132238",borderRadius:18,width:460,maxWidth:"95vw",padding:24,boxShadow:"0 24px 80px rgba(0,0,0,.4)"}}>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Invite Staff Member</div>
+                <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>An invite email will be sent with their account credentials.</div>
+                <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:14}}>
+                  <input value={inviteForm.name} onChange={e=>setInviteForm(p=>({...p,name:e.target.value}))} placeholder="Full name *" style={{padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none"}}/>
+                  <input type="email" value={inviteForm.email} onChange={e=>setInviteForm(p=>({...p,email:e.target.value}))} placeholder="Email address *" style={{padding:"9px 12px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,color:"#F8FAFC",fontSize:12,fontFamily:"ui-monospace,monospace",outline:"none"}}/>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+                    {[{r:"reception",l:"🗂 Reception",d:"Calendar, patients, messaging"},{r:"dentist",l:"🦷 Dentist",d:"Charting, FP17, clinical notes"},{r:"hygienist",l:"🧹 Hygienist",d:"Charting, notes, recalls"},{r:"manager",l:"🛡 Manager",d:"Full access — practice admin"}].map(({r,l,d})=>(
+                      <button key={r} onClick={()=>setInviteForm(p=>({...p,role:r}))}
+                        style={{padding:"9px 11px",borderRadius:9,border:`2px solid ${inviteForm.role===r?(ROLE_META[r]?.color||"#60A5FA"):"rgba(80,140,255,0.2)"}`,background:inviteForm.role===r?"rgba(96,165,250,0.08)":"#0F1C34",cursor:"pointer",textAlign:"left"}}>
+                        <div style={{fontSize:12,fontWeight:700,color:inviteForm.role===r?(ROLE_META[r]?.color||"#60A5FA"):"#F8FAFC"}}>{l}</div>
+                        <div style={{fontSize:9,color:"#64748b",marginTop:2}}>{d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>{setShowInvite(false);setInviteForm({name:"",email:"",role:"reception"});}} style={{flex:1,padding:"9px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+                  <button onClick={submitInvite} disabled={!inviteForm.name.trim()||!inviteForm.email.trim()}
+                    style={{flex:2,padding:"9px",background:inviteForm.name&&inviteForm.email?"linear-gradient(135deg,#2563FF,#1D4ED8)":"rgba(80,140,255,0.2)",color:inviteForm.name&&inviteForm.email?"#fff":"#64748b",border:"none",borderRadius:10,cursor:inviteForm.name&&inviteForm.email?"pointer":"not-allowed",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center",justifyContent:"center"}}>
+                    <Send size={12}/>Send Invite
+                  </button>
+                </div>
+              </div>
+            </div>}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:13,fontWeight:700}}>Staff · {teamUsers.filter(u=>u.active).length} active / {teamUsers.length} total</div>
-              <button onClick={()=>doToast("Invite sent")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={12}/>Invite Staff</button>
+              <div>
+                <div style={{fontSize:13,fontWeight:700}}>Staff · {teamUsers.filter(u=>u.active).length} active / {teamUsers.length} total</div>
+                <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{teamUsers.filter(u=>u.active).length}/{maxSeats} seats used · <span style={{color:"#60A5FA",cursor:"pointer",textDecoration:"underline"}} onClick={()=>doToast("Full user management → Settings → Staff & Users")}>Full management in Settings →</span></div>
+              </div>
+              <button onClick={()=>setShowInvite(true)} disabled={atSeatLimit} style={{padding:"7px 16px",background:atSeatLimit?"rgba(80,140,255,0.12)":"linear-gradient(135deg,#2563FF,#1D4ED8)",color:atSeatLimit?"#64748b":"#fff",border:"none",borderRadius:10,cursor:atSeatLimit?"not-allowed":"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}>
+                <Plus size={12}/>{atSeatLimit?"Seat Limit":"Invite Staff"}
+              </button>
             </div>
             <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,overflow:"hidden"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -22042,6 +22093,7 @@ function SettingsPage({user}){
   };
   const SECTIONS=[
     {id:"practice",l:"Practice Details",icon:"🏥"},
+    {id:"staff",l:"Staff & Users",icon:"👥"},
     {id:"calendar",l:"Calendar & Appointments",icon:"📅"},
     {id:"clinical",l:"Clinical Settings",icon:"🩺"},
     {id:"med_history",l:"Medical History Questions",icon:"📋"},
@@ -22192,6 +22244,9 @@ function SettingsPage({user}){
               </div>
             );
           })()}
+          {/* ── Staff & Users ── */}
+          {activeSection==="staff"&&<UserManagementPage plan="Growth"/>}
+
           {/* ── Medical History Questions ── */}
           {activeSection==="med_history"&&<MedHistQuestionEditor doToast={doToast}/>}
 
@@ -22448,7 +22503,7 @@ function SettingsPage({user}){
             </div>
           </div>}
 
-          {!["backup","integrations","superadmin","treatments","clinical","dashboards","med_history"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
+          {!["backup","integrations","superadmin","treatments","clinical","dashboards","med_history","staff"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
         </div>
       </div>
     </div>
