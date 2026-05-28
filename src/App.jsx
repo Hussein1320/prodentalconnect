@@ -289,6 +289,51 @@ const USERS = [
 
 ];
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SSO — Single Sign-On configuration and mock provider data
+// ══════════════════════════════════════════════════════════════════════════════
+const SSO_PROVIDER_META={
+  google:   {name:"Google Workspace",short:"Google",   color:"#4285F4",bg:"rgba(66,133,244,0.1)", border:"rgba(66,133,244,0.3)"},
+  microsoft:{name:"Microsoft 365",   short:"Microsoft",color:"#0078D4",bg:"rgba(0,120,212,0.1)",  border:"rgba(0,120,212,0.3)"},
+  okta:     {name:"Okta",            short:"Okta",     color:"#007DC1",bg:"rgba(0,125,193,0.1)",  border:"rgba(0,125,193,0.3)"},
+  saml:     {name:"Custom SAML",     short:"SAML",     color:"#64748B",bg:"rgba(100,116,139,0.1)",border:"rgba(100,116,139,0.3)"},
+};
+
+// Mock OAuth account picker data — mirrors real USERS by email
+const SSO_MOCK_ACCOUNTS={
+  google:[
+    {name:"Emma Wilson",      email:"ewilson@riverside.co.uk",  avatar:"EW",color:"#2563FF"},
+    {name:"Dr. Kim (Manager)",email:"kmanager@riverside.co.uk", avatar:"KM",color:"#F59E0B"},
+    {name:"Dr. Sarah Patel",  email:"spatel@riverside.co.uk",   avatar:"SP",color:"#38BDF8"},
+  ],
+  microsoft:[
+    {name:"Dr. Kim (Manager)",email:"kmanager@riverside.co.uk", avatar:"KM",color:"#0078D4"},
+    {name:"Dr. Mike Chen",    email:"mchen@riverside.co.uk",    avatar:"MC",color:"#8B5CF6"},
+    {name:"Emma Wilson",      email:"ewilson@riverside.co.uk",  avatar:"EW",color:"#2563FF"},
+  ],
+};
+
+// Per-user SSO metadata — keyed by user ID
+const USER_SSO_DATA={
+  U2:{provider:"google",   enabled:true, linkedEmail:"ewilson@riverside.co.uk",  lastSsoLogin:"Today 08:02",  mfaMethod:"sso_mfa"},
+  U4:{provider:"microsoft",enabled:true, linkedEmail:"mchen@riverside.co.uk",    lastSsoLogin:"Today 09:10",  mfaMethod:"ms_authenticator"},
+  U6:{provider:"microsoft",enabled:true, linkedEmail:"kmanager@riverside.co.uk", lastSsoLogin:"Today 07:45",  mfaMethod:"ms_authenticator"},
+};
+
+// Practice-level SSO config (practiceId → config)
+const PRACTICE_SSO_CFG_INIT={
+  1:{enabled:false,provider:null,enforced:false,domain:"riverside.co.uk",mfaRequired:false,
+     tenantId:"",googleWorkspaceDomain:"",allowPasswordFallback:true,createdAt:null},
+};
+
+// SSO audit events (appended to audit log on SSO activity)
+const SSO_AUDIT_INIT=[
+  {id:"SA001",ts:new Date(Date.now()-3600000).toISOString(),user:"Emma Wilson",    provider:"google",   event:"sso_login",   detail:"Authenticated via Google Workspace",ip:"192.168.1.42",device:"Chrome · macOS",sessionDuration:null,mfa:"Included in SSO"},
+  {id:"SA002",ts:new Date(Date.now()-5400000).toISOString(),user:"Dr. Kim",        provider:"microsoft",event:"sso_login",   detail:"Authenticated via Microsoft 365",   ip:"192.168.1.15",device:"Edge · Windows 11",sessionDuration:null,mfa:"MS Authenticator"},
+  {id:"SA003",ts:new Date(Date.now()-7200000).toISOString(),user:"Unknown",        provider:"google",   event:"sso_fail",    detail:"Email not linked to any account",   ip:"87.23.45.11", device:"Chrome · Windows 10",sessionDuration:null,mfa:"—"},
+  {id:"SA004",ts:new Date(Date.now()-86400000).toISOString(),user:"Dr. Mike Chen", provider:"microsoft",event:"sso_login",   detail:"Authenticated via Microsoft 365",   ip:"192.168.1.22",device:"Edge · Windows 11",sessionDuration:"6h 12m",mfa:"MS Authenticator"},
+];
+
 // ── Practice isolation helper ─────────────────────────────────────────────────
 
 // Production: enforced via server-side JWT claims — each API query is scoped
@@ -1024,9 +1069,13 @@ function LoginScreen({onLogin}){
 
   const [loading,setLoading]=useState(false);
 
-  const [step,setStep]=useState("login"); // "login" | "2fa"
+  const [step,setStep]=useState("login"); // "login" | "2fa" | "sso"
 
   const [twoFa,setTwoFa]=useState("");
+
+  const [ssoProvider,setSsoProvider]=useState(null); // "google" | "microsoft"
+  const [ssoOtherEmail,setSsoOtherEmail]=useState("");
+  const [ssoOtherMode,setSsoOtherMode]=useState(false);
 
   // Switch between modes — clear the other credential and errors
 
@@ -1100,6 +1149,26 @@ function LoginScreen({onLogin}){
 
     } else setErr("Invalid code. Please check your authenticator app.");
 
+  };
+
+  const doSsoLogin=(acct)=>{
+    setErr("");
+    const emailToMatch=(acct?.email||ssoOtherEmail).toLowerCase().trim();
+    if(!emailToMatch){setErr("Please enter your email address.");return;}
+    const u=USERS.find(x=>x.email?.toLowerCase()===emailToMatch);
+    if(!u){
+      setErr("No ProDentalConnect account found for "+emailToMatch+". Contact your practice manager to link your "+SSO_PROVIDER_META[ssoProvider]?.short+" account.");
+      return;
+    }
+    if(u.role==="superadmin"){
+      setStep("2fa");setSsoProvider(null);setSsoOtherMode(false);setSsoOtherEmail("");
+      return;
+    }
+    onLogin(u);
+  };
+
+  const openSso=(provider)=>{
+    setErr("");setSsoProvider(provider);setSsoOtherMode(false);setSsoOtherEmail("");setStep("sso");
   };
 
   const quickUsers=[
@@ -1411,6 +1480,26 @@ function LoginScreen({onLogin}){
 
               </button>
 
+              {/* SSO provider buttons */}
+              <div style={{display:"flex",alignItems:"center",gap:10,margin:"4px 0 12px"}}>
+                <div style={{flex:1,height:1,background:"rgba(80,140,255,0.15)"}}/>
+                <span style={{fontSize:10,color:"#64748B",fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",whiteSpace:"nowrap"}}>or continue with</span>
+                <div style={{flex:1,height:1,background:"rgba(80,140,255,0.15)"}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+                {[
+                  {p:"google",    label:"Google Workspace", logo:<span style={{width:18,height:18,borderRadius:"50%",background:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#4285F4",flexShrink:0,lineHeight:1}}>G</span>},
+                  {p:"microsoft", label:"Microsoft 365",    logo:<span style={{width:18,height:18,display:"inline-grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 1fr",gap:1.5,flexShrink:0}}><span style={{background:"#F25022",borderRadius:1}}/><span style={{background:"#7FBA00",borderRadius:1}}/><span style={{background:"#00A4EF",borderRadius:1}}/><span style={{background:"#FFB900",borderRadius:1}}/></span>},
+                ].map(({p,label,logo})=>(
+                  <button key={p} onClick={()=>openSso(p)}
+                    style={{padding:"9px 8px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,fontSize:11,fontWeight:600,color:"#E2E8F0",transition:"all .15s"}}
+                    onMouseOver={e=>e.currentTarget.style.background="rgba(255,255,255,0.09)"}
+                    onMouseOut={e=>e.currentTarget.style.background="rgba(255,255,255,0.04)"}>
+                    {logo}<span>{label}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Quick login demo strip */}
 
               <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",paddingTop:16}}>
@@ -1503,9 +1592,104 @@ function LoginScreen({onLogin}){
 
               <button onClick={()=>{setStep("login");setErr("");setTwoFa("");}} style={{width:"100%",padding:"8px",background:"transparent",border:"none",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>← Back to login</button>
 
-
-
             </>}
+
+            {step==="sso"&&ssoProvider&&(()=>{
+              const pm=SSO_PROVIDER_META[ssoProvider];
+              const accounts=SSO_MOCK_ACCOUNTS[ssoProvider]||[];
+              return(
+                <>
+                  {/* Provider header */}
+                  <div style={{textAlign:"center",marginBottom:22}}>
+                    {ssoProvider==="google"&&(
+                      <div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:4,marginBottom:10}}>
+                        <span style={{fontSize:32,fontWeight:900,color:"#4285F4"}}>G</span>
+                        <span style={{fontSize:32,fontWeight:900,color:"#EA4335"}}>o</span>
+                        <span style={{fontSize:32,fontWeight:900,color:"#FBBC05"}}>o</span>
+                        <span style={{fontSize:32,fontWeight:900,color:"#4285F4"}}>g</span>
+                        <span style={{fontSize:32,fontWeight:900,color:"#34A853"}}>l</span>
+                        <span style={{fontSize:32,fontWeight:900,color:"#EA4335"}}>e</span>
+                      </div>
+                    )}
+                    {ssoProvider==="microsoft"&&(
+                      <div style={{display:"inline-grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 1fr",gap:3,width:40,height:40,marginBottom:10}}>
+                        <span style={{background:"#F25022",borderRadius:2}}/>
+                        <span style={{background:"#7FBA00",borderRadius:2}}/>
+                        <span style={{background:"#00A4EF",borderRadius:2}}/>
+                        <span style={{background:"#FFB900",borderRadius:2}}/>
+                      </div>
+                    )}
+                    <div style={{fontSize:15,fontWeight:700,color:"#F8FAFC",marginBottom:4}}>
+                      {ssoProvider==="google"?"Choose an account":"Sign in"}
+                    </div>
+                    <div style={{fontSize:11,color:"#94A3B8"}}>
+                      to continue to <strong style={{color:"#F8FAFC"}}>ProDentalConnect</strong>
+                    </div>
+                  </div>
+
+                  {/* Account picker */}
+                  {!ssoOtherMode&&(
+                    <div style={{border:"1px solid rgba(80,140,255,0.2)",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+                      {accounts.map((acct,i)=>(
+                        <div key={acct.email} onClick={()=>doSsoLogin(acct)}
+                          style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                            borderBottom:i<accounts.length-1?"1px solid rgba(80,140,255,0.1)":"none",
+                            cursor:"pointer",background:"#132238",transition:"background .12s"}}
+                          onMouseOver={e=>e.currentTarget.style.background="rgba(37,99,255,0.1)"}
+                          onMouseOut={e=>e.currentTarget.style.background="#132238"}>
+                          <div style={{width:36,height:36,borderRadius:"50%",background:acct.color+"22",border:`1.5px solid ${acct.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:acct.color,flexShrink:0}}>{acct.avatar}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC"}}>{acct.name}</div>
+                            <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{acct.email}</div>
+                          </div>
+                          <span style={{fontSize:16,color:"#64748B"}}>›</span>
+                        </div>
+                      ))}
+                      <div onClick={()=>setSsoOtherMode(true)}
+                        style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",cursor:"pointer",background:"#132238",transition:"background .12s"}}
+                        onMouseOver={e=>e.currentTarget.style.background="rgba(37,99,255,0.06)"}
+                        onMouseOut={e=>e.currentTarget.style.background="#132238"}>
+                        <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(80,140,255,0.1)",border:"1.5px solid rgba(80,140,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#94A3B8",flexShrink:0}}>+</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>Use another account</div>
+                        <span style={{fontSize:16,color:"#64748B",marginLeft:"auto"}}>›</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Other account email input */}
+                  {ssoOtherMode&&(
+                    <div style={{marginBottom:14}}>
+                      <label style={{fontSize:11,fontWeight:700,color:"#CBD5E1",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Enter your email</label>
+                      <input value={ssoOtherEmail} onChange={e=>{setSsoOtherEmail(e.target.value);setErr("");}}
+                        onKeyDown={e=>e.key==="Enter"&&doSsoLogin(null)}
+                        placeholder="you@yourdomain.co.uk"
+                        type="email"
+                        style={{width:"100%",padding:"10px 12px",background:"#132238",border:`1.5px solid ${pm.border}`,borderRadius:10,fontSize:13,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
+                      <button onClick={()=>doSsoLogin(null)}
+                        style={{width:"100%",padding:"10px",background:`linear-gradient(135deg,${pm.color},${pm.color}cc)`,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                        Continue with {pm.short}
+                      </button>
+                      <button onClick={()=>setSsoOtherMode(false)}
+                        style={{width:"100%",padding:"7px",background:"transparent",border:"none",cursor:"pointer",fontSize:11,color:"#64748B",marginTop:4}}>
+                        ← Back to account list
+                      </button>
+                    </div>
+                  )}
+
+                  {err&&<div style={{padding:"8px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:9,fontSize:12,color:"#EF4444",marginBottom:10}}>{err}</div>}
+
+                  <div style={{padding:"8px 12px",background:"rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.15)",borderRadius:9,fontSize:10,color:"#64748B",marginBottom:12,display:"flex",gap:6,alignItems:"center"}}>
+                    <span>🔒</span>
+                    <span>Secure {pm.name} authentication · ProDentalConnect never sees your password</span>
+                  </div>
+
+                  <button onClick={()=>{setStep("login");setSsoProvider(null);setErr("");setSsoOtherMode(false);setSsoOtherEmail("");}}
+                    style={{width:"100%",padding:"8px",background:"transparent",border:"none",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>
+                    ← Back to sign in options
+                  </button>
+                </>
+              );
+            })()}
 
           </div>
 
@@ -2839,12 +3023,113 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
                 </div>
               </div>
             </div>
-            {[{l:"Require 2FA for all staff",d:"Enforce two-factor auth on every login",on:false},{l:"Session timeout",d:"Auto-logout after 4 hours of inactivity",on:true},{l:"IP allowlist",d:"Restrict access to practice network only",on:false},{l:"Audit log login events",d:"Track every login and logout",on:true},{l:"Password complexity rules",d:"Minimum 10 chars, mixed case, symbol required",on:true},{l:"Single sign-on (SSO)",d:"Integrate with NHS smartcard or Google Workspace",on:false}].map((s,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderBottom:"1px solid rgba(59,130,246,0.06)"}}>
-                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{s.l}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{s.d}</div></div>
-                <Toggle on={s.on} onToggle={()=>doToast("Setting updated")}/>
-              </div>
-            ))}
+            {(()=>{
+              const [ssoCfg,setSsoCfg]=useState({...PRACTICE_SSO_CFG_INIT[1]});
+              const [ssoExpanded,setSsoExpanded]=useState(false);
+              const [secToggles,setSecToggles]=useState({mfa:false,timeout:true,ipAllow:false,auditLogin:true,pwdComplex:true});
+              const toggleSec=k=>setSecToggles(p=>({...p,[k]:!p[k]}));
+              const updateSso=patch=>{setSsoCfg(p=>({...p,...patch}));doToast("SSO configuration saved");};
+              return(<>
+                {[
+                  {k:"mfa",l:"Require 2FA for all staff",d:"Enforce two-factor auth on every login"},
+                  {k:"timeout",l:"Session timeout",d:"Auto-logout after 4 hours of inactivity"},
+                  {k:"ipAllow",l:"IP allowlist",d:"Restrict access to practice network only"},
+                  {k:"auditLogin",l:"Audit log login events",d:"Track every login and logout"},
+                  {k:"pwdComplex",l:"Password complexity rules",d:"Minimum 10 chars, mixed case, symbol required"},
+                ].map(s=>(
+                  <div key={s.k} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderBottom:"1px solid rgba(59,130,246,0.06)"}}>
+                    <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{s.l}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{s.d}</div></div>
+                    <Toggle on={secToggles[s.k]} onToggle={()=>toggleSec(s.k)}/>
+                  </div>
+                ))}
+
+                {/* ── SSO Configuration Panel ── */}
+                <div style={{marginTop:4}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,padding:"12px 0",cursor:"pointer"}} onClick={()=>setSsoExpanded(p=>!p)}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,display:"flex",gap:8,alignItems:"center"}}>
+                        Single Sign-On (SSO)
+                        {ssoCfg.enabled&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:20,background:ssoCfg.provider?SSO_PROVIDER_META[ssoCfg.provider]?.bg:"rgba(34,197,94,0.1)",color:ssoCfg.provider?SSO_PROVIDER_META[ssoCfg.provider]?.color:"#22C55E",border:`1px solid ${ssoCfg.provider?SSO_PROVIDER_META[ssoCfg.provider]?.border:"rgba(34,197,94,0.2)"}`}}>
+                          {ssoCfg.provider?SSO_PROVIDER_META[ssoCfg.provider]?.name+" Active":"Enabled"}
+                        </span>}
+                        {ssoCfg.enforced&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:20,background:"rgba(239,68,68,0.1)",color:"#EF4444",border:"1px solid rgba(239,68,68,0.25)"}}>Enforced</span>}
+                      </div>
+                      <div style={{fontSize:11,color:"#CBD5E1"}}>Authenticate staff via Google Workspace or Microsoft 365</div>
+                    </div>
+                    <Toggle on={ssoCfg.enabled} onToggle={()=>updateSso({enabled:!ssoCfg.enabled,provider:ssoCfg.enabled?null:ssoCfg.provider})}/>
+                    <span style={{fontSize:12,color:"#64748B",transform:ssoExpanded?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}>▾</span>
+                  </div>
+
+                  {ssoCfg.enabled&&ssoExpanded&&(
+                    <div style={{background:"rgba(80,140,255,0.04)",border:"1px solid rgba(80,140,255,0.14)",borderRadius:12,padding:16,marginBottom:12}}>
+                      {/* Provider selection */}
+                      <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:10}}>Identity Provider</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+                        {Object.entries(SSO_PROVIDER_META).map(([id,pm])=>(
+                          <div key={id} onClick={()=>updateSso({provider:id})}
+                            style={{padding:"10px 8px",borderRadius:10,border:`2px solid ${ssoCfg.provider===id?pm.color:"rgba(80,140,255,0.15)"}`,background:ssoCfg.provider===id?pm.bg:"transparent",cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
+                            <div style={{fontSize:11,fontWeight:700,color:ssoCfg.provider===id?pm.color:"#94A3B8"}}>{pm.short}</div>
+                            <div style={{fontSize:9,color:"#64748B",marginTop:2}}>{pm.name}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Provider config fields */}
+                      {ssoCfg.provider==="google"&&(
+                        <div style={{marginBottom:12}}>
+                          <label style={{fontSize:10,fontWeight:700,color:"#94A3B8",display:"block",marginBottom:5}}>Google Workspace Domain</label>
+                          <input value={ssoCfg.googleWorkspaceDomain} onChange={e=>setSsoCfg(p=>({...p,googleWorkspaceDomain:e.target.value}))}
+                            placeholder="yourpractice.co.uk"
+                            style={{width:"100%",padding:"8px 10px",background:"#0F1C34",border:"1px solid rgba(66,133,244,0.3)",borderRadius:8,fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+                          <div style={{fontSize:10,color:"#64748B",marginTop:4}}>Only accounts from this domain will be allowed to sign in via SSO.</div>
+                        </div>
+                      )}
+                      {ssoCfg.provider==="microsoft"&&(
+                        <div style={{marginBottom:12}}>
+                          <label style={{fontSize:10,fontWeight:700,color:"#94A3B8",display:"block",marginBottom:5}}>Azure AD Tenant ID</label>
+                          <input value={ssoCfg.tenantId} onChange={e=>setSsoCfg(p=>({...p,tenantId:e.target.value}))}
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                            style={{width:"100%",padding:"8px 10px",background:"#0F1C34",border:"1px solid rgba(0,120,212,0.3)",borderRadius:8,fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"ui-monospace,monospace",boxSizing:"border-box"}}/>
+                        </div>
+                      )}
+
+                      {/* Enforcement options */}
+                      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+                        {[
+                          {k:"enforced",l:"Enforce SSO — block password login",d:"All staff must sign in via SSO. Password login will be disabled."},
+                          {k:"mfaRequired",l:"Require MFA through SSO provider",d:"Staff must complete MFA as part of the SSO flow."},
+                          {k:"allowPasswordFallback",l:"Allow password fallback",d:"Permit support/admin access via password if SSO is unavailable."},
+                        ].map(opt=>(
+                          <div key={opt.k} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 12px",background:"#132238",borderRadius:9,border:"1px solid rgba(80,140,255,0.1)"}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{opt.l}</div>
+                              <div style={{fontSize:10,color:"#64748B",marginTop:2}}>{opt.d}</div>
+                            </div>
+                            <Toggle on={!!ssoCfg[opt.k]} onToggle={()=>updateSso({[opt.k]:!ssoCfg[opt.k]})}/>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Status / test connection */}
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>doToast("✓ SSO connection test successful — provider reachable")}
+                          style={{padding:"7px 14px",background:"rgba(80,140,255,0.1)",border:"1px solid rgba(80,140,255,0.25)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"#60A5FA"}}>Test Connection</button>
+                        <button onClick={()=>doToast("✓ SSO configuration saved")}
+                          style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"#fff"}}>Save Configuration</button>
+                        <button onClick={()=>doToast("✓ SSO invitation sent to all staff")}
+                          style={{padding:"7px 14px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"#22C55E"}}>Invite Staff to Link</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!ssoCfg.enabled&&(
+                    <div style={{padding:"10px 12px",background:"rgba(80,140,255,0.04)",borderRadius:9,border:"1px solid rgba(80,140,255,0.1)",marginBottom:8,fontSize:11,color:"#64748B"}}>
+                      Enable SSO to allow staff to sign in with their existing Google Workspace or Microsoft 365 accounts. No separate passwords required.
+                    </div>
+                  )}
+                </div>
+              </>);
+            })()}
           </div>
         )}
 
@@ -22600,6 +22885,88 @@ function UserManagementPage({plan="Growth"}){
               ))}
             </div>
           </div>
+
+          {/* SSO Card */}
+          {(()=>{
+            const sso=USER_SSO_DATA[sel.id]||null;
+            const pm=sso?.provider?SSO_PROVIDER_META[sso.provider]:null;
+            const [localSso,setLocalSso]=useState(sso?{...sso}:{provider:null,enabled:false,linkedEmail:"",lastSsoLogin:null,mfaMethod:null});
+            const [showLink,setShowLink]=useState(false);
+            return(
+              <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden",marginTop:14}}>
+                <div style={{padding:"11px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Single Sign-On</span>
+                  {localSso.enabled&&pm&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:20,background:pm.bg,color:pm.color,border:`1px solid ${pm.border}`,fontWeight:700}}>{pm.name}</span>}
+                  {!localSso.enabled&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:20,background:"rgba(100,116,139,0.15)",color:"#64748B",fontWeight:700}}>Not configured</span>}
+                </div>
+                <div style={{padding:"14px 16px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12,padding:"10px 12px",background:"#0F1C34",borderRadius:10,border:"1px solid rgba(80,140,255,0.1)"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:700}}>SSO Enabled</div>
+                      <div style={{fontSize:10,color:"#64748B"}}>Allow this user to sign in via their SSO provider</div>
+                    </div>
+                    <Toggle on={localSso.enabled} onToggle={()=>{setLocalSso(p=>({...p,enabled:!p.enabled}));doToast("SSO "+(localSso.enabled?"disabled":"enabled")+" for "+sel.name);}}/>
+                  </div>
+
+                  {localSso.enabled&&(
+                    <>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                        {[{l:"Provider",v:pm?.name||"—",icon:pm?"🔐":"—"},{l:"Linked Email",v:localSso.linkedEmail||"—",icon:"✉️"},{l:"Last SSO Login",v:localSso.lastSsoLogin||"Never",icon:"🕒"},{l:"MFA Method",v:localSso.mfaMethod==="ms_authenticator"?"MS Authenticator":localSso.mfaMethod==="sso_mfa"?"Provider MFA":"—",icon:"🛡"}].map(({l,v,icon})=>(
+                          <div key={l} style={{padding:"8px 10px",background:"#0F1C34",borderRadius:8,border:"1px solid rgba(80,140,255,0.1)"}}>
+                            <div style={{fontSize:9,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:3}}>{l}</div>
+                            <div style={{fontSize:11,fontWeight:600,color:"#E2E8F0",display:"flex",gap:5,alignItems:"center"}}><span>{icon}</span>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        <button onClick={()=>{setShowLink(p=>!p);}} style={{padding:"6px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"rgba(80,140,255,0.08)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#60A5FA"}}>
+                          {showLink?"Hide":"Change Provider / Email"}
+                        </button>
+                        <button onClick={()=>{doToast("✓ SSO re-link email sent to "+sel.email);}}
+                          style={{padding:"6px 12px",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8,background:"rgba(34,197,94,0.07)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#22C55E"}}>Send Link Email</button>
+                        <button onClick={()=>{setLocalSso(p=>({...p,enabled:false,provider:null,linkedEmail:""}));doToast("SSO unlinked for "+sel.name);}}
+                          style={{padding:"6px 12px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,background:"rgba(239,68,68,0.07)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#EF4444"}}>Unlink</button>
+                        <button onClick={()=>doToast("All sessions revoked for "+sel.name)}
+                          style={{padding:"6px 12px",border:"1px solid rgba(245,158,11,0.2)",borderRadius:8,background:"rgba(245,158,11,0.07)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#F59E0B"}}>Revoke Sessions</button>
+                      </div>
+
+                      {showLink&&(
+                        <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8,padding:"12px",background:"#0F1C34",borderRadius:10,border:"1px solid rgba(80,140,255,0.14)"}}>
+                          <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:2}}>Link new SSO account</div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                            {Object.entries(SSO_PROVIDER_META).slice(0,2).map(([id,pm])=>(
+                              <div key={id} onClick={()=>setLocalSso(p=>({...p,provider:id}))}
+                                style={{padding:"7px 10px",borderRadius:8,border:`1.5px solid ${localSso.provider===id?pm.color:"rgba(80,140,255,0.15)"}`,background:localSso.provider===id?pm.bg:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                                <span style={{fontSize:11,fontWeight:700,color:localSso.provider===id?pm.color:"#94A3B8"}}>{pm.short}</span>
+                                <span style={{fontSize:9,color:"#64748B"}}>{pm.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <input value={localSso.linkedEmail} onChange={e=>setLocalSso(p=>({...p,linkedEmail:e.target.value}))}
+                            placeholder="user@domain.co.uk"
+                            style={{padding:"7px 10px",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+                          <button onClick={()=>{setShowLink(false);doToast("✓ SSO account linked for "+sel.name);}}
+                            style={{padding:"7px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff"}}>Save</button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!localSso.enabled&&(
+                    <div style={{display:"flex",gap:8}}>
+                      {Object.entries(SSO_PROVIDER_META).slice(0,2).map(([id,pm])=>(
+                        <button key={id} onClick={()=>{setLocalSso({provider:id,enabled:true,linkedEmail:sel.email,lastSsoLogin:null,mfaMethod:id==="microsoft"?"ms_authenticator":"sso_mfa"});doToast("SSO enabled via "+pm.name+" for "+sel.name);}}
+                          style={{padding:"7px 14px",border:`1px solid ${pm.border}`,borderRadius:8,background:pm.bg,cursor:"pointer",fontSize:11,fontWeight:700,color:pm.color}}>
+                          Enable {pm.short}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>}
       </div>
     </div>
@@ -29840,26 +30207,180 @@ function AdminSystemMonitoring(){
 function AdminSecurityCompliance(){
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+  const [tab,setTab]=useState("overview");
+  const [ssoEvents]=useState(SSO_AUDIT_INIT);
+
+  const SSO_PRACTICE_STATUS=[
+    {name:"City Smile Clinic",   plan:"Enterprise",provider:"microsoft",enabled:true, users:12,ssoUsers:11,failedAttempts:0, mfaRate:100,enforced:true, lastActivity:"Today 08:45"},
+    {name:"Riverside Dentistry", plan:"Growth",    provider:"google",   enabled:false,users:6, ssoUsers:0, failedAttempts:1, mfaRate:67, enforced:false,lastActivity:"Today 08:02"},
+    {name:"Bayview Dentists",    plan:"Growth",    provider:null,       enabled:false,users:7, ssoUsers:0, failedAttempts:0, mfaRate:57, enforced:false,lastActivity:"Yesterday"},
+    {name:"Sunshine Dental",     plan:"Starter",   provider:null,       enabled:false,users:3, ssoUsers:0, failedAttempts:0, mfaRate:33, enforced:false,lastActivity:"2 days ago"},
+    {name:"Northside Dental",    plan:"Growth",    provider:"microsoft",enabled:true, users:4, ssoUsers:4, failedAttempts:0, mfaRate:100,enforced:true, lastActivity:"Today 07:30"},
+    {name:"The Smile Studio",    plan:"Growth",    provider:"google",   enabled:true, users:8, ssoUsers:6, failedAttempts:2, mfaRate:88, enforced:false,lastActivity:"Today 09:00"},
+    {name:"Dental House",        plan:"Starter",   provider:null,       enabled:false,users:2, ssoUsers:0, failedAttempts:0, mfaRate:50, enforced:false,lastActivity:"3 days ago"},
+    {name:"Coastal Dentistry",   plan:"Enterprise",provider:"microsoft",enabled:true, users:9, ssoUsers:9, failedAttempts:1, mfaRate:100,enforced:true, lastActivity:"Today 08:15"},
+  ];
+
+  const totalSsoActive=SSO_PRACTICE_STATUS.filter(p=>p.enabled).length;
+  const totalFailedAttempts=SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.failedAttempts,0);
+  const totalSsoUsers=SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.ssoUsers,0);
+  const totalUsers=SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.users,0);
+  const avgMfa=Math.round(SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.mfaRate,0)/SSO_PRACTICE_STATUS.length);
+
   return(
   <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600}}>{toast}</div>}
-    <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Security & Compliance</div>
-    <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>Platform-wide security posture, compliance status, and access control.</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      {[{t:"Data Encryption",v:"✓ AES-256 at rest · TLS 1.3 in transit",c:"#16a34a"},{t:"UK GDPR Compliance",v:"✓ Article 28 DPA · ICO registered",c:"#16a34a"},{t:"CQC Data Retention",v:"✓ 7-year audit trail · Immutable logs",c:"#16a34a"},{t:"2FA Enforcement",v:"✓ All managers · 94% adoption",c:"#16a34a"},{t:"Penetration Testing",v:"Last test: Jan 2026 · No critical findings",c:"#d97706"},{t:"ISO 27001",v:"In progress — certification Q3 2026",c:"#d97706"}].map((s,i)=>(
-        <div key={i} style={{background:"#132238",borderRadius:14,border:`1px solid ${s.c}30`,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",borderLeft:`3px solid ${s.c}`}}>
-          <div><div style={{fontSize:12,fontWeight:700,marginBottom:2}}>{s.t}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{s.v}</div></div>
-        </div>
-      ))}
-    </div>
-    <div style={{marginTop:14,background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",padding:"16px"}}>
-      <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:10}}>Security Actions</div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        {["Force 2FA Reset — All Users","Download GDPR Compliance Report","View Failed Login Attempts","Rotate API Keys","Export Security Audit"].map(a=>(
-          <button key={a} onClick={()=>doToast("✓ "+a)} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{a}</button>
-        ))}
+    <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+      <div style={{flex:1}}>
+        <div style={{fontSize:15,fontWeight:800}}>Security & Compliance</div>
+        <div style={{fontSize:11,color:"#CBD5E1"}}>Platform-wide security posture, SSO adoption, and access control.</div>
       </div>
     </div>
+
+    {/* Tab bar */}
+    <div style={{display:"flex",gap:0,borderBottom:"1px solid rgba(56,189,248,0.1)",marginBottom:16}}>
+      {[{id:"overview",l:"Overview"},{id:"sso",l:"SSO Management"},{id:"audit",l:"SSO Audit Log"},{id:"actions",l:"Actions"}].map(t=>(
+        <button key={t.id} onClick={()=>setTab(t.id)}
+          style={{padding:"8px 16px",border:"none",background:"transparent",color:tab===t.id?"#F8FAFC":"#64748B",fontSize:12,fontWeight:700,cursor:"pointer",borderBottom:tab===t.id?"2px solid #2563FF":"2px solid transparent",transition:"color .12s"}}>
+          {t.l}
+        </button>
+      ))}
+    </div>
+
+    {tab==="overview"&&(
+      <>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {l:"SSO Active Practices",v:totalSsoActive+"/"+SSO_PRACTICE_STATUS.length,c:"#2563FF",sub:"practices using SSO"},
+            {l:"SSO Users",v:totalSsoUsers+"/"+totalUsers,c:"#22C55E",sub:"staff on SSO login"},
+            {l:"MFA Adoption",v:avgMfa+"%",c:avgMfa>=80?"#22C55E":"#F59E0B",sub:"platform average"},
+            {l:"Failed SSO Attempts",v:totalFailedAttempts,c:totalFailedAttempts>0?"#EF4444":"#22C55E",sub:"last 24 hours"},
+            {l:"SSO Enforced",v:SSO_PRACTICE_STATUS.filter(p=>p.enforced).length,c:"#8B5CF6",sub:"practices enforcing"},
+          ].map(k=>(
+            <div key={k.l} style={{background:"#132238",borderRadius:14,border:"1px solid rgba(56,189,248,0.1)",padding:"12px 14px"}}>
+              <div style={{fontSize:9,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".07em",marginBottom:4}}>{k.l}</div>
+              <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"ui-monospace,monospace"}}>{k.v}</div>
+              <div style={{fontSize:9,color:"#64748B",marginTop:2}}>{k.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          {[{t:"Data Encryption",v:"✓ AES-256 at rest · TLS 1.3 in transit",c:"#16a34a"},{t:"UK GDPR Compliance",v:"✓ Article 28 DPA · ICO registered",c:"#16a34a"},{t:"CQC Data Retention",v:"✓ 7-year audit trail · Immutable logs",c:"#16a34a"},{t:"2FA Enforcement",v:"✓ All managers · "+avgMfa+"% adoption",c:"#16a34a"},{t:"Penetration Testing",v:"Last test: Jan 2026 · No critical findings",c:"#d97706"},{t:"ISO 27001",v:"In progress — certification Q3 2026",c:"#d97706"}].map((s,i)=>(
+            <div key={i} style={{background:"#132238",borderRadius:14,border:`1px solid ${s.c}30`,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",borderLeft:`3px solid ${s.c}`}}>
+              <div><div style={{fontSize:12,fontWeight:700,marginBottom:2}}>{s.t}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{s.v}</div></div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+
+    {tab==="sso"&&(
+      <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(56,189,248,0.1)",overflow:"hidden"}}>
+        <div style={{padding:"11px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,fontWeight:800}}>SSO Status by Practice</span>
+          <button onClick={()=>doToast("✓ SSO status report exported")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"transparent",cursor:"pointer",fontSize:10,fontWeight:700,color:"#60A5FA"}}>Export</button>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead>
+              <tr>{["Practice","Plan","Provider","SSO","Users on SSO","MFA Rate","Failed Logins","Enforced","Last Activity"].map(h=>(
+                <th key={h} style={{padding:"8px 12px",fontSize:10,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:"1px solid rgba(56,189,248,0.07)",whiteSpace:"nowrap"}}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {SSO_PRACTICE_STATUS.map((p,i)=>{
+                const pm=p.provider?SSO_PROVIDER_META[p.provider]:null;
+                return(
+                  <tr key={p.name} style={{borderBottom:"1px solid rgba(56,189,248,0.05)"}}>
+                    <td style={{padding:"10px 12px",fontSize:12,fontWeight:700}}>{p.name}</td>
+                    <td style={{padding:"10px 12px"}}><span style={{fontSize:10,padding:"2px 7px",borderRadius:6,background:"rgba(80,140,255,0.1)",color:"#60A5FA",fontWeight:700}}>{p.plan}</span></td>
+                    <td style={{padding:"10px 12px"}}>{pm?<span style={{fontSize:10,padding:"2px 7px",borderRadius:6,background:pm.bg,color:pm.color,border:`1px solid ${pm.border}`,fontWeight:700}}>{pm.short}</span>:<span style={{fontSize:10,color:"#64748B"}}>—</span>}</td>
+                    <td style={{padding:"10px 12px"}}><span style={{fontSize:10,fontWeight:700,color:p.enabled?"#22C55E":"#64748B"}}>{p.enabled?"● Active":"○ Off"}</span></td>
+                    <td style={{padding:"10px 12px",fontSize:11,fontFamily:"ui-monospace,monospace",fontWeight:700,color:p.ssoUsers>0?"#F8FAFC":"#64748B"}}>{p.ssoUsers}/{p.users}</td>
+                    <td style={{padding:"10px 12px"}}><span style={{fontSize:11,fontWeight:700,color:p.mfaRate>=80?"#22C55E":p.mfaRate>=50?"#F59E0B":"#EF4444"}}>{p.mfaRate}%</span></td>
+                    <td style={{padding:"10px 12px"}}><span style={{fontSize:11,fontWeight:700,color:p.failedAttempts>0?"#EF4444":"#22C55E"}}>{p.failedAttempts}</span></td>
+                    <td style={{padding:"10px 12px"}}><span style={{fontSize:10,fontWeight:700,color:p.enforced?"#8B5CF6":"#64748B"}}>{p.enforced?"Yes":"No"}</span></td>
+                    <td style={{padding:"10px 12px",fontSize:10,color:"#94A3B8"}}>{p.lastActivity}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {tab==="audit"&&(
+      <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(56,189,248,0.1)",overflow:"hidden"}}>
+        <div style={{padding:"11px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,fontWeight:800}}>SSO Audit Log</span>
+          <button onClick={()=>doToast("✓ Audit log exported")} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"transparent",cursor:"pointer",fontSize:10,fontWeight:700,color:"#60A5FA"}}>Export</button>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead>
+              <tr>{["Timestamp","User","Provider","Event","Detail","IP","Device","MFA"].map(h=>(
+                <th key={h} style={{padding:"8px 12px",fontSize:10,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:"1px solid rgba(56,189,248,0.07)",whiteSpace:"nowrap"}}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {ssoEvents.map(e=>{
+                const pm=SSO_PROVIDER_META[e.provider];
+                const evColor=e.event==="sso_fail"?"#EF4444":e.event==="sso_login"?"#22C55E":"#F59E0B";
+                return(
+                  <tr key={e.id} style={{borderBottom:"1px solid rgba(56,189,248,0.05)"}}>
+                    <td style={{padding:"9px 12px",fontSize:10,color:"#94A3B8",fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap"}}>{new Date(e.ts).toLocaleString("en-GB",{dateStyle:"short",timeStyle:"short"})}</td>
+                    <td style={{padding:"9px 12px",fontSize:12,fontWeight:700}}>{e.user}</td>
+                    <td style={{padding:"9px 12px"}}>{pm?<span style={{fontSize:10,padding:"2px 6px",borderRadius:6,background:pm.bg,color:pm.color,border:`1px solid ${pm.border}`,fontWeight:700}}>{pm.short}</span>:"—"}</td>
+                    <td style={{padding:"9px 12px"}}><span style={{fontSize:10,fontWeight:700,color:evColor,textTransform:"uppercase"}}>{e.event.replace("sso_","")}</span></td>
+                    <td style={{padding:"9px 12px",fontSize:11,color:"#CBD5E1",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.detail}</td>
+                    <td style={{padding:"9px 12px",fontSize:10,color:"#94A3B8",fontFamily:"ui-monospace,monospace"}}>{e.ip}</td>
+                    <td style={{padding:"9px 12px",fontSize:10,color:"#94A3B8"}}>{e.device}</td>
+                    <td style={{padding:"9px 12px",fontSize:10,color:"#22C55E",fontWeight:600}}>{e.mfa}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {tab==="actions"&&(
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(56,189,248,0.1)",padding:16}}>
+          <div style={{fontSize:13,fontWeight:800,marginBottom:10}}>Platform-Wide Security Actions</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {["Force 2FA Reset — All Users","Download GDPR Compliance Report","View Failed Login Attempts","Rotate API Keys","Export Security Audit","Force SSO Re-authentication — All Practices","Revoke All Active Sessions","Download SOC 2 Report"].map(a=>(
+              <button key={a} onClick={()=>doToast("✓ "+a)} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{a}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(56,189,248,0.1)",padding:16}}>
+          <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>Future-Ready SSO Features</div>
+          <div style={{fontSize:11,color:"#64748B",marginBottom:10}}>Architecture supports the following enterprise identity features:</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {[
+              {l:"SCIM Provisioning",d:"Auto-provision/deprovision users from Azure AD or Okta",status:"planned"},
+              {l:"Azure Group Sync",d:"Sync AD security groups to ProDentalConnect roles",status:"planned"},
+              {l:"Role Mapping",d:"Map SSO claims/attributes to ProDentalConnect roles",status:"planned"},
+              {l:"SAML 2.0 Support",d:"Enterprise SAML for custom identity providers",status:"planned"},
+              {l:"Identity Federation",d:"Multi-practice identity federation for groups",status:"planned"},
+              {l:"Conditional Access",d:"IP-based and device-based access policies",status:"planned"},
+            ].map(f=>(
+              <div key={f.l} style={{padding:"10px 12px",background:"#0F1C34",borderRadius:10,border:"1px solid rgba(80,140,255,0.1)",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:2}}>{f.l}</div>
+                  <div style={{fontSize:10,color:"#64748B"}}>{f.d}</div>
+                </div>
+                <span style={{fontSize:9,padding:"2px 7px",borderRadius:20,background:"rgba(139,92,246,0.1)",color:"#8B5CF6",border:"1px solid rgba(139,92,246,0.2)",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Planned</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
   </div>
   );
 }
