@@ -16045,6 +16045,59 @@ function ChartingPage({openPatient,embeddedPatient}){
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MEDICAL HISTORY QUESTION ENGINE — single source of truth
+// ══════════════════════════════════════════════════════════════════════════════
+const MED_HIST_Q_INIT=[
+  {id:"allergy_la",    cat:"Allergies",      label:"Allergic reaction to Local or General Anaesthetic",  type:"yes_no",required:true, enabled:true, alertLabel:"LA ALLERGY",          order:0,  followUps:[]},
+  {id:"allergy_pen",   cat:"Allergies",      label:"Allergic to Penicillin",                              type:"yes_no",required:true, enabled:true, alertLabel:"PENICILLIN ALLERGY",  order:1,  followUps:[]},
+  {id:"allergy_asp",   cat:"Allergies",      label:"Allergic to Aspirin or NSAIDs",                      type:"yes_no",required:false,enabled:true, alertLabel:"ASPIRIN/NSAID",        order:2,  followUps:[]},
+  {id:"allergy_latex", cat:"Allergies",      label:"Allergic to Latex",                                   type:"yes_no",required:false,enabled:true, alertLabel:"LATEX ALLERGY",       order:3,  followUps:[]},
+  {id:"heart",         cat:"Cardiovascular", label:"Heart disease or heart attack",                       type:"yes_no",required:true, enabled:true, alertLabel:"HEART CONDITION",     order:4,  followUps:[{cond:"yes",fields:[{id:"heart_details",label:"Please provide details",type:"textarea",required:false}]}]},
+  {id:"bp",            cat:"Cardiovascular", label:"High or low blood pressure",                          type:"yes_no",required:true, enabled:true, alertLabel:"BLOOD PRESSURE",      order:5,  followUps:[]},
+  {id:"stroke",        cat:"Cardiovascular", label:"Stroke or circulation problems",                      type:"yes_no",required:true, enabled:true, alertLabel:"STROKE HISTORY",      order:6,  followUps:[]},
+  {id:"asthma",        cat:"Respiratory",    label:"Asthma, bronchitis or respiratory disease",           type:"yes_no",required:false,enabled:true, alertLabel:"ASTHMA",              order:7,  followUps:[]},
+  {id:"chest",         cat:"Respiratory",    label:"Other chest conditions",                              type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:8,  followUps:[]},
+  {id:"blood_thinners",cat:"Medications",    label:"Blood thinners / anticoagulants",                     type:"yes_no",required:true, enabled:true, alertLabel:"ANTICOAGULANT",        order:9,  followUps:[{cond:"yes",fields:[{id:"bt_name",label:"Medication name",type:"text",required:true},{id:"bt_dose",label:"Dose / frequency",type:"text",required:false},{id:"bt_doctor",label:"Prescribing doctor",type:"text",required:false}]}]},
+  {id:"steroids",      cat:"Medications",    label:"Steroids or immunosuppressants",                      type:"yes_no",required:false,enabled:true, alertLabel:"STEROIDS",             order:10, followUps:[]},
+  {id:"medication",    cat:"Medications",    label:"Currently taking any medication",                     type:"yes_no",required:true, enabled:true, alertLabel:null,                   order:11, followUps:[{cond:"yes",fields:[{id:"med_list",label:"Please list all medications (name, dose, frequency)",type:"textarea",required:true}]}]},
+  {id:"diabetes",      cat:"General Health", label:"Diabetes",                                            type:"yes_no",required:true, enabled:true, alertLabel:"DIABETES",             order:12, followUps:[{cond:"yes",fields:[{id:"diab_type",label:"Type 1 or Type 2?",type:"dropdown",required:false,options:["Type 1","Type 2","Gestational","Other"]}]}]},
+  {id:"epilepsy",      cat:"General Health", label:"Epilepsy, blackouts, giddiness or fainting",          type:"yes_no",required:false,enabled:true, alertLabel:"EPILEPSY",             order:13, followUps:[]},
+  {id:"hepatitis",     cat:"General Health", label:"Hepatitis, jaundice, liver or kidney disease",         type:"yes_no",required:false,enabled:true, alertLabel:"HEPATITIS/LIVER",      order:14, followUps:[]},
+  {id:"hiv",           cat:"General Health", label:"HIV positive",                                        type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:15, followUps:[]},
+  {id:"arthritis",     cat:"General Health", label:"Arthritis or joint problems",                         type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:16, followUps:[]},
+  {id:"rheumatic",     cat:"General Health", label:"Rheumatic fever or chorea",                           type:"yes_no",required:false,enabled:true, alertLabel:"RHEUMATIC FEVER",      order:17, followUps:[]},
+  {id:"joint_replace", cat:"General Health", label:"Undergone a joint replacement operation",              type:"yes_no",required:false,enabled:true, alertLabel:"JOINT REPLACEMENT",    order:18, followUps:[]},
+  {id:"hospitalised",  cat:"General Health", label:"Hospitalisation that may affect dental care",          type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:19, followUps:[{cond:"yes",fields:[{id:"hosp_details",label:"Please provide details",type:"textarea",required:false}]}]},
+  {id:"treatment",     cat:"General Health", label:"Currently undergoing any medical treatment",           type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:20, followUps:[]},
+  {id:"serious",       cat:"General Health", label:"Any other serious illness or medical condition",       type:"yes_no",required:false,enabled:true, alertLabel:null,                   order:21, followUps:[{cond:"yes",fields:[{id:"serious_details",label:"Please describe",type:"textarea",required:false}]}]},
+  {id:"pregnant",      cat:"Obstetric",      label:"Pregnant or expecting a baby",                        type:"yes_no",required:false,enabled:true, alertLabel:"PREGNANCY",            order:22, followUps:[{cond:"yes",fields:[{id:"preg_weeks",label:"How many weeks pregnant?",type:"number",required:false}]}]},
+  {id:"nursing",       cat:"Obstetric",      label:"Currently breastfeeding",                             type:"yes_no",required:false,enabled:true, alertLabel:"BREASTFEEDING",        order:23, followUps:[]},
+];
+// Mutable — updated by Settings editor; all components read from here
+const ACTIVE_MED_HX_QUESTIONS=[...MED_HIST_Q_INIT];
+
+const MED_HIST_EXPIRY_INIT={interval:"6_months",reminderDays:14,autoResendOnline:true,lockOnExpiry:false};
+const ACTIVE_MED_HX_EXPIRY={...MED_HIST_EXPIRY_INIT};
+
+const MHQ_CATEGORIES=["Allergies","Cardiovascular","Respiratory","Medications","General Health","Obstetric"];
+const MHQ_CAT_COLORS={
+  "Allergies":    {color:"#EF4444",bg:"rgba(239,68,68,0.1)",  border:"rgba(239,68,68,0.25)"},
+  "Cardiovascular":{color:"#F59E0B",bg:"rgba(245,158,11,0.1)",border:"rgba(245,158,11,0.25)"},
+  "Respiratory":  {color:"#38BDF8",bg:"rgba(56,189,248,0.1)", border:"rgba(56,189,248,0.25)"},
+  "Medications":  {color:"#A78BFA",bg:"rgba(167,139,250,0.1)",border:"rgba(167,139,250,0.25)"},
+  "General Health":{color:"#4ADE80",bg:"rgba(74,222,128,0.1)",border:"rgba(74,222,128,0.25)"},
+  "Obstetric":    {color:"#F472B6",bg:"rgba(244,114,182,0.1)",border:"rgba(244,114,182,0.25)"},
+};
+const MHQ_FIELD_TYPES=[
+  {id:"yes_no",l:"Yes / No"},{id:"text",l:"Short Text"},{id:"textarea",l:"Long Text"},
+  {id:"dropdown",l:"Dropdown"},{id:"number",l:"Number"},{id:"date",l:"Date"},{id:"checkbox",l:"Checkbox"},
+];
+// Core questions that can be disabled but not deleted
+const MHQ_CORE_IDS=new Set(["allergy_la","allergy_pen","heart","blood_thinners","medication","diabetes","pregnant"]);
+
+
 function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
 
   const [tab,setTab]=useState((defaultTab==="charting"?"chart":defaultTab)||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
@@ -16229,37 +16282,20 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
   const [sendFormSent,setSendFormSent]=useState(false);
   const [receptNote,setReceptNote]=useState("");
   // Medical History tab state
-  const MQ_CONDITIONS=[
-    {id:"allergy_la",   label:"Allergic reaction to Local or General Anaesthetic"},
-    {id:"allergy_pen",  label:"Allergic to Penicillin"},
-    {id:"allergy_asp",  label:"Allergic to Aspirin or NSAIDs"},
-    {id:"allergy_latex",label:"Allergic to Latex"},
-    {id:"chest",        label:"Other chest conditions"},
-    {id:"heart",        label:"Heart disease or heart attack"},
-    {id:"bp",           label:"High or low blood pressure"},
-    {id:"stroke",       label:"Stroke or circulation problems"},
-    {id:"asthma",       label:"Asthma, bronchitis or respiratory disease"},
-    {id:"blood_thinners",label:"Blood thinners / anticoagulants"},
-    {id:"steroids",     label:"Steroids or immunosuppressants"},
-    {id:"diabetes",     label:"Diabetes"},
-    {id:"epilepsy",     label:"Epilepsy, blackouts, giddiness or fainting"},
-    {id:"hepatitis",    label:"Hepatitis, jaundice, liver or kidney disease"},
-    {id:"hiv",          label:"HIV positive"},
-    {id:"arthritis",    label:"Arthritis or joint problems"},
-    {id:"rheumatic",    label:"Rheumatic fever or chorea"},
-    {id:"joint_replace",label:"Undergone a joint replacement operation"},
-    {id:"hospitalised", label:"Hospitalisation that may affect dental care"},
-    {id:"pregnant",     label:"Pregnant or expecting a baby"},
-    {id:"nursing",      label:"Mother of a child under 12 months / breastfeeding"},
-    {id:"medication",   label:"Currently taking any medication"},
-    {id:"treatment",    label:"Currently undergoing any medical treatment"},
-    {id:"serious",      label:"Any other serious illness or medical condition"},
-  ];
+  // Reference module-level configurable question bank (updated by Settings → Medical History)
+  const MQ_CONDITIONS=ACTIVE_MED_HX_QUESTIONS.filter(q=>q.enabled!==false);
   const [mqState,setMqState]=useState(()=>{
     const d={};MQ_CONDITIONS.forEach(c=>{d[c.id]=null;});
     d.allergy_pen=true;d.allergy_la=false;d.asthma=true;d.blood_thinners=true;
     return d;
   });
+  // Follow-up field answers: {questionId: {fieldId: value}}
+  const [mqFollowUpState,setMqFollowUpState]=useState({bt_name:"Warfarin 5mg",bt_dose:"Once daily",bt_doctor:"Dr. G. Harris (GP)"});
+  const setFollowUpField=(qId,fId,val)=>setMqFollowUpState(p=>({...p,[qId]:{...(p[qId]||{}),[fId]:val}}));
+  const [mqDirty,setMqDirty]=useState(false);
+  const [mqSaveLog,setMqSaveLog]=useState([
+    {at:"14 May 2026 · 09:15",by:"Dr. S. Patel",note:"Annual review — conditions unchanged"},
+  ]);
   const [mqNote,setMqNote]=useState("Patient on Warfarin 5mg OD for AF. INR must be checked before any invasive procedure. Target INR 2.0-3.0. EpiPen prescribed for penicillin allergy — no amoxicillin or co-amoxiclav.");
   const [cigarettes,setCigarettes]=useState("0");
   const [alcohol,setAlcohol]=useState("4");
@@ -17093,7 +17129,21 @@ Added by: ${showDocPreview.by}
           </div>
           <div style={{display:"flex",gap:6}}>
             <button onClick={()=>setShowSendForm(true)} style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,background:"#132238",cursor:"pointer",fontSize:11,color:"#2563FF",fontWeight:600}}>Send Form to Patient</button>
-            <button onClick={()=>doToast("✓ Medical history saved")} style={{padding:"6px 14px",border:"none",borderRadius:12,background:"#2563FF",color:"#ffffff",cursor:"pointer",fontSize:11,fontWeight:700}}>Save</button>
+            <button onClick={()=>{
+              // Auto-generate alerts from Yes answers
+              const newAlerts=MQ_CONDITIONS.filter(q=>q.alertLabel&&mqState[q.id]===true).map(q=>q.alertLabel);
+              // Log the save
+              const byName=user?.name||"Staff";
+              const at=new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+              setMqSaveLog(p=>[{at,by:byName,note:"Medical history reviewed & saved"},... p]);
+              setLastPractice(at+" · "+byName);
+              setMqDirty(false);
+              const alertStr=newAlerts.length>0?" · "+newAlerts.length+" alert(s) active":"";
+              doToast("✓ Medical history saved"+alertStr);
+              PATIENT_AUDIT_LOG.unshift({id:"AE"+Date.now(),pid:patient.id,type:"edit",field:"Medical History",oldVal:"—",newVal:"Reviewed & saved",by:user?.id||"U1",byName:byName,at,date:at});
+            }} style={{padding:"6px 14px",border:"none",borderRadius:12,background:mqDirty?"#EF4444":"#2563FF",color:"#ffffff",cursor:"pointer",fontSize:11,fontWeight:700}}>
+              {mqDirty?"Save Changes":"Saved ✓"}
+            </button>
           </div>
         </div>
 
@@ -17104,40 +17154,115 @@ Added by: ${showDocPreview.by}
           {patient.medAlerts.map(a=><span key={a} style={{fontSize:11,fontWeight:700,padding:"2px 10px",borderRadius:8,background:"#EF4444",color:"#132238"}}>{a}</span>)}
         </div>}
 
-        {/* MQ grid */}
-        <div style={{background:"#132238",borderRadius:18,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
-          <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:12,fontWeight:800,color:"#F8FAFC"}}>Medical Questionnaire</span>
-            {Object.values(mqState).some(v=>v===true)&&<span style={{fontSize:10,fontWeight:700,padding:"2px 10px",borderRadius:8,background:"rgba(239,68,68,0.18)",color:"#FCA5A5",fontWeight:700}}>⚠ Conditions reported</span>}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
-            {MQ_CONDITIONS.map((cond,i)=>(
-              <div key={cond.id} style={{display:"flex",gap:10,alignItems:"center",padding:"9px 16px",borderBottom:i<MQ_CONDITIONS.length-2?"1px solid rgba(56,189,248,0.07)":"none",borderRight:i%2===0?"1px solid rgba(56,189,248,0.07)":"none",background:mqState[cond.id]===true?"rgba(239,68,68,0.08)":mqState[cond.id]===false?"rgba(34,197,94,0.08)":"rgba(15,23,42,0.5)"}}>
-                <span style={{flex:1,fontSize:11,color:mqState[cond.id]===true?"#dc2626":mqState[cond.id]===false?"#374151":"#64748b",fontWeight:mqState[cond.id]===true?700:400}}>{cond.label}</span>
-                <div style={{display:"flex",gap:4,flexShrink:0}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"},{v:null,l:"?"}].map(opt=>(
-                    <button key={String(opt.v)} onClick={()=>toggleMq(cond.id,opt.v)}
-                      style={{padding:"2px 9px",borderRadius:5,fontSize:10,fontWeight:700,border:"1.5px solid",cursor:"pointer",
-                        borderColor:mqState[cond.id]===opt.v?(opt.v===true?"#dc2626":opt.v===false?"#16a34a":"#64748b"):"rgba(80,140,255,0.2)",
-                        background:mqState[cond.id]===opt.v?(opt.v===true?"#fee2e2":opt.v===false?"#dcfce7":"rgba(80,140,255,0.1)"):"transparent",
-                        color:mqState[cond.id]===opt.v?(opt.v===true?"#dc2626":opt.v===false?"#16a34a":"#64748b"):"#64748b"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
+        {/* MQ questionnaire — category-grouped, with conditional follow-ups */}
+        {(()=>{
+          const cats=MHQ_CATEGORIES.filter(c=>MQ_CONDITIONS.some(q=>q.cat===c));
+          const positiveCount=Object.values(mqState).filter(v=>v===true).length;
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {/* Summary strip */}
+              <div style={{display:"flex",gap:8}}>
+                {[
+                  {l:"Conditions reported",v:positiveCount,c:"#EF4444",bg:"rgba(239,68,68,0.1)"},
+                  {l:"Unanswered",v:MQ_CONDITIONS.filter(q=>mqState[q.id]===null||mqState[q.id]===undefined).length,c:"#F59E0B",bg:"rgba(245,158,11,0.08)"},
+                  {l:"All clear",v:Object.values(mqState).filter(v=>v===false).length,c:"#4ADE80",bg:"rgba(74,222,128,0.08)"},
+                ].map(s=>(
+                  <div key={s.l} style={{flex:1,padding:"8px 12px",background:s.bg,border:`1px solid ${s.c}30`,borderRadius:12,textAlign:"center"}}>
+                    <div style={{fontSize:16,fontWeight:900,color:s.c}}>{s.v}</div>
+                    <div style={{fontSize:9,color:"#CBD5E1",marginTop:1}}>{s.l}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Questions by category */}
+              {cats.map(cat=>{
+                const catColor=MHQ_CAT_COLORS[cat]||{color:"#CBD5E1",bg:"rgba(80,140,255,0.1)",border:"rgba(80,140,255,0.2)"};
+                const catQs=MQ_CONDITIONS.filter(q=>q.cat===cat);
+                const catPositive=catQs.filter(q=>mqState[q.id]===true).length;
+                return(
+                  <div key={cat} style={{background:"#132238",borderRadius:14,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
+                    <div style={{padding:"8px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",gap:8,alignItems:"center"}}>
+                      <span style={{fontSize:10,fontWeight:800,padding:"2px 9px",borderRadius:20,background:catColor.bg,color:catColor.color,border:`1px solid ${catColor.border}`}}>{cat}</span>
+                      {catPositive>0&&<span style={{fontSize:9,fontWeight:700,padding:"1px 8px",borderRadius:10,background:"rgba(239,68,68,0.18)",color:"#FCA5A5"}}>⚠ {catPositive} reported</span>}
+                      <span style={{marginLeft:"auto",fontSize:10,color:"#64748b"}}>{catQs.length} question{catQs.length!==1?"s":""}</span>
+                    </div>
+                    {catQs.map((cond,i)=>{
+                      const ans=mqState[cond.id];
+                      const fuFields=cond.followUps?.find(fu=>fu.cond==="yes")?.fields||[];
+                      const showFu=ans===true&&fuFields.length>0;
+                      return(
+                        <div key={cond.id} style={{borderBottom:i<catQs.length-1?"1px solid rgba(56,189,248,0.06)":"none",background:ans===true?"rgba(239,68,68,0.06)":ans===false?"rgba(34,197,94,0.04)":"transparent"}}>
+                          <div style={{display:"flex",gap:10,alignItems:"center",padding:"9px 14px"}}>
+                            <span style={{flex:1,fontSize:11,color:ans===true?"#fca5a5":ans===false?"#6ee7b7":"#94a3b8",fontWeight:ans===true?700:400}}>
+                              {cond.label}
+                              {cond.required&&<span style={{color:"#EF4444",marginLeft:3,fontSize:10}}>*</span>}
+                            </span>
+                            <div style={{display:"flex",gap:4,flexShrink:0}}>
+                              {[{v:true,l:"Yes",ac:"#dc2626",bg:"#fee2e2"},{v:false,l:"No",ac:"#16a34a",bg:"#dcfce7"},{v:null,l:"?",ac:"#64748b",bg:"rgba(80,140,255,0.1)"}].map(opt=>(
+                                <button key={String(opt.v)} onClick={()=>{toggleMq(cond.id,opt.v);setMqDirty(true);}}
+                                  style={{padding:"2px 9px",borderRadius:5,fontSize:10,fontWeight:700,border:"1.5px solid",cursor:"pointer",
+                                    borderColor:ans===opt.v?opt.ac:"rgba(80,140,255,0.2)",
+                                    background:ans===opt.v?opt.bg:"transparent",
+                                    color:ans===opt.v?opt.ac:"#64748b"}}>
+                                  {opt.l}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {showFu&&(
+                            <div style={{margin:"0 14px 10px 28px",padding:"10px 12px",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:10}}>
+                              <div style={{fontSize:9,fontWeight:800,color:"#FCA5A5",textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Please provide details:</div>
+                              {fuFields.map(f=>(
+                                <div key={f.id} style={{marginBottom:8}}>
+                                  <div style={{fontSize:10,fontWeight:600,color:"#CBD5E1",marginBottom:3}}>{f.label}{f.required&&<span style={{color:"#EF4444",marginLeft:2}}>*</span>}</div>
+                                  {(f.type==="textarea")
+                                    ?<textarea value={mqFollowUpState[f.id]||""} onChange={e=>{setFollowUpField(cond.id,f.id,e.target.value);setMqDirty(true);}} rows={2}
+                                        style={{width:"100%",padding:"5px 8px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,fontSize:11,fontFamily:"inherit",outline:"none",resize:"vertical",background:"rgba(239,68,68,0.06)",color:"#F8FAFC",boxSizing:"border-box"}}/>
+                                    :(f.type==="dropdown"&&f.options)
+                                    ?<select value={mqFollowUpState[f.id]||""} onChange={e=>{setFollowUpField(cond.id,f.id,e.target.value);setMqDirty(true);}}
+                                        style={{width:"100%",padding:"5px 8px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,fontSize:11,fontFamily:"inherit",outline:"none",background:"rgba(239,68,68,0.06)",color:"#F8FAFC"}}>
+                                        <option value="">Select…</option>
+                                        {f.options.map(o=><option key={o} value={o}>{o}</option>)}
+                                      </select>
+                                    :<input type={f.type==="number"?"number":"text"} value={mqFollowUpState[f.id]||""} onChange={e=>{setFollowUpField(cond.id,f.id,e.target.value);setMqDirty(true);}}
+                                        style={{width:"100%",padding:"5px 8px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,fontSize:11,fontFamily:"inherit",outline:"none",background:"rgba(239,68,68,0.06)",color:"#F8FAFC",boxSizing:"border-box"}}/>
+                                  }
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Clinical notes */}
         <div style={{background:"#132238",borderRadius:18,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
           <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800,color:"#F8FAFC"}}>Medical Notes & Clinician Comments</div>
           <div style={{padding:"12px 16px"}}>
-            <textarea value={mqNote} onChange={e=>setMqNote(e.target.value)} rows={4}
-              style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,fontSize:11,fontFamily:"inherit",outline:"none",resize:"vertical",color:"#F8FAFC",boxSizing:"border-box"}}/>
+            <textarea value={mqNote} onChange={e=>{setMqNote(e.target.value);setMqDirty(true);}} rows={4}
+              style={{width:"100%",padding:"8px 10px",border:`1px solid ${mqDirty?"#2563FF":"rgba(80,140,255,0.16)"}`,borderRadius:12,fontSize:11,fontFamily:"inherit",outline:"none",resize:"vertical",color:"#F8FAFC",boxSizing:"border-box"}}/>
           </div>
         </div>
+
+        {/* Review history */}
+        {mqSaveLog.length>0&&<div style={{background:"#132238",borderRadius:18,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
+          <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800,color:"#F8FAFC"}}>📋 Review History</div>
+          <div style={{padding:"8px 0"}}>
+            {mqSaveLog.map((e,i)=>(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"center",padding:"7px 16px",borderTop:i>0?"1px solid rgba(56,189,248,0.06)":"none"}}>
+                <span style={{fontSize:10,color:"#38BDF8",fontWeight:700,flexShrink:0}}>✓</span>
+                <span style={{flex:1,fontSize:11,color:"#F8FAFC"}}>{e.note}</span>
+                <span style={{fontSize:10,color:"#64748b",flexShrink:0}}>{e.by} · {e.at}</span>
+              </div>
+            ))}
+          </div>
+        </div>}
 
         {/* Social history */}
         <div style={{background:"#132238",borderRadius:18,border:`1.5px solid ${socialHistoryDraft?"#2563FF":"rgba(80,140,255,0.2)"}`,overflow:"hidden"}}>
@@ -21166,6 +21291,305 @@ function EditFieldInline({initialValue,onSave,onCancel,label,hint}){
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MEDICAL HISTORY QUESTION EDITOR — Settings → Medical History Questions
+// ══════════════════════════════════════════════════════════════════════════════
+function MedHistQuestionEditor({doToast}){
+  const [questions,setQuestions]=useState([...ACTIVE_MED_HX_QUESTIONS]);
+  const [expiry,setExpiry]=useState({...ACTIVE_MED_HX_EXPIRY});
+  const [editId,setEditId]=useState(null);
+  const [editBuf,setEditBuf]=useState(null);
+  const [dragging,setDragging]=useState(null);
+  const [dragOver,setDragOver]=useState(null);
+  const [addForm,setAddForm]=useState(null);
+  const [expandedFu,setExpandedFu]=useState({});
+  const [addFuId,setAddFuId]=useState(null);
+  const [fuBuf,setFuBuf]=useState({label:"",type:"text",required:false});
+
+  const syncGlobal=(qs)=>{
+    ACTIVE_MED_HX_QUESTIONS.splice(0,ACTIVE_MED_HX_QUESTIONS.length,...qs);
+    setQuestions([...qs]);
+  };
+
+  const toggleEnabled=(id)=>{
+    const q=questions.find(q=>q.id===id);if(!q)return;
+    const nu=questions.map(x=>x.id===id?{...x,enabled:!x.enabled}:x);
+    syncGlobal(nu);
+    doToast((q.enabled?"⊘ Disabled: ":"✓ Enabled: ")+q.label.slice(0,45));
+  };
+
+  const deleteQ=(id)=>{
+    if(MHQ_CORE_IDS.has(id)){doToast("⚠ Core question — disable it instead of deleting");return;}
+    syncGlobal(questions.filter(q=>q.id!==id));
+    doToast("✓ Question removed");
+  };
+
+  const startEdit=(q)=>{setEditId(q.id);setEditBuf({label:q.label,type:q.type,cat:q.cat,required:q.required,alertLabel:q.alertLabel||""});};
+  const saveEdit=()=>{
+    if(!editBuf?.label?.trim()){doToast("⚠ Question text cannot be empty");return;}
+    syncGlobal(questions.map(q=>q.id===editId?{...q,...editBuf,alertLabel:editBuf.alertLabel||null}:q));
+    setEditId(null);setEditBuf(null);doToast("✓ Question updated");
+  };
+
+  const addQ=(cat)=>{
+    if(!addForm?.label?.trim()){doToast("⚠ Enter question text first");return;}
+    const nu={id:"mhq_"+Date.now(),cat:addForm.cat||cat,label:addForm.label.trim(),type:addForm.type||"yes_no",required:!!addForm.required,enabled:true,alertLabel:null,order:questions.length,followUps:[]};
+    syncGlobal([...questions,nu]);
+    setAddForm(null);doToast("✓ Question added to "+cat);
+  };
+
+  const addFu=(qId)=>{
+    if(!fuBuf.label?.trim()){doToast("⚠ Enter field label");return;}
+    const ff={id:"fu_"+Date.now(),label:fuBuf.label.trim(),type:fuBuf.type,required:!!fuBuf.required};
+    syncGlobal(questions.map(q=>{
+      if(q.id!==qId)return q;
+      const ex=q.followUps.find(fu=>fu.cond==="yes");
+      if(ex)return{...q,followUps:q.followUps.map(fu=>fu.cond==="yes"?{...fu,fields:[...fu.fields,ff]}:fu)};
+      return{...q,followUps:[...q.followUps,{cond:"yes",fields:[ff]}]};
+    }));
+    setAddFuId(null);setFuBuf({label:"",type:"text",required:false});doToast("✓ Follow-up field added");
+  };
+
+  const removeFuField=(qId,fId)=>{
+    syncGlobal(questions.map(q=>{
+      if(q.id!==qId)return q;
+      return{...q,followUps:q.followUps.map(fu=>({...fu,fields:fu.fields.filter(f=>f.id!==fId)})).filter(fu=>fu.fields.length>0)};
+    }));
+    doToast("✓ Follow-up field removed");
+  };
+
+  const onDrop=(dropId)=>{
+    if(!dragging||dragging===dropId)return;
+    const fi=questions.findIndex(q=>q.id===dragging),ti=questions.findIndex(q=>q.id===dropId);
+    if(fi<0||ti<0)return;
+    const nu=[...questions];const[m]=nu.splice(fi,1);nu.splice(ti,0,m);nu.forEach((q,i)=>{q.order=i;});
+    syncGlobal(nu);setDragging(null);setDragOver(null);
+  };
+
+  const updateExpiry=(patch)=>{const ne={...expiry,...patch};setExpiry(ne);Object.assign(ACTIVE_MED_HX_EXPIRY,ne);};
+
+  const cats=MHQ_CATEGORIES.filter(c=>questions.some(q=>q.cat===c));
+  const INTERVAL_OPTS=[["6_months","Every 6 months"],["1_year","Every year"],["2_years","Every 2 years"],["every_appointment","Before every appointment"]];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+      {/* Expiry / Review Intervals */}
+      <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)"}}>
+          <span style={{fontSize:12,fontWeight:800}}>📅 Review Intervals & Expiry Rules</span>
+        </div>
+        <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Review Interval</div>
+            <select value={expiry.interval} onChange={e=>updateExpiry({interval:e.target.value})}
+              style={{width:"100%",padding:"7px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,fontSize:11,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+              {INTERVAL_OPTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Send reminder — days before expiry</div>
+            <select value={expiry.reminderDays} onChange={e=>updateExpiry({reminderDays:parseInt(e.target.value)})}
+              style={{width:"100%",padding:"7px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,fontSize:11,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+              {[3,7,14,21,30].map(d=><option key={d} value={d}>{d} days before</option>)}
+            </select>
+          </div>
+          {[
+            {k:"autoResendOnline",l:"Auto-resend online form when expired"},
+            {k:"lockOnExpiry",l:"Flag patient as needing review on expiry"},
+          ].map(({k,l})=>(
+            <div key={k} style={{display:"flex",alignItems:"center",gap:10}}>
+              <button onClick={()=>updateExpiry({[k]:!expiry[k]})}
+                style={{width:40,height:22,borderRadius:14,border:"none",cursor:"pointer",background:expiry[k]?"#2563FF":"rgba(80,140,255,0.18)",position:"relative",flexShrink:0,padding:0,transition:"background .2s"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:"#132238",position:"absolute",top:3,left:expiry[k]?21:3,transition:"left .2s"}}/>
+              </button>
+              <span style={{fontSize:11,color:"#CBD5E1"}}>{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:"flex",gap:8}}>
+        {[
+          {l:"Total questions",v:questions.length,c:"#F8FAFC"},
+          {l:"Enabled",v:questions.filter(q=>q.enabled).length,c:"#4ADE80"},
+          {l:"With follow-ups",v:questions.filter(q=>q.followUps.length>0).length,c:"#38BDF8"},
+          {l:"Required",v:questions.filter(q=>q.required).length,c:"#F59E0B"},
+        ].map(s=>(
+          <div key={s.l} style={{flex:1,padding:"10px 12px",background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:12,textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:900,color:s.c}}>{s.v}</div>
+            <div style={{fontSize:9,color:"#CBD5E1",marginTop:2}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Questions by category */}
+      {cats.map(cat=>{
+        const cc=MHQ_CAT_COLORS[cat]||{color:"#CBD5E1",bg:"rgba(80,140,255,0.1)",border:"rgba(80,140,255,0.2)"};
+        const catQs=questions.filter(q=>q.cat===cat);
+        return(
+          <div key={cat} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
+            <div style={{padding:"9px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:10,fontWeight:800,padding:"2px 10px",borderRadius:20,background:cc.bg,color:cc.color,border:`1px solid ${cc.border}`}}>{cat}</span>
+                <span style={{fontSize:10,color:"#64748b"}}>{catQs.filter(q=>q.enabled).length}/{catQs.length} enabled</span>
+              </div>
+              <button onClick={()=>setAddForm({cat,label:"",type:"yes_no",required:false})}
+                style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"transparent",cursor:"pointer",fontSize:10,color:"#38BDF8",fontFamily:"inherit",fontWeight:600}}>+ Add</button>
+            </div>
+
+            {catQs.map((q,qi)=>{
+              const isEdit=editId===q.id;
+              const isDrop=dragOver===q.id&&dragging!==q.id;
+              const fuFields=q.followUps.find(fu=>fu.cond==="yes")?.fields||[];
+              const isCore=MHQ_CORE_IDS.has(q.id);
+              return(
+                <div key={q.id} draggable
+                  onDragStart={()=>setDragging(q.id)} onDragEnd={()=>{setDragging(null);setDragOver(null);}}
+                  onDragOver={e=>{e.preventDefault();setDragOver(q.id);}} onDrop={()=>onDrop(q.id)}
+                  style={{borderBottom:qi<catQs.length-1?"1px solid rgba(56,189,248,0.05)":"none",borderTop:isDrop?"2px solid #2563FF":"none",opacity:dragging===q.id?0.4:1,background:isDrop?"rgba(37,99,255,0.05)":isEdit?"rgba(37,99,255,0.06)":"transparent",transition:"border .1s"}}>
+                  {isEdit?(
+                    <div style={{padding:"12px 14px"}}>
+                      <textarea value={editBuf.label} onChange={e=>setEditBuf(p=>({...p,label:e.target.value}))} rows={2}
+                        style={{width:"100%",padding:"6px 8px",border:"1.5px solid #2563FF",borderRadius:8,fontSize:11,fontFamily:"inherit",outline:"none",resize:"vertical",color:"#F8FAFC",boxSizing:"border-box",marginBottom:8}}/>
+                      <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                        <select value={editBuf.type} onChange={e=>setEditBuf(p=>({...p,type:e.target.value}))}
+                          style={{padding:"5px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+                          {MHQ_FIELD_TYPES.map(t=><option key={t.id} value={t.id}>{t.l}</option>)}
+                        </select>
+                        <select value={editBuf.cat} onChange={e=>setEditBuf(p=>({...p,cat:e.target.value}))}
+                          style={{padding:"5px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+                          {MHQ_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <label style={{display:"flex",gap:5,alignItems:"center",fontSize:10,color:"#CBD5E1",cursor:"pointer"}}>
+                          <input type="checkbox" checked={editBuf.required} onChange={e=>setEditBuf(p=>({...p,required:e.target.checked}))}/> Required
+                        </label>
+                        <input value={editBuf.alertLabel||""} onChange={e=>setEditBuf(p=>({...p,alertLabel:e.target.value}))}
+                          placeholder="Alert label if Yes e.g. DIABETES" title="When patient answers Yes, this alert badge appears on appointment book and patient banner"
+                          style={{padding:"5px 8px",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"rgba(239,68,68,0.06)",color:"#FCA5A5",width:160}}/>
+                        <button onClick={saveEdit} style={{padding:"5px 14px",background:"#2563FF",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit"}}>Save</button>
+                        <button onClick={()=>{setEditId(null);setEditBuf(null);}} style={{padding:"5px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:10,color:"#CBD5E1",fontFamily:"inherit"}}>Cancel</button>
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{display:"flex",gap:9,alignItems:"center",padding:"9px 14px"}}>
+                        <span style={{color:"#374151",cursor:"grab",fontSize:15,flexShrink:0,userSelect:"none"}} title="Drag to reorder">⠿</span>
+                        <button onClick={()=>toggleEnabled(q.id)}
+                          style={{width:36,height:20,borderRadius:12,border:"none",cursor:"pointer",background:q.enabled?"#22C55E":"rgba(80,140,255,0.18)",position:"relative",flexShrink:0,padding:0,transition:"background .2s"}}>
+                          <div style={{width:14,height:14,borderRadius:"50%",background:"#132238",position:"absolute",top:3,left:q.enabled?19:3,transition:"left .2s"}}/>
+                        </button>
+                        <span style={{flex:1,fontSize:11,color:q.enabled?"#F8FAFC":"#475569",fontWeight:q.required?600:400,textDecoration:q.enabled?"none":"line-through"}}>
+                          {q.label}{q.required&&<span style={{color:"#EF4444",marginLeft:3}}>*</span>}
+                        </span>
+                        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
+                          <span style={{fontSize:9,padding:"1px 7px",borderRadius:5,background:"rgba(80,140,255,0.1)",color:"#CBD5E1"}}>{MHQ_FIELD_TYPES.find(t=>t.id===q.type)?.l||q.type}</span>
+                          {q.alertLabel&&<span style={{fontSize:9,padding:"1px 7px",borderRadius:5,background:"rgba(239,68,68,0.15)",color:"#FCA5A5",fontWeight:700}} title="Creates alert badge when patient answers Yes">⚠ {q.alertLabel}</span>}
+                          {fuFields.length>0&&<button onClick={()=>setExpandedFu(p=>({...p,[q.id]:!p[q.id]}))}
+                            style={{fontSize:9,padding:"1px 8px",borderRadius:5,background:"rgba(56,189,248,0.1)",color:"#38BDF8",border:"1px solid rgba(56,189,248,0.2)",cursor:"pointer",fontFamily:"inherit"}}>
+                            {fuFields.length} follow-up{fuFields.length!==1?"s":""} {expandedFu[q.id]?"▲":"▼"}
+                          </button>}
+                          <button onClick={()=>startEdit(q)} style={{border:"none",background:"none",cursor:"pointer",color:"#CBD5E1",padding:"3px",display:"flex",alignItems:"center"}} title="Edit"><Edit size={12}/></button>
+                          <button onClick={()=>setAddFuId(addFuId===q.id?null:q.id)} style={{border:"none",background:"none",cursor:"pointer",color:"#38BDF8",padding:"3px",fontSize:14,lineHeight:1}} title="Add follow-up field">+</button>
+                          {!isCore&&<button onClick={()=>deleteQ(q.id)} style={{border:"none",background:"none",cursor:"pointer",color:"#64748b",padding:"3px",display:"flex",alignItems:"center"}} title="Delete question"><Trash2 size={11}/></button>}
+                          {isCore&&<span style={{fontSize:9,color:"#475569",padding:"1px 5px"}} title="Core question — cannot be deleted">🔒</span>}
+                        </div>
+                      </div>
+
+                      {/* Follow-up fields list */}
+                      {fuFields.length>0&&expandedFu[q.id]&&(
+                        <div style={{margin:"0 14px 8px 56px",background:"#0F1C34",borderRadius:9,border:"1px solid rgba(56,189,248,0.1)",overflow:"hidden"}}>
+                          <div style={{padding:"5px 10px",borderBottom:"1px solid rgba(56,189,248,0.07)",fontSize:9,fontWeight:800,color:"#38BDF8",textTransform:"uppercase",letterSpacing:".07em"}}>
+                            Follow-up fields — shown when patient answers YES
+                          </div>
+                          {fuFields.map((f,fi)=>(
+                            <div key={f.id} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 10px",borderTop:fi>0?"1px solid rgba(56,189,248,0.06)":"none"}}>
+                              <span style={{flex:1,fontSize:10,color:"#CBD5E1"}}>{f.label}</span>
+                              <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(80,140,255,0.1)",color:"#CBD5E1"}}>{MHQ_FIELD_TYPES.find(t=>t.id===f.type)?.l||f.type}</span>
+                              {f.required&&<span style={{fontSize:9,color:"#EF4444"}}>req</span>}
+                              <button onClick={()=>removeFuField(q.id,f.id)} style={{border:"none",background:"none",cursor:"pointer",color:"#64748b",padding:"2px",display:"flex",alignItems:"center"}} title="Remove"><Trash2 size={10}/></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Inline add follow-up */}
+                      {addFuId===q.id&&(
+                        <div style={{margin:"0 14px 10px 56px",padding:"10px 12px",background:"rgba(56,189,248,0.04)",borderRadius:9,border:"1px solid rgba(56,189,248,0.12)"}}>
+                          <div style={{fontSize:9,fontWeight:800,color:"#38BDF8",textTransform:"uppercase",letterSpacing:".07em",marginBottom:7}}>Add follow-up field (displayed if answer is Yes)</div>
+                          <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                            <input value={fuBuf.label} onChange={e=>setFuBuf(p=>({...p,label:e.target.value}))} placeholder="Field label e.g. Medication name"
+                              style={{flex:1,minWidth:140,padding:"5px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:11,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}/>
+                            <select value={fuBuf.type} onChange={e=>setFuBuf(p=>({...p,type:e.target.value}))}
+                              style={{padding:"5px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+                              {MHQ_FIELD_TYPES.filter(t=>t.id!=="yes_no").map(t=><option key={t.id} value={t.id}>{t.l}</option>)}
+                            </select>
+                            <label style={{display:"flex",gap:4,alignItems:"center",fontSize:10,color:"#CBD5E1",cursor:"pointer",flexShrink:0}}>
+                              <input type="checkbox" checked={fuBuf.required} onChange={e=>setFuBuf(p=>({...p,required:e.target.checked}))}/> Required
+                            </label>
+                            <button onClick={()=>addFu(q.id)} style={{padding:"5px 12px",background:"#2563FF",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"inherit",flexShrink:0}}>Add</button>
+                            <button onClick={()=>setAddFuId(null)} style={{padding:"5px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:10,color:"#CBD5E1",fontFamily:"inherit",flexShrink:0}}>✕</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Inline add for this category */}
+            {addForm?.cat===cat&&(
+              <div style={{padding:"12px 14px",borderTop:"1px solid rgba(56,189,248,0.1)",background:"rgba(56,189,248,0.03)"}}>
+                <div style={{fontSize:9,fontWeight:800,color:"#38BDF8",textTransform:"uppercase",letterSpacing:".07em",marginBottom:7}}>New question in {cat}</div>
+                <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                  <input value={addForm.label} onChange={e=>setAddForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Do you have high cholesterol?"
+                    style={{flex:1,minWidth:200,padding:"6px 10px",border:"1.5px solid #2563FF",borderRadius:8,fontSize:11,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}/>
+                  <select value={addForm.type} onChange={e=>setAddForm(p=>({...p,type:e.target.value}))}
+                    style={{padding:"6px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+                    {MHQ_FIELD_TYPES.map(t=><option key={t.id} value={t.id}>{t.l}</option>)}
+                  </select>
+                  <label style={{display:"flex",gap:4,alignItems:"center",fontSize:10,color:"#CBD5E1",cursor:"pointer",flexShrink:0}}>
+                    <input type="checkbox" checked={addForm.required} onChange={e=>setAddForm(p=>({...p,required:e.target.checked}))}/> Required
+                  </label>
+                  <button onClick={()=>addQ(cat)} style={{padding:"6px 14px",background:"#2563FF",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit",flexShrink:0}}>Add</button>
+                  <button onClick={()=>setAddForm(null)} style={{padding:"6px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:11,color:"#CBD5E1",fontFamily:"inherit",flexShrink:0}}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add question to any category */}
+      <div style={{background:"#132238",border:"1px dashed rgba(56,189,248,0.18)",borderRadius:14,padding:"12px 16px",textAlign:"center"}}>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:7}}>Add a question to any category</div>
+        {addForm&&(addForm.cat===undefined||!cats.includes(addForm.cat))?(
+          <div style={{display:"flex",gap:7,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}}>
+            <input value={addForm.label} onChange={e=>setAddForm(p=>({...p,label:e.target.value}))} placeholder="Question text"
+              style={{flex:1,minWidth:180,padding:"6px 10px",border:"1.5px solid #2563FF",borderRadius:8,fontSize:11,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}/>
+            <select value={addForm.cat||"General Health"} onChange={e=>setAddForm(p=>({...p,cat:e.target.value}))}
+              style={{padding:"6px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+              {MHQ_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={addForm.type||"yes_no"} onChange={e=>setAddForm(p=>({...p,type:e.target.value}))}
+              style={{padding:"6px 8px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,fontSize:10,fontFamily:"inherit",outline:"none",background:"#0F1C34",color:"#F8FAFC"}}>
+              {MHQ_FIELD_TYPES.map(t=><option key={t.id} value={t.id}>{t.l}</option>)}
+            </select>
+            <button onClick={()=>addQ(addForm.cat||"General Health")} style={{padding:"6px 14px",background:"#2563FF",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>Add</button>
+            <button onClick={()=>setAddForm(null)} style={{padding:"6px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"transparent",cursor:"pointer",fontSize:11,color:"#CBD5E1",fontFamily:"inherit"}}>Cancel</button>
+          </div>
+        ):(
+          <button onClick={()=>setAddForm({cat:"General Health",label:"",type:"yes_no",required:false})}
+            style={{padding:"7px 18px",border:"1px solid rgba(56,189,248,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:11,color:"#38BDF8",fontFamily:"inherit"}}>+ New Question</button>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
 function SettingsPage({user}){
   const svw=useWindowWidth();const isMob=svw<768;
   const [activeSection,setActiveSection]=useState("practice");
@@ -21250,6 +21674,7 @@ function SettingsPage({user}){
     {id:"practice",l:"Practice Details",icon:"🏥"},
     {id:"calendar",l:"Calendar & Appointments",icon:"📅"},
     {id:"clinical",l:"Clinical Settings",icon:"🩺"},
+    {id:"med_history",l:"Medical History Questions",icon:"📋"},
     {id:"treatments",l:"Treatment Settings",icon:"🦷"},
     {id:"dashboards",l:"Dashboard Visibility",icon:"📊"},
     {id:"nhs",l:"NHS Configuration",icon:"🏛"},
@@ -21397,6 +21822,9 @@ function SettingsPage({user}){
               </div>
             );
           })()}
+          {/* ── Medical History Questions ── */}
+          {activeSection==="med_history"&&<MedHistQuestionEditor doToast={doToast}/>}
+
           {/* ── Treatment Settings & SNOMED ── */}
           {activeSection==="treatments"&&<div style={{marginBottom:16}}>
             <div style={{fontSize:13,fontWeight:800,color:C.text,marginBottom:4}}>Treatment Settings & SNOMED CT Codes</div>
@@ -21650,7 +22078,7 @@ function SettingsPage({user}){
             </div>
           </div>}
 
-          {!["backup","integrations","superadmin","treatments","clinical","dashboards"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
+          {!["backup","integrations","superadmin","treatments","clinical","dashboards","med_history"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
         </div>
       </div>
     </div>
