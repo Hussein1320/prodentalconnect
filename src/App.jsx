@@ -2856,6 +2856,14 @@ function DeletionRequestCard({r,onDecide}){
 
 }
 
+const Toggle=({on,onToggle,size="sm"})=>{
+  const w=size==="lg"?44:36,h=size==="lg"?24:20,kw=size==="lg"?18:14;
+  return(
+    <div onClick={onToggle} style={{width:w,height:h,borderRadius:h,background:on?"#2563FF":"rgba(80,140,255,0.18)",border:on?"none":"1px solid rgba(59,130,246,0.2)",cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}} role="switch" aria-checked={on}>
+      <div style={{position:"absolute",top:(h-kw)/2,left:on?w-kw-((h-kw)/2):(h-kw)/2,width:kw,height:kw,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
+    </div>
+  );
+};
 
 function SecurityAndSsoPanel({doToast}){
   const [ssoCfg,setSsoCfg]=useState({...PRACTICE_SSO_CFG_INIT[1]});
@@ -3164,15 +3172,6 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
     chip:(c)=>({display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:10,fontWeight:700,background:c+"18",color:c,border:"1px solid "+c+"30"}),
     roleChip:(role)=>({display:"inline-block",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:(ROLE_META[role]?.color||"#64748b")+"22",color:ROLE_META[role]?.color||"#64748b"}),
     sectionHead:{fontSize:13,fontWeight:800,color:"#F8FAFC",marginBottom:10,display:"flex",alignItems:"center",gap:8},
-  };
-
-  const Toggle=({on,onToggle,size="sm"})=>{
-    const w=size==="lg"?44:36,h=size==="lg"?24:20,kw=size==="lg"?18:14;
-    return(
-      <div onClick={onToggle} style={{width:w,height:h,borderRadius:h,background:on?"#2563FF":"rgba(80,140,255,0.18)",border:on?"none":"1px solid rgba(59,130,246,0.2)",cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}} role="switch" aria-checked={on}>
-        <div style={{position:"absolute",top:(h-kw)/2,left:on?w-kw-((h-kw)/2):(h-kw)/2,width:kw,height:kw,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
-      </div>
-    );
   };
 
   const auditActionColor={feature_toggle:"#60A5FA",feature_role:"#34D399",user_override:"#A78BFA",user_nav:"#F59E0B",role_perm:"#F87171",feature_enabled:"#60A5FA",user_reset:"#CBD5E1",cap_perm:"#A78BFA",role_template:"#38BDF8"};
