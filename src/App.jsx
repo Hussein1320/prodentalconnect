@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Component } from "react";
 
 import {
 
@@ -2960,6 +2960,25 @@ function SecurityAndSsoPanel({doToast}){
       )}
     </div>
   </>);
+}
+
+class PortalErrorBoundary extends Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(e){return{err:e};}
+  componentDidCatch(){}
+  render(){
+    if(this.state.err){
+      return(
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#071428",gap:14,padding:32}}>
+          <div style={{fontSize:32}}>⚠️</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#F8FAFC"}}>Something went wrong</div>
+          <div style={{fontSize:12,color:"#94A3B8",textAlign:"center",maxWidth:380}}>{this.state.err.message||"An unexpected error occurred in this section."}</div>
+          <button onClick={()=>this.setState({err:null})} style={{padding:"9px 22px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:8}}>Try again</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,permAuditLog,addPermAudit,currentUser}){
@@ -32551,7 +32570,7 @@ export default function App(){
       myreports:<MyReportsPage user={user}/>,
       tasks:<TasksPage user={user}/>,
       rota:<RotaPage user={user}/>,
-      manager:<ManagerPortal userPerms={userPerms} setUserPerms={setUserPerms} featureUserCfg={featureUserCfg} setFeatureUserCfg={setFeatureUserCfg} permAuditLog={permAuditLog} addPermAudit={addPermAudit} currentUser={user}/>,
+      manager:<PortalErrorBoundary><ManagerPortal userPerms={userPerms} setUserPerms={setUserPerms} featureUserCfg={featureUserCfg} setFeatureUserCfg={setFeatureUserCfg} permAuditLog={permAuditLog} addPermAudit={addPermAudit} currentUser={user}/></PortalErrorBoundary>,
       subscription:<SubscriptionFeaturesPage/>,
       helpsupport:<HelpSupportPage user={user}/>,
       templates:<TemplatesPage/>,
