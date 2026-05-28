@@ -11879,31 +11879,31 @@ const INSIGHTS = [
    headline:"3 patients have outstanding plans worth £1,840.",
    sub:"Amy Torres (implant), Robert Hall (crowns), David Park (Invisalign)",
    action:"→ Book them now",actionColor:"#60A5FA",
-   badge:"£1,840 opportunity",badgeBg:"rgba(59,130,246,0.15)"},
+   badge:"£1,840 opportunity",badgeBg:"rgba(59,130,246,0.15)",page:"calendar"},
   {type:"PERFORMANCE",icon:"📈",
    bg:"linear-gradient(135deg,rgba(34,197,94,0.1),rgba(16,185,129,0.06))",
    border:"rgba(34,197,94,0.3)",iconColor:"#4ADE80",
    headline:"Recall conversion 76%, up 5%.",
    sub:"143 patients contacted · 109 rebooked · 34 still outstanding",
    action:"→ View report",actionColor:"#4ADE80",
-   badge:"↑ 5% this month",badgeBg:"rgba(34,197,94,0.15)"},
+   badge:"↑ 5% this month",badgeBg:"rgba(34,197,94,0.15)",page:"performance"},
   {type:"ACTION REQUIRED",icon:"⚠️",
    bg:"linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.06))",
    border:"rgba(245,158,11,0.3)",iconColor:"#FCD34D",
    headline:"4 FP17 claims unsubmitted — 2 over 5 days old.",
    sub:"Risk of NHS BSA rejection after 31 days. John Mills, Sarah Chen + 2 more.",
    action:"→ Submit now",actionColor:"#FCD34D",
-   badge:"Urgent — 2 expiring",badgeBg:"rgba(245,158,11,0.15)"},
+   badge:"Urgent — 2 expiring",badgeBg:"rgba(245,158,11,0.15)",page:"fp17"},
   {type:"GROWTH",icon:"🌟",
    bg:"linear-gradient(135deg,rgba(139,92,246,0.1),rgba(99,102,241,0.06))",
    border:"rgba(139,92,246,0.3)",iconColor:"#A78BFA",
    headline:"6 patients viewed your online booking but didn't book.",
    sub:"Last 48 hours. Nudge them with a personalised recall message.",
    action:"→ Send AI recall",actionColor:"#A78BFA",
-   badge:"6 warm leads",badgeBg:"rgba(139,92,246,0.15)"},
+   badge:"6 warm leads",badgeBg:"rgba(139,92,246,0.15)",page:"comms"},
 ];
 
-function PracticeInsights(){
+function PracticeInsights({setPage}){
 
   const [dismissed,setDismissed]=useState(new Set());
 
@@ -11911,7 +11911,7 @@ function PracticeInsights(){
 
   const visible=INSIGHTS.filter((_,i)=>!dismissed.has(i));
 
-  const doAction=(insight)=>{setToast(`${insight.type}: action triggered`);setTimeout(()=>setToast(null),2000);};
+  const doAction=(insight)=>{if(setPage&&insight.page){setPage(insight.page);}else{setToast(`${insight.type}: action triggered`);setTimeout(()=>setToast(null),2000);}};
 
   if(visible.length===0)return null;
 
@@ -13162,7 +13162,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 
     <SmartInsightBanner doToast={doToast} setPage={setPage}/>
 
-    <PracticeInsights/>
+    <PracticeInsights setPage={setPage}/>
 
   </div>;
 
