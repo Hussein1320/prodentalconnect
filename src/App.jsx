@@ -1543,7 +1543,7 @@ function LoginScreen({onLogin}){
 
 const ROLE_DEFAULTS={
   // Reception: appointment & front desk workflow — no clinical, no deep analytics
-  reception: new Set(["dashboard","nba","huddle","calendar","waiting","patients","online_booking","receptionai","whatsapp","teamchat","recovery","shortnotice","accounts","finance","fp17","tasks","helpsupport"]),
+  reception: new Set(["dashboard","nba","huddle","calendar","waiting","patients","online_booking","receptionai","whatsapp","comms","teamchat","recovery","shortnotice","accounts","finance","fp17","tasks","helpsupport"]),
   // Dentist: surgery & clinical — no business admin, no reception ops
   dentist:   new Set(["dashboard","nba","calendar","patients","notes","xray","fp17","uda","lab","teamchat","tasks","helpsupport","myreports"]),
   // Hygienist: clinical + recall — focused view
