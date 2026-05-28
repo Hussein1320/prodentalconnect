@@ -71,6 +71,13 @@ const inp = {
   boxShadow:"inset 0 1px 3px rgba(0,0,0,0.2)",
 };
 
+// ── Mobile responsive hook (additive — used for responsive overrides only)
+function useWindowWidth(){
+  const [w,setW]=useState(typeof window!=="undefined"?window.innerWidth:1200);
+  useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  return w;
+}
+
 const f = n => n?.toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 // ── VAT helpers (all prices ex. VAT; 20% VAT added at checkout/billing)
@@ -1931,7 +1938,7 @@ const ROLE_META={
 
 // ══════════════════════════════════════════════════════════════════════════════
 
-function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,featureUserCfg,plan="Growth"}){
+function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,featureUserCfg,plan="Growth",isMob=false,sidebarOpen=false}){
 
   const isAdmin=user?.role==="superadmin";
 
@@ -1975,7 +1982,7 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
   return(
 
-    <div style={{width:220,flexShrink:0,background:"linear-gradient(180deg,#081632 0%,#071428 100%)",display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",borderRight:"1px solid rgba(80,140,255,0.18)"}}>
+    <div style={{width:220,flexShrink:0,background:"linear-gradient(180deg,#081632 0%,#071428 100%)",display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",borderRight:"1px solid rgba(80,140,255,0.18)",...(isMob&&{position:"fixed",left:0,top:0,bottom:0,height:"100dvh",zIndex:150,transform:sidebarOpen?"translateX(0)":"translateX(-220px)",transition:"transform .25s ease",boxShadow:sidebarOpen?"4px 0 32px rgba(0,0,0,0.6)":"none"})}}>
 
       {/* Logo */}
 
@@ -3573,7 +3580,7 @@ function AdminSeatControl(){
 
 }
 
-function Header({user,notifs,onClearNotifs,onCopilot,copilotSubscribed}){
+function Header({user,notifs,onClearNotifs,onCopilot,copilotSubscribed,isMob=false,onMenuToggle}){
 
   const unread=notifs.filter(n=>!n.read).length;
 
@@ -3583,11 +3590,18 @@ function Header({user,notifs,onClearNotifs,onCopilot,copilotSubscribed}){
 
   const showCopilot=user&&(user.role==="manager"||user.role==="superadmin");
 
-  return <div style={{height:64,background:"linear-gradient(90deg,#0A1830,#0F1C34,#0A1830)",borderBottom:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 1px 12px rgba(0,0,0,0.25)",display:"flex",alignItems:"center",padding:"0 20px",gap:14,flexShrink:0,position:"sticky",top:0,zIndex:100}}>
+  return <div style={{height:64,background:"linear-gradient(90deg,#0A1830,#0F1C34,#0A1830)",borderBottom:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 1px 12px rgba(0,0,0,0.25)",display:"flex",alignItems:"center",padding:"0 20px",gap:14,flexShrink:0,position:"sticky",top:0,zIndex:100,...(isMob&&{padding:"0 12px",gap:8})}}>
 
-    {user?.role==="superadmin"&&<div style={{padding:"3px 10px",background:"rgba(80,140,255,0.08)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:20,fontSize:11,fontWeight:700,color:"#38BDF8",display:"flex",gap:5,alignItems:"center"}}><Server size={10}/>Admin Console</div>}
+    {/* Hamburger menu — mobile only (additive) */}
+    {isMob&&<button onClick={onMenuToggle} style={{width:36,height:36,border:"1px solid rgba(80,140,255,0.22)",borderRadius:9,background:"rgba(7,20,40,0.85)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,flexShrink:0,padding:0}}>
+      <div style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1}}/>
+      <div style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1}}/>
+      <div style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1}}/>
+    </button>}
 
-    <div style={{position:"relative",flex:1,maxWidth:360}}>
+    {user?.role==="superadmin"&&!isMob&&<div style={{padding:"3px 10px",background:"rgba(80,140,255,0.08)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:20,fontSize:11,fontWeight:700,color:"#38BDF8",display:"flex",gap:5,alignItems:"center"}}><Server size={10}/>Admin Console</div>}
+
+    <div style={{position:"relative",flex:1,maxWidth:360,...(isMob&&{maxWidth:"unset"})}}>
 
       <Search size={13} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#CBD5E1"}}/>
 
@@ -3603,7 +3617,7 @@ function Header({user,notifs,onClearNotifs,onCopilot,copilotSubscribed}){
 
         <Sparkles size={13} color={copilotSubscribed?"#5eead4":"#64748b"}/>
 
-        <span style={{fontSize:11,fontWeight:700,color:copilotSubscribed?"#132238":"rgba(255,255,255,0.7)",whiteSpace:"nowrap"}}>Business Copilot</span>
+        {!isMob&&<span style={{fontSize:11,fontWeight:700,color:copilotSubscribed?"#132238":"rgba(255,255,255,0.7)",whiteSpace:"nowrap"}}>Business Copilot</span>}
 
         {!copilotSubscribed&&<span style={{fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:4,background:"rgba(249,115,22,0.8)",color:"#132238",marginLeft:2}}>PRO</span>}
 
@@ -3621,7 +3635,7 @@ function Header({user,notifs,onClearNotifs,onCopilot,copilotSubscribed}){
 
         </button>
 
-        {open&&<div style={{position:"absolute",right:0,top:"calc(100% + 6px)",width:300,background:"rgba(7,21,39,0.98)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:16,boxShadow:"0 20px 48px rgba(0,0,0,0.5),0 0 24px rgba(0,109,255,0.08)",zIndex:300,overflow:"hidden"}}>
+        {open&&<div style={{position:"absolute",right:0,top:"calc(100% + 6px)",width:300,background:"rgba(7,21,39,0.98)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:16,boxShadow:"0 20px 48px rgba(0,0,0,0.5),0 0 24px rgba(0,109,255,0.08)",zIndex:300,overflow:"hidden",...(isMob&&{width:"calc(100vw - 24px)",right:"-12px"})}}>
 
           <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",justifyContent:"space-between"}}>
 
@@ -12402,6 +12416,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2000);};
   const wl=waiting.filter(w=>w.status==="waiting").length;
+  // Mobile responsive (additive)
+  const dvw=useWindowWidth();const isMob=dvw<768;
   const isDentistUser=user?.role==="dentist"||user?.role==="hygienist";
   const isReceptionUser=user?.role==="reception";
   const isManagerUser=user?.role==="manager";
@@ -12434,7 +12450,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
   };
   const DATE_RANGES=["Today","Yesterday","Last 7 days","Last 30 days","Last 90 days","Custom"];
 
-  return <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  return <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
 
     {user&&<div style={{marginBottom:14,padding:"12px 16px",background:"rgba(37,99,255,0.06)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:12,display:"flex",gap:10,alignItems:"center"}}>
       <div style={{width:32,height:32,borderRadius:10,background:user.color||"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#132238",flexShrink:0}}>{user.avatar}</div>
@@ -12447,9 +12463,9 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 
     {/* ── KPI Patient Detail Modal ── */}
     {kpiModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setKpiModal(null);}}>
-      <div style={{background:"#132238",borderRadius:18,width:560,maxHeight:"75vh",overflowY:"auto",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(59,130,246,0.2)"}}>
+      <div style={{background:"#132238",borderRadius:18,width:560,maxHeight:"75vh",overflowY:"auto",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(59,130,246,0.2)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,maxHeight:"80vh"})}}>
         <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(59,130,246,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC"}}>{kpiModal.title} — {new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC",...(isMob&&{fontSize:13})}}>{kpiModal.title} — {new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>
           <button onClick={()=>setKpiModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:"#CBD5E1",lineHeight:1}}>✕</button>
         </div>
         <div style={{padding:"8px 0"}}>
@@ -12476,27 +12492,27 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
     </div>}
 
     {/* ── Top KPI Banner Row — full-colour Dentally style ── */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:0,marginBottom:14,borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.1)"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:0,marginBottom:14,borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.1)",...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:2,borderRadius:12})}}>
       {[
         {l:"Completed",v:18,sub:"Seen today",badge:"✓",note:"+3 vs yesterday",bg:"#16a34a",bg2:"#15803d",Icon:Check},
         {l:"Cancelled",v:3, sub:"Cancellations",badge:"✕",note:"+1 vs yesterday",bg:"#dc2626",bg2:"#b91c1c",Icon:X},
         {l:"DNA",v:2,       sub:"Did not attend",badge:"!",note:"+1 vs yesterday",bg:"#d97706",bg2:"#b45309",Icon:AlertTriangle},
         {l:"Remaining",v:6, sub:"Still to be seen",badge:"→",note:"Next: 14:00 Walsh",bg:"#2563eb",bg2:"#1d4ed8",Icon:Clock},
-      ].map((s,i)=><div key={s.l} onClick={()=>setKpiModal({title:s.l,patients:KPI_PATIENTS[s.l]||[]})} style={{background:`linear-gradient(135deg,${s.bg} 0%,${s.bg2} 100%)`,padding:"16px 20px",position:"relative",overflow:"hidden",borderRight:i<3?"1px solid rgba(255,255,255,.15)":"none",cursor:"pointer",transition:"filter .15s"}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.1)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+      ].map((s,i)=><div key={s.l} onClick={()=>setKpiModal({title:s.l,patients:KPI_PATIENTS[s.l]||[]})} style={{background:`linear-gradient(135deg,${s.bg} 0%,${s.bg2} 100%)`,padding:"16px 20px",position:"relative",overflow:"hidden",borderRight:i<3?"1px solid rgba(255,255,255,.15)":"none",cursor:"pointer",transition:"filter .15s",...(isMob&&{padding:"12px 14px",borderRight:"none",borderRadius:10})}} onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.1)"} onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
         <div style={{position:"absolute",top:-10,right:-10,width:70,height:70,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
           <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".05em"}}>{s.l}</span>
           <s.Icon size={14} color="rgba(255,255,255,.5)"/>
         </div>
-        <div style={{fontSize:40,fontWeight:900,color:"#132238",fontFamily:"ui-monospace,monospace",lineHeight:1,marginBottom:2}}>{s.v}</div>
+        <div style={{fontSize:40,fontWeight:900,color:"#132238",fontFamily:"ui-monospace,monospace",lineHeight:1,marginBottom:2,...(isMob&&{fontSize:28})}}>{s.v}</div>
         <div style={{fontSize:10,color:"rgba(255,255,255,0.9)"}}>{s.sub}</div>
         <div style={{fontSize:9,color:"#94A3B8",marginTop:3}}>{s.note}</div>
-        <div style={{fontSize:8,color:"rgba(255,255,255,0.4)",marginTop:4}}>Click to view patients →</div>
+        {!isMob&&<div style={{fontSize:8,color:"rgba(255,255,255,0.4)",marginTop:4}}>Click to view patients →</div>}
       </div>)}
     </div>
 
     {/* ── Secondary KPI row ── */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8})}}>
       {[
         {l:"New Patients",v:2,sub:"Registered today",c:"#2563FF",Icon:User},
         {l:"Patients Seen",v:18,sub:"Completed today",c:"#16a34a",Icon:Check},
@@ -12518,7 +12534,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
         <span style={{fontSize:10,color:"rgba(255,255,255,.55)"}}>Generated 08:00</span>
         {brief?<ChevronUp size={14} color="#132238"/>:<ChevronDown size={14} color="#132238"/>}
       </div>
-      {brief&&<div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
+      {brief&&<div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8,padding:"10px 12px"})}}>
         {[{l:"Appointments Today",v:9,c:C.text},{l:"Confirmed",v:6,c:C.green},{l:"Unconfirmed",v:3,c:C.amber},{l:"Waiting Now",v:wl,c:wl>0?C.red:C.green},{l:"FP17 Pending",v:4,c:C.red}].map(s=><div key={s.l} style={{background:"#0F1C34",borderRadius:14,padding:"10px",textAlign:"center"}}>
           <div style={{fontSize:26,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace",lineHeight:1}}>{s.v}</div><div style={{fontSize:10,color:"#CBD5E1",marginTop:3}}>{s.l}</div>
         </div>)}
@@ -12532,7 +12548,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
     </div>
 
     {/* ── Main grid ── */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
 
       {/* Treatment Plans Status */}
       <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
@@ -12570,7 +12586,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
     </div>
 
     {/* ── 3-col row ── */}
-    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:14,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:14,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
 
       {/* Today's Appointments */}
       <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
@@ -12658,7 +12674,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
     </div>
 
     {/* ── Bottom row: Insights + Birthdays + Live Activity ── */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
 
       {/* Practice Insights */}
       <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
@@ -12720,7 +12736,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 
     <SmartInsightBanner doToast={doToast} setPage={setPage}/>
 
-    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
 
       {/* Today's Appointments */}
 
@@ -31480,6 +31496,10 @@ export default function App(){
   const [waiting,setWaiting]=useState(WAITING_INIT);
   const [copilotOpen,setCopilotOpen]=useState(false);
   const [copilotSubscribed,setCopilotSubscribed]=useState(false);
+  // ── Mobile responsive state (additive)
+  const vw=useWindowWidth();
+  const isMob=vw<768;
+  const [sidebarOpen,setSidebarOpen]=useState(false);
   const [announcements,setAnnouncements]=useState(INIT_ANNOUNCEMENTS);
   const [annUserPrefs,setAnnUserPrefs]=useState({});
   const [annReleaseNotes,setAnnReleaseNotes]=useState(null);
@@ -31595,8 +31615,9 @@ export default function App(){
     {!blockingAnn&&modalAnn&&<AnnouncementModal ann={modalAnn} onClose={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onDismiss={()=>patchAnnPref(modalAnn.id,{dismissed_at:Date.now()})} onSnooze={()=>patchAnnPref(modalAnn.id,{snoozed_until:Date.now()+(modalAnn.snooze_duration_hours||24)*3600000})} onDontShowAgain={()=>patchAnnPref(modalAnn.id,{dont_show_again:true})} onAck={()=>patchAnnPref(modalAnn.id,{acked_at:Date.now()})} onViewNotes={modalAnn.action_label?()=>{patchAnnPref(modalAnn.id,{notes_clicked:true,dismissed_at:Date.now()});if(modalAnn.action_url&&modalAnn.action_url!=="#"){setPage(modalAnn.action_url);}else{setAnnReleaseNotes(modalAnn);}}:null}/>}
     {alertQueue[0]&&<AlertModal patient={alertQueue[0]} onAck={ackAlert} onCancel={()=>{setAlertQueue([]);setPatientId(prevPatientId||null);setPrevPatientId(null);}}/>}
     <BusinessCopilot open={copilotOpen} onClose={()=>setCopilotOpen(false)} subscribed={copilotSubscribed} onSubscribe={()=>setCopilotSubscribed(true)}/>
-    
-    <Sidebar page={patientId?"patients":page} setPage={p=>{setPage(p);setPatientId(null);setAlertQueue([]);}} user={user} onLogout={()=>{setUser(null);setPage("dashboard");setPatientId(null);}} waiting={waiting} tasks={tasks} unread={notifs.filter(n=>!n.read).length} userPerms={user?userPerms[user.id]:undefined} featureUserCfg={featureUserCfg} plan="Growth"/>
+    {/* Mobile sidebar backdrop (additive) */}
+    {isMob&&sidebarOpen&&<div onClick={()=>setSidebarOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:149}}/>}
+    <Sidebar page={patientId?"patients":page} setPage={p=>{setPage(p);setPatientId(null);setAlertQueue([]);if(isMob)setSidebarOpen(false);}} user={user} onLogout={()=>{setUser(null);setPage("dashboard");setPatientId(null);}} waiting={waiting} tasks={tasks} unread={notifs.filter(n=>!n.read).length} userPerms={user?userPerms[user.id]:undefined} featureUserCfg={featureUserCfg} plan="Growth" isMob={isMob} sidebarOpen={sidebarOpen}/>
     {showNewPatient&&<AddPatientModal
       onClose={()=>setShowNewPatient(false)}
       onAdd={newPat=>{setShowNewPatient(false);}}
@@ -31613,7 +31634,7 @@ export default function App(){
       </div>
     </div>}
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
-      <Header user={user} notifs={notifs} onClearNotifs={()=>setNotifs(p=>p.map(n=>({...n,read:true})))} onCopilot={()=>setCopilotOpen(true)} copilotSubscribed={copilotSubscribed}/>
+      <Header user={user} notifs={notifs} onClearNotifs={()=>setNotifs(p=>p.map(n=>({...n,read:true})))} onCopilot={()=>setCopilotOpen(true)} copilotSubscribed={copilotSubscribed} isMob={isMob} onMenuToggle={()=>setSidebarOpen(o=>!o)}/>
       {/* Platform announcement banners (below header, above content) */}
       {bannerAnns.map(ann=><AnnouncementBanner key={ann.id} ann={ann}
         onDismiss={()=>patchAnnPref(ann.id,{dismissed_at:Date.now()})}
