@@ -110,6 +110,17 @@ if(typeof document!=="undefined"&&!document.getElementById("pdc-mobile-css")){
       /* Reception AI tab bar */
       .pdc-rx-tabs{overflow-x:auto!important;scrollbar-width:none!important;}
       .pdc-rx-tabs::-webkit-scrollbar{display:none!important;}
+      /* Global table overflow for all pages */
+      table{max-width:100%;box-sizing:border-box;}
+      /* Ensure modals don't overflow viewport */
+      [style*="width:480"],[style*="width:500"],[style*="width:520"],[style*="width:560"]{max-width:calc(100vw - 24px)!important;}
+      /* Generic multi-col grid collapse for pdc-grid-* */
+      .pdc-grid-5{grid-template-columns:1fr 1fr 1fr!important;}
+      /* NHS page tab bars */
+      .pdc-nhs-tabs{overflow-x:auto!important;scrollbar-width:none!important;flex-wrap:nowrap!important;}
+      .pdc-nhs-tabs::-webkit-scrollbar{display:none!important;}
+      /* Touch-friendly tap targets */
+      button{min-height:36px;}
     }
   `;
   document.head.appendChild(ms);
@@ -2226,6 +2237,7 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 // ══════════════════════════════════════════════════════════════════════════════
 
 function MyReportsPage({user}){
+  const mrvw=useWindowWidth();const isMob=mrvw<768;
 
   const rm=ROLE_META[user?.role]||ROLE_META.reception;
 
@@ -2323,11 +2335,11 @@ function MyReportsPage({user}){
 
       </div>
 
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         {/* KPI tiles */}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+        <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
 
           {data.kpis.map(k=>(
 
@@ -2583,7 +2595,7 @@ function SecurityAndSsoPanel({doToast}){
       {ssoCfg.enabled&&ssoExpanded&&(
         <div style={{background:"rgba(80,140,255,0.04)",border:"1px solid rgba(80,140,255,0.14)",borderRadius:12,padding:16,marginBottom:12}}>
           <div style={{fontSize:11,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:10}}>Identity Provider</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+          <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
             {Object.entries(SSO_PROVIDER_META).map(([id,pm])=>(
               <div key={id} onClick={()=>updateSso({provider:id})}
                 style={{padding:"10px 8px",borderRadius:10,border:`2px solid ${ssoCfg.provider===id?pm.color:"rgba(80,140,255,0.15)"}`,background:ssoCfg.provider===id?pm.bg:"transparent",cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -3381,7 +3393,7 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
 
             {/* Built-in templates */}
             <div style={{...style.sectionHead,marginBottom:12}}><Shield size={13} color="#60A5FA"/>Built-in Templates</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:22}}>
+            <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:22}}>
               {ROLE_TEMPLATES.map(tpl=>{
                 const lv=PERMISSION_LEVELS[tpl.level];
                 const rm=ROLE_META[tpl.baseRole];
@@ -3491,7 +3503,7 @@ function AdminSeatControl(){
 
   return(
 
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
 
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:400,display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
 
@@ -3501,7 +3513,7 @@ function AdminSeatControl(){
 
       {/* Plan defaults */}
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+      <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
 
         {["Starter","Growth","Enterprise"].map(plan=>(
 
@@ -4900,7 +4912,7 @@ function OnlineBookingPage({setPage}){
 
               {/* Appointment summary */}
 
-              <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,borderBottom:"1px solid rgba(56,189,248,0.07)"}}>
+              <div className="pdc-grid-4" style={{padding:"14px 18px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,borderBottom:"1px solid rgba(56,189,248,0.07)"}}>
 
                 {[
 
@@ -5024,7 +5036,7 @@ function OnlineBookingPage({setPage}){
 
       {/* ── UPCOMING BOOKINGS TAB ── */}
 
-      {tab==="calendar"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="calendar"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{maxWidth:780,margin:"0 auto"}}>
 
@@ -5104,7 +5116,7 @@ function OnlineBookingPage({setPage}){
 
       {/* ── APPOINTMENT TYPES TAB ── */}
 
-      {tab==="types"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="types"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{maxWidth:780,margin:"0 auto"}}>
 
@@ -5224,7 +5236,7 @@ function OnlineBookingPage({setPage}){
 
       {/* ── WIDGET TAB ── */}
 
-      {tab==="widget"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="widget"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{maxWidth:720,margin:"0 auto"}}>
 
@@ -5306,11 +5318,11 @@ function OnlineBookingPage({setPage}){
 
       {/* ── ANALYTICS TAB ── */}
 
-      {tab==="analytics"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="analytics"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{maxWidth:780,margin:"0 auto"}}>
 
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
+          <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
 
             {[
 
@@ -5517,7 +5529,7 @@ function IntegrationsPage({practiceName}){
 
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
 
       {configItem&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:400}}>
 
@@ -6216,7 +6228,7 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
       </div>
 
       {/* ── ANNOUNCEMENTS LIST ── */}
-      {tab==="list"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+      {tab==="list"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:11,color:C.muted,fontWeight:600}}>Type:</span>
           {["all",...ANN_TYPES].slice(0,6).map(t=>{const cnt=t==="all"?announcements.length:announcements.filter(a=>a.type===t).length;return cnt>0&&<button key={t} onClick={()=>setFilterType(t)} style={{padding:"3px 10px",borderRadius:8,border:`1px solid ${filterType===t?C.teal:"rgba(80,140,255,0.15)"}`,background:filterType===t?"rgba(56,189,248,0.1)":"transparent",color:filterType===t?C.teal:C.muted,fontSize:10,fontWeight:600,cursor:"pointer"}}>{t==="all"?"All":t} {t==="all"?"":cnt}</button>;})}
@@ -6290,10 +6302,10 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
       </div>}
 
       {/* ── ANALYTICS ── */}
-      {tab==="analytics"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+      {tab==="analytics"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
         <div style={{marginBottom:18}}>
           <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>Engagement Overview</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+          <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
             {(()=>{
               const totTarget=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.targeted,0);
               const totViewed=Object.values(INIT_ANN_DELIVERY_STATS).reduce((s,d)=>s+d.viewed,0);
@@ -6355,7 +6367,7 @@ function AnnouncementsAdminPage({announcements,setAnnouncements}){
       </div>}
 
       {/* ── AUDIT LOG ── */}
-      {tab==="audit"&&<div style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
+      {tab==="audit"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",padding:18,background:"#071428"}}>
         <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center",background:"#132238",padding:"10px 14px",borderRadius:12,border:"1px solid rgba(80,140,255,0.12)"}}>
           <span style={{fontSize:11,fontWeight:700,color:C.muted}}>Filter:</span>
           <select value={auditFilter.annId} onChange={e=>setAuditFilter(p=>({...p,annId:e.target.value}))} style={{padding:"5px 9px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.18)",borderRadius:8,color:C.text,fontSize:11,fontFamily:"inherit",outline:"none"}}>
@@ -6410,12 +6422,12 @@ function AdminDashboard(){
   const active=PRACTICES.filter(p=>p.status==="active").length;
   const totalPts=PRACTICES.reduce((s,p)=>s+p.patients,0);
 
-  return <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  return <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"#071428",color:"#132238",borderRadius:20,fontSize:12,zIndex:500,fontWeight:600}}>{toast}</div>}
 
     {/* Hero stats */}
 
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+    <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
 
       {[{l:"Monthly Recurring Revenue",v:`£${(totalMRR+38250).toLocaleString()}`,c:"#38BDF8",sub:"127 active practices",Icon:TrendingUp},{l:"Active Practices",v:active+119,c:C.green,sub:`${PRACTICES.filter(p=>p.status==="trial").length+8} on trial`,Icon:Building2},{l:"Total Patient Records",v:(totalPts+270000).toLocaleString(),c:C.blue,sub:"Across all practices",Icon:Users},{l:"System Uptime",v:"99.98%",c:"#22C55E",sub:"SLA: 99.9% guaranteed",Icon:Activity}].map(s=><div key={s.l} style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(80,140,255,0.1)",borderRadius:16,padding:"14px 16px",display:"flex",gap:12,alignItems:"center",cursor:"pointer",transition:"transform .2s,box-shadow .2s"}}>
 
@@ -6801,7 +6813,7 @@ function AdminPricing(){
 
   return(
 
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
 
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
 
@@ -6847,7 +6859,7 @@ function AdminPricing(){
 
       {/* MRR summary */}
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
 
         {[
 
@@ -7759,7 +7771,7 @@ function AdminMonitoring(){
 
       {/* ══ OVERVIEW ══ */}
 
-      {tab==="overview"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="overview"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
 
         {/* KPI row */}
 
@@ -7897,7 +7909,7 @@ function AdminMonitoring(){
 
       {/* ══ LATENCY & TRAFFIC ══ */}
 
-      {tab==="latency"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="latency"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
 
@@ -8079,9 +8091,9 @@ function AdminMonitoring(){
 
       {/* ══ INFRASTRUCTURE ══ */}
 
-      {tab==="infra"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="infra"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+        <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
 
           {INFRA.map(srv=>(
 
@@ -8133,7 +8145,7 @@ function AdminMonitoring(){
 
         <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:10}}>Database Metrics</div>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+        <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
 
           {[{l:"Active Connections",v:"142/500",c:C.teal},{l:"Query Cache Hit",v:"94.2%",c:C.green},{l:"Avg Query Time",v:"8ms",c:C.green},{l:"Replication Lag",v:"<1ms",c:C.green},{l:"Rows Read/sec",v:"48,200",c:C.blue},{l:"Rows Written/sec",v:"1,840",c:C.purple},{l:"Locks Waiting",v:"0",c:C.green},{l:"Dead Tuples",v:"0.12%",c:C.green}].map(m=>(
 
@@ -8185,9 +8197,9 @@ function AdminMonitoring(){
 
       {/* ══ AI USAGE ══ */}
 
-      {tab==="ai"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="ai"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+        <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
 
           {[{l:"Total API Calls MTD",v:"13,344",c:C.teal},{l:"Total Tokens MTD",v:"56.7M",c:C.blue},{l:"Total Cost MTD",v:`£${totalAICost.toFixed(2)}`,c:C.purple},{l:"Avg Response",v:"920ms",c:C.green}].map(k=>(
 
@@ -8283,7 +8295,7 @@ function AdminMonitoring(){
 
       {/* ══ INCIDENTS ══ */}
 
-      {tab==="incidents"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="incidents"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:14,alignItems:"center"}}>
 
@@ -8343,7 +8355,7 @@ function AdminMonitoring(){
 
       {/* ══ ALERT CONFIG ══ */}
 
-      {tab==="alerts"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="alerts"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:14,alignItems:"center"}}>
 
@@ -8431,7 +8443,7 @@ function AdminMonitoring(){
 
         <div style={{marginTop:14,fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:10}}>Notification Channels</div>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+        <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
 
           {[{icon:"💬",name:"Slack",desc:"#ops-alerts channel",status:"Connected",color:C.purple},{icon:"📟",name:"PagerDuty",desc:"On-call rotation",status:"Connected",color:C.red},{icon:"✉️",name:"Email",desc:"ops@prodental.co.uk",status:"Connected",color:C.blue}].map(ch=>(
 
@@ -9657,7 +9669,7 @@ function AdminUpdates(){
 
       {/* ── TAB: Deploy ──────────────────────────────────── */}
 
-      {tab==="deploy"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="deploy"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
 
@@ -9869,7 +9881,7 @@ function AdminUpdates(){
 
       {/* ── TAB: History ─────────────────────────────────── */}
 
-      {tab==="secure_reports"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
+      {tab==="secure_reports"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
       <div style={{fontSize:14,fontWeight:700,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>🔒 Secure Report Log <span style={{fontSize:11,color:"#94A3B8",fontWeight:400}}>Password-protected PDFs sent to this patient</span></div>
       {[
         {id:"ERL001",type:"Treatment Report",fileName:"TreatmentReport_20250514.pdf",sentBy:"Dr. S. Patel",sentAt:"2025-05-14T09:15:00Z",encrypted:true},
@@ -9892,7 +9904,7 @@ function AdminUpdates(){
       </div>
     </div>}
     {tab==="consent"&&<ConsentFormsPanel patient={patient} user={user}/>}
-    {tab==="history"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+    {tab==="history"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
 
@@ -9948,7 +9960,7 @@ function AdminUpdates(){
 
       {/* ── TAB: Feature Control ─────────────────────────── */}
 
-      {tab==="features"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="features"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{marginBottom:12,padding:"10px 14px",background:"#132238",border:"1px solid #ffc107",borderRadius:9,fontSize:11,color:"#856404"}}>
 
@@ -10012,7 +10024,7 @@ function AdminUpdates(){
 
       {/* ── TAB: Rollback ────────────────────────────────── */}
 
-      {tab==="rollback"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="rollback"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{marginBottom:12,padding:"10px 14px",background:"#132238",border:"1px solid #ffc107",borderRadius:9,fontSize:11,color:"#856404"}}>
 
@@ -10346,7 +10358,7 @@ function AppointmentAuditPage(){
 
         {/* Content */}
 
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
 
           {/* ── TIMELINE VIEW ── */}
 
@@ -10764,11 +10776,11 @@ function AdminSecurity(){
 
       {/* ── Overview ── */}
 
-      {tab==="overview"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="overview"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
 
         {/* Key metrics */}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+        <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
 
           {[
 
@@ -10886,7 +10898,7 @@ function AdminSecurity(){
 
       {/* ── Audit Log ── */}
 
-      {tab==="audit"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="audit"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
 
@@ -10948,7 +10960,7 @@ function AdminSecurity(){
 
       {/* ── Infrastructure ── */}
 
-      {tab==="infra"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="infra"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
 
@@ -11008,7 +11020,7 @@ function AdminSecurity(){
 
       {/* ── Compliance ── */}
 
-      {tab==="comply"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="comply"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
@@ -11082,7 +11094,7 @@ function AdminSecurity(){
 
       {/* ── Active Sessions ── */}
 
-      {tab==="access"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {tab==="access"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
 
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
 
@@ -11140,8 +11152,8 @@ function AdminSecurity(){
         const totalUsers=SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.users,0);
         const avgMfa=Math.round(SSO_PRACTICE_STATUS.reduce((s,p)=>s+p.mfaRate,0)/SSO_PRACTICE_STATUS.length);
         return(
-          <div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+          <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+            <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
               {[
                 {l:"SSO Active",v:totalSsoActive+"/"+SSO_PRACTICE_STATUS.length,c:"#2563FF",sub:"practices using SSO"},
                 {l:"SSO Users",v:totalSsoUsers+"/"+totalUsers,c:C.green,sub:"staff on SSO login"},
@@ -11256,7 +11268,7 @@ function AdminUsers(){
   };
 
   return(
-  <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {toast2&&<div style={{position:"fixed",top:74,right:20,padding:"10px 16px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:600,display:"flex",gap:7,alignItems:"center",boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}><Check size={12}/>{toast2}</div>}
 
     {/* Permissions Modal */}
@@ -11386,7 +11398,7 @@ function AdminSupport(){
 
   const SC={pending:{c:C.amber,l:"Pending Approval"},approved:{c:C.green,l:"Active"},expired:{c:"#64748b",l:"Expired"}};
 
-  return <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  return <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {/* Log Viewer Modal */}
     {logModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setLogModal(null);}}>
       <div style={{background:"#132238",borderRadius:16,width:540,maxHeight:"75vh",overflowY:"auto",boxShadow:"0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(56,189,248,0.15)"}}>
@@ -12494,7 +12506,7 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
   };
   const DATE_RANGES=["Today","Yesterday","Last 7 days","Last 30 days","Last 90 days","Custom"];
 
-  return <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
+  return <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
 
     {user&&<div style={{marginBottom:14,padding:"12px 16px",background:"rgba(37,99,255,0.06)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:12,display:"flex",gap:10,alignItems:"center"}}>
       <div style={{width:32,height:32,borderRadius:10,background:user.color||"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#132238",flexShrink:0}}>{user.avatar}</div>
@@ -13158,7 +13170,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
       {/* ── WAITING NOW TAB ── */}
 
-      {viewTab==="waiting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
+      {viewTab==="waiting"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
 
         {waitingNow.length===0&&calledIn.length===0&&<div style={{textAlign:"center",padding:"40px",background:"rgba(0,109,255,0.06)",borderRadius:16,border:"1px solid rgba(80,140,255,0.18)"}}>
 
@@ -13303,7 +13315,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
       {/* ── DAILY SCHEDULE TAB ── */}
 
-      {viewTab==="daily"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+      {viewTab==="daily"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
 
         <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>Today's appointments · Click <strong>Check In</strong> when patient arrives · Synced with calendar</div>
 
@@ -15462,7 +15474,7 @@ function DentalWorkspace({patient,user}){
       </div>}
 
       {/* Perio view */}
-      {chartMode==="perio"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+      {chartMode==="perio"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
         <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:12}}>BPE / Perio Chart</div>
         <div style={{background:"#132238",borderRadius:16,padding:16,border:"1px solid rgba(80,140,255,0.16)",marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,marginBottom:10}}>BPE Scores</div>
@@ -15492,7 +15504,7 @@ function DentalWorkspace({patient,user}){
       </div>}
 
       {/* Soft tissue view */}
-      {chartMode==="softtissue"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+      {chartMode==="softtissue"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
         <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:12}}>Soft Tissue Examination</div>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
           {[{area:"Lips & commissures",finding:"NAD",editable:true},{area:"Buccal mucosa (L+R)",finding:"NAD",editable:true},{area:"Tongue (dorsum + ventral)",finding:"NAD",editable:true},{area:"Floor of mouth",finding:"NAD",editable:true},{area:"Hard & soft palate",finding:"NAD",editable:true},{area:"Oropharynx & tonsils",finding:"NAD",editable:true},{area:"Gingiva",finding:"Mild generalised gingivitis",editable:true},{area:"Lymph nodes (extra-oral)",finding:"NAD — no palpable lymphadenopathy",editable:true}].map((r,i)=>(
@@ -15939,7 +15951,7 @@ function DocsTab({patient,savedDocs,doToast,setShowSendModal}){
   };
 
   return(
-    <div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
       {/* ── Documents ── */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,maxWidth:900}}>
         <span style={{fontSize:14,fontWeight:700}}>Documents</span>
@@ -16770,7 +16782,7 @@ Added by: ${showDocPreview.by}
     <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}>
 
     {/* ── DETAILS (landing dashboard) ── */}
-    {tab==="details"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34",...(isMob&&{padding:12})}}>
+    {tab==="details"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34",...(isMob&&{padding:12})}}>
       <div style={{maxWidth:860,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* ── Personal Details ── */}
@@ -17015,7 +17027,7 @@ Added by: ${showDocPreview.by}
         ))}
       </div>
       {chartTab==="odontogram"&&<div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}><DentalWorkspace patient={patient} user={user}/></div>}
-      {chartTab==="perio"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+      {chartTab==="perio"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
         <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Periodontal Assessment</div>
         <div style={{background:"#132238",borderRadius:16,padding:16,border:"1px solid rgba(80,140,255,0.16)",marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>BPE Scores — 14 May 2026</div>
@@ -17029,7 +17041,7 @@ Added by: ${showDocPreview.by}
         </div>
         <button onClick={()=>doToast("6-point perio chart opening soon")} style={{padding:"10px 20px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>+ Start 6-Point Perio Chart</button>
       </div>}
-      {chartTab==="softtissue"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+      {chartTab==="softtissue"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
         <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Soft Tissue Examination</div>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
           {[{area:"Lips & commissures",finding:"NAD"},{area:"Buccal mucosa",finding:"NAD"},{area:"Tongue",finding:"NAD"},{area:"Floor of mouth",finding:"NAD"},{area:"Hard & soft palate",finding:"NAD"},{area:"Gingiva",finding:"Mild generalised gingivitis"},{area:"Oropharynx",finding:"NAD"},{area:"Lymph nodes",finding:"No palpable lymphadenopathy"}].map((r,i)=>(
@@ -17040,10 +17052,10 @@ Added by: ${showDocPreview.by}
           ))}
         </div>
       </div>}
-      {chartTab==="xrays"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,textAlign:"center"}}>
+      {chartTab==="xrays"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,textAlign:"center"}}>
         <div style={{background:"#071428",borderRadius:18,padding:40,color:"#94A3B8",fontSize:13}}>📡 DICOM viewer — connect imaging system to view radiographs</div>
       </div>}
-      {chartTab==="history"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+      {chartTab==="history"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
         <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Charting History</div>
         <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:700}}>
           {[
@@ -17066,7 +17078,7 @@ Added by: ${showDocPreview.by}
       </div>}
     </div>}
 
-    {tab==="medical"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34"}}>
+    {tab==="medical"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34"}}>
       <div style={{maxWidth:860,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* Header */}
@@ -17215,7 +17227,7 @@ Added by: ${showDocPreview.by}
 
       </div>
     </div>}
-    {tab==="appts"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="appts"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,maxWidth:900}}>
         <span style={{fontSize:14,fontWeight:700}}>Appointments</span>
         <button onClick={()=>setShowBookAppt(true)} style={{padding:"7px 16px",background:"#2563FF",color:"#ffffff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={13}/>Book Appointment</button>
@@ -17238,7 +17250,7 @@ Added by: ${showDocPreview.by}
 
     {tab==="notes"&&<div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}><AINoteAssistant patient={patient} user={user}/></div>}
 
-    {tab==="plans"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="plans"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,maxWidth:940}}>
         <div>
           <span style={{fontSize:14,fontWeight:700}}>Treatment Plans</span>
@@ -17367,7 +17379,7 @@ Added by: ${showDocPreview.by}
       </div>
     </div>}
 
-    {tab==="accounts"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
+    {tab==="accounts"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
       <div style={{maxWidth:900}}>
         {/* Send Report prompt bar */}
         <div style={{padding:"12px 16px",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(80,140,255,0.22)",borderRadius:12,marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
@@ -17383,7 +17395,7 @@ Added by: ${showDocPreview.by}
             {sendLog.filter(e=>e.patientId===patient?.id).length>0?"↩ Resend":"📧 Send Report"}
           </button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
           {[{l:"Outstanding",v:"£"+((patient.balance||0).toFixed(2)),c:patient.balance>0?"#dc2626":"#16a34a"},{l:"Last Payment",v:"£73.50",c:"#374151"},{l:"2026 Total",v:"£392.40",c:"#16a34a"}].map(s=>(
             <div key={s.l} style={{background:"rgba(7,24,45,0.90)",border:"1px solid rgba(56,189,248,0.14)",boxShadow:"0 8px 40px rgba(0,0,0,0.4),inset 0 1px 0 rgba(56,189,248,0.07)",borderRadius:11,padding:"14px 16px"}}>
               <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",marginBottom:4}}>{s.l}</div>
@@ -17410,7 +17422,7 @@ Added by: ${showDocPreview.by}
 
     {tab==="consent"&&<ConsentFormsPanel patient={patient} user={user}/>}
 
-    {tab==="history"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="history"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Patient History & Audit Log</div>
         <div style={{background:"rgba(7,24,45,0.90)",border:"1px solid rgba(56,189,248,0.14)",boxShadow:"0 8px 40px rgba(0,0,0,0.4),inset 0 1px 0 rgba(56,189,248,0.07)",borderRadius:16,overflow:"hidden"}}>
@@ -17431,6 +17443,7 @@ Added by: ${showDocPreview.by}
 }
 
 function FP17Page(){
+  const f17vw=useWindowWidth();const isMob=f17vw<768;
   const [claims,setClaims]=useState([
     {id:"F001",patient:"John Mills",nhs:"485 777 3456",dentist:"Dr. S. Patel",date:"14 May 2026",band:2,udas:3,charge:"£73.50",status:"draft",region:"England",claimType:"treatment",hasASN:false,is_continuation:false,
       items:[{l:"Examination",nhsFee:26.80,patientFee:26.80,udas:1,frStatus:"none"},{l:"Scale & Polish",nhsFee:0,patientFee:0,udas:1,frStatus:"none"},{l:"Composite UR6",nhsFee:73.50,patientFee:0,udas:3,frStatus:"free_repair"}]},
@@ -17619,8 +17632,8 @@ function FP17Page(){
       </div>}
 
       {/* Claims list */}
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
-        <div style={{display:"flex",gap:0,marginBottom:10,borderBottom:"1px solid rgba(56,189,248,0.1)"}}>
+      <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+        <div style={{display:"flex",gap:0,marginBottom:10,borderBottom:"1px solid rgba(56,189,248,0.1)",overflowX:"auto",scrollbarWidth:"none"}}>
           {[
             {id:"all",      l:"All Claims",  count:claims.length},
             {id:"draft",    l:"Drafts",      count:claims.filter(c=>c.status==="draft").length},
@@ -17966,7 +17979,7 @@ function ReceptionAIPage({rxEnabled}){
         ];
 
         return(
-          <div style={{flex:1,overflowY:"auto",background:"#071428",padding:18,display:"flex",flexDirection:"column",gap:14}}>
+          <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18,display:"flex",flexDirection:"column",gap:14}}>
 
             {/* Period selector */}
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -18098,7 +18111,7 @@ function ReceptionAIPage({rxEnabled}){
       })()}
 
       {/* ════════════ MISSED CALLS ════════════ */}
-      {tab==="missed"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="missed"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14,color:"#FCA5A5"}}>📵 Missed Calls</div>
         {[{name:"Unknown Caller",phone:"07833 445566",time:"Today 09:12",attempts:1},{name:"Paul Davies",phone:"07700 900199",time:"Today 07:48",attempts:2},{name:"Sarah R.",phone:"07910 223344",time:"Yesterday 17:55",attempts:1}].map((mc,i)=>(
           <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderRadius:12,border:"1px solid rgba(239,68,68,0.2)",background:"#0F1C34",marginBottom:8}}>
@@ -18116,7 +18129,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ CALLBACKS ════════════ */}
-      {tab==="callbacks"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="callbacks"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>📞 Scheduled Callbacks</div>
         <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderRadius:12,border:"1px solid rgba(245,158,11,0.25)",background:"#0F1C34",marginBottom:8}}>
           <div style={{fontSize:22}}>🔄</div>
@@ -18129,7 +18142,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ ANALYTICS ════════════ */}
-      {tab==="analytics"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="analytics"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>📈 Call Analytics</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           {[{l:"Booking Conversion",v:"35%",sub:"Calls → appointments",trend:"+4%"},{l:"Avg AI Resolution",v:"78%",sub:"Resolved without transfer",trend:"+2%"},{l:"Complaint Rate",v:"1.8%",sub:"Below 2% target",trend:"-0.3%"},{l:"NHS vs Private Mix",v:"62/38%",sub:"NHS/Private split",trend:"Stable"}].map((s,i)=>(
@@ -18174,7 +18187,7 @@ function ReceptionAIPage({rxEnabled}){
         </div>
 
         {/* Call detail */}
-        {selLog&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+        {selLog&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
           <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden",marginBottom:12}}>
             {/* Call header */}
             <div style={{padding:"14px 16px",background:`linear-gradient(90deg,${RISK_C[selLog.risk]}12,#fff)`,borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:12,alignItems:"flex-start"}}>
@@ -18193,7 +18206,7 @@ function ReceptionAIPage({rxEnabled}){
               </div>
             </div>
             {/* Stats grid */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:"1px solid rgba(56,189,248,0.07)"}}>
+            <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:"1px solid rgba(56,189,248,0.07)"}}>
               {[["Intent",(INTENTS[selLog?.intent]||INTENTS.unknown).l],["Result",selLog.result],["Duration",selLog.duration],["Called",selLog.time]].map(([l,v])=><div key={l} style={{padding:"10px 14px",borderRight:"1px solid rgba(56,189,248,0.07)"}}>
                 <div style={{fontSize:9,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{l}</div>
                 <div style={{fontSize:11,fontWeight:600,lineHeight:1.4}}>{v}</div>
@@ -18243,7 +18256,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ AI SETTINGS ════════════ */}
-      {tab==="settings"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="settings"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,maxWidth:940}}>
           {/* Answer mode */}
           <div style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(80,140,255,0.1)",borderRadius:16,padding:16}}>
@@ -18324,7 +18337,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ OPENING HOURS ════════════ */}
-      {tab==="hours"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="hours"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{maxWidth:520}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Opening Hours</div>
           <div style={{fontSize:12,color:"#CBD5E1",marginBottom:14}}>AI uses these hours to determine when to answer calls and what after-hours greeting to play.</div>
@@ -18348,7 +18361,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ BOOKING RULES ════════════ */}
-      {tab==="booking"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="booking"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>AI Booking Rules</div>
         <div style={{fontSize:12,color:"#CBD5E1",marginBottom:14}}>Control which appointment types the AI can book autonomously, which require staff approval, and which should always transfer to a human.</div>
         <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
@@ -18394,7 +18407,7 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ SETUP WIZARD ════════════ */}
-      {tab==="setup"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="setup"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{maxWidth:580}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Setup Reception AI</div>
           <div style={{fontSize:12,color:"#CBD5E1",marginBottom:16}}>You do not need to change your phone provider. Just forward calls to your AI number.</div>
@@ -18433,8 +18446,8 @@ function ReceptionAIPage({rxEnabled}){
       </div>}
 
       {/* ════════════ USAGE & BILLING ════════════ */}
-      {tab==="usage"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14}}>
+      {tab==="usage"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+        <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14}}>
           {[{l:"AI Minutes Used",v:187,max:300,pct:62,c:C.teal},{l:"Calls Handled",v:54,max:null,c:C.green},{l:"SMS Sent",v:43,max:null,c:C.blue},{l:"Appointments Booked",v:31,max:null,c:C.purple}].map(s=>(
             <div key={s.l} style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(80,140,255,0.1)",borderRadius:16,padding:"12px 14px"}}>
               <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:4}}>{s.l}</div>
@@ -18506,7 +18519,7 @@ function AdminReceptionAI({onTogglePractice}){
   const totalBooked=practiceStatus.reduce((s,p)=>s+p.booked,0);
 
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
 
       {/* Hero */}
@@ -18854,7 +18867,7 @@ function RevenueRecoveryPage(){
       </div>
 
       {/* ════ OVERVIEW ════ */}
-      {tab==="overview"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18,...(isMob&&{padding:12})}}>
+      {tab==="overview"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18,...(isMob&&{padding:12})}}>
         {/* KPI row */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8})}}>
           {[
@@ -19132,7 +19145,7 @@ function NBAPage({role,setPage,openPatient}){
       </div>
 
       {/* Priority list */}
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+      <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
         {active.length===0&&done.size===0&&<div style={{textAlign:"center",padding:48,color:"#CBD5E1"}}>
           <div style={{fontSize:40,marginBottom:12}}>✅</div>
           <div style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:4}}>All clear!</div>
@@ -19815,7 +19828,7 @@ function HelpSupportPage({user}){
       </div>
 
       {/* ── List view ── */}
-      {view==="list"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {view==="list"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
         <div style={{display:"flex",gap:6,marginBottom:14}}>
           {[{id:"all",l:"All",n:tickets.length},{id:"open",l:"Open",n:tickets.filter(t=>t.status==="open").length},{id:"pending",l:"Pending",n:tickets.filter(t=>t.status==="pending"||t.status==="in_progress").length},{id:"closed",l:"Closed",n:tickets.filter(t=>t.status==="closed"||t.status==="resolved").length}].map(f=>(
             <button key={f.id} onClick={()=>setStatusFilter(f.id)} style={{padding:"5px 12px",border:`1.5px solid ${statusFilter===f.id?C.teal:"rgba(80,140,255,0.2)"}`,background:statusFilter===f.id?"rgba(56,189,248,0.12)":"#132238",borderRadius:8,fontSize:11,fontWeight:600,color:statusFilter===f.id?C.teal:"#CBD5E1",cursor:"pointer"}}>{f.l} <span style={{opacity:.7,marginLeft:4}}>({f.n})</span></button>
@@ -19847,7 +19860,7 @@ function HelpSupportPage({user}){
       </div>}
 
       {/* ── New ticket form ── */}
-      {view==="new"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {view==="new"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
         <div style={{maxWidth:640}}>
           <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Create Support Ticket</div>
           <div style={{fontSize:12,color:"#CBD5E1",marginBottom:16}}>We'll respond within {support.response}. For critical issues, please also call {support.phone||"your support line"} if available on your plan.</div>
@@ -19959,7 +19972,7 @@ function AdminTickets(){
         {/* Stats */}
         <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.1)",background:"linear-gradient(135deg,#020817,#0d0a20)",flexShrink:0}}>
           <div style={{fontSize:13,fontWeight:800,color:"#132238",marginBottom:8}}>Support Tickets</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+          <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
             {[{l:"Open",v:stats.open,c:"#fca5a5"},{l:"Active",v:stats.in_progress,c:"#93c5fd"},{l:"Critical",v:stats.critical,c:"#c4b5fd"},{l:"Resolved",v:stats.resolved,c:"#86efac"}].map(s=><div key={s.l} style={{textAlign:"center",padding:"5px",borderRadius:7,background:"rgba(255,255,255,.07)"}}>
               <div style={{fontSize:16,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
               <div style={{fontSize:9,color:"#94A3B8"}}>{s.l}</div>
@@ -20088,12 +20101,12 @@ function AdminSupportConfig(){
   const CHANNEL_META={email:{icon:"✉️",l:"Email Support"},phone:{icon:"📞",l:"Phone Support"},whatsapp:{icon:"💬",l:"WhatsApp Support"},chat:{icon:"💻",l:"Live Chat"},csm:{icon:"👤",l:"Dedicated CSM"}};
 
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:500,display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
       <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Support Channel Configuration</div>
       <div style={{fontSize:12,color:"#CBD5E1",marginBottom:16}}>Control which contact methods are available to practices on each subscription plan. These settings appear in the practice Help & Support page automatically.</div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+      <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
         {Object.entries(planConfigs).map(([plan,cfg])=>(
           <div key={plan} style={{background:"#132238",border:`2px solid ${PLAN_COLORS[plan]}30`,borderRadius:18,overflow:"hidden"}}>
             {/* Plan header */}
@@ -20397,6 +20410,7 @@ function LockedFeatureCard({feature:f, onLearnMore, onUpgrade}){
 }
 
 function SubscriptionFeaturesPage(){
+  const sfvw=useWindowWidth();const isMob=sfvw<768;
   const [currentPlan] = useState("Growth");
   const [selFeature,setSelFeature]=useState(null);
   const [view,setView]=useState("features"); // features | compare | usage
@@ -20474,7 +20488,7 @@ function SubscriptionFeaturesPage(){
       </div>
 
       {/* ════ FEATURES VIEW ════ */}
-      {view==="features"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {view==="features"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
         {/* Category filter */}
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
           {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} style={{padding:"5px 14px",borderRadius:20,border:`1.5px solid ${catFilter===c?C.teal:C.border}`,background:catFilter===c?C.tealL:"#132238",color:catFilter===c?C.teal:C.muted,fontSize:11,fontWeight:catFilter===c?700:400,cursor:"pointer"}}>{c}</button>)}
@@ -20506,7 +20520,7 @@ function SubscriptionFeaturesPage(){
       </div>}
 
       {/* ════ PLAN COMPARISON ════ */}
-      {view==="compare"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {view==="compare"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:18,overflow:"hidden"}}>
           {/* Plan headers */}
           <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -20565,11 +20579,11 @@ function SubscriptionFeaturesPage(){
       </div>}
 
       {/* ════ ROI & USAGE ════ */}
-      {view==="usage"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      {view==="usage"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
         <div style={{background:"linear-gradient(135deg,#020817 0%,#0d0a20 100%)",borderRadius:16,padding:"24px 28px",marginBottom:16,display:"flex",gap:28,alignItems:"center"}}>
           <div style={{flex:1}}>
             <div style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.75)",textTransform:"uppercase",letterSpacing:".12em",marginBottom:6}}>This Month's Platform Impact</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
+            <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
               {[{l:"Calls handled",v:"187",c:"#5eead4"},{l:"Appointments recovered",v:"31",c:"#86efac"},{l:"Revenue recovered",v:"£7,447",c:"#fde68a"},{l:"Hours saved",v:"~14",c:"#c4b5fd"}].map(s=>(
                 <div key={s.l}><div style={{fontSize:26,fontWeight:900,color:s.c,fontFamily:"ui-monospace,monospace",lineHeight:1}}>{s.v}</div><div style={{fontSize:11,color:"#CBD5E1",marginTop:3}}>{s.l}</div></div>
               ))}
@@ -20732,7 +20746,7 @@ function RotaPage({user}){
   };
 
   return(
-    <div style={{flex:1,overflowY:"auto",background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%)",padding:24,...(isMob&&{padding:12})}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%)",padding:24,...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"#0F1C34",border:"1.5px solid rgba(80,140,255,0.4)",borderRadius:12,fontSize:12,color:"#60A5FA",zIndex:700,display:"flex",gap:8,alignItems:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}><Check size={12}/>  {toast}</div>}
 
       {/* Holiday Request Modal */}
@@ -20971,6 +20985,7 @@ function RotaPage({user}){
 
 
 function TemplatesPage(){
+  const tplvw=useWindowWidth();const isMob=tplvw<768;
   const [selCat,setSelCat]=useState("All");
   const [selTemplate,setSelTemplate]=useState(TEMPLATE_DATA[0]);
   const [editMode,setEditMode]=useState(false);
@@ -21047,6 +21062,7 @@ function TemplatesPage(){
 // AUDIT LOG — immutable record of all system actions
 // ══════════════════════════════════════════════════════════════════════════════
 function AuditPage(){
+  const apvw=useWindowWidth();const isMob=apvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const AUDIT=[
@@ -21063,7 +21079,7 @@ function AuditPage(){
   ];
   const TYPE_META={edit:{c:C.blue,l:"Edit"},finalise:{c:C.green,l:"Finalised"},system:{c:C.muted,l:"System"},nhs:{c:C.nhs,l:"NHS"},admin:{c:C.purple,l:"Admin"},cancel:{c:C.amber,l:"Cancel"},payment:{c:C.teal,l:"Payment"},billing:{c:C.orange,l:"Billing"}};
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:500,fontWeight:600}}>{toast}</div>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:15,fontWeight:800}}>Audit Log</div><div style={{fontSize:12,color:"#CBD5E1"}}>Immutable record of all system actions · INSERT-ONLY · Cannot be edited or deleted</div></div>
@@ -21267,7 +21283,7 @@ function SettingsPage({user}){
           {SECTIONS.map(s=><option key={s.id} value={s.id}>{s.icon} {s.l}</option>)}
         </select>
       </div>}
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+      <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
         <div style={{maxWidth:600}}>
           <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>{SECTIONS.find(s=>s.id===activeSection)?.l}</div>
           {/* Pending approval banner */}
@@ -21757,7 +21773,7 @@ function ClinicalNotesPage({openPatient}){
           ✏ Unsaved changes — click Save Draft to save, or Finalise Note to complete.
         </div>}
 
-        <div style={{flex:1,padding:18,overflowY:"auto"}}>
+        <div className="pdc-page-pad" style={{flex:1,padding:18,overflowY:"auto"}}>
           {sel.status==="draft"
             ?<textarea rows={18} value={body} onChange={e=>{setBody(e.target.value);setDirty(e.target.value!==sel.body);}}
                 style={{background:"#0F1C34",border:`1.5px solid ${dirty?"#f59e0b":C.border}`,borderRadius:14,color:C.text,fontSize:13,padding:"14px",outline:"none",fontFamily:"inherit",width:"100%",resize:"vertical",lineHeight:1.8,boxSizing:"border-box",transition:"border-color .15s"}}/>
@@ -21791,7 +21807,7 @@ function TasksPage({user}){
   const pending=tasks.filter(t=>!t.done);const done=tasks.filter(t=>t.done);
   const PRI={urgent:{c:C.red,bg:"#fee2e2"},normal:{c:C.amber,bg:"rgba(99,102,241,0.08)"},low:{c:C.muted,bg:"rgba(80,140,255,0.1)"}};
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"#071428",color:"#132238",borderRadius:20,fontSize:12,zIndex:500}}>{toast}</div>}
       <div style={{display:"flex",gap:12,marginBottom:16,...(isMob&&{flexWrap:"wrap",gap:8})}}>
         {[{l:"Urgent",v:tasks.filter(t=>t.priority==="urgent"&&!t.done).length,c:C.red},{l:"Pending",v:pending.length,c:C.amber},{l:"Completed today",v:done.length,c:C.green}].map(s=><div key={s.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,padding:"10px 14px",flex:1}}><div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{s.l}</div></div>)}
@@ -21830,7 +21846,7 @@ function UDAPage(){
   const month=4;const totalMonths=12;
   const periodMul={Week:1/52,Month:1/12,Quarter:1/4,Year:1}[period];
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div style={{fontSize:15,fontWeight:800}}>UDA Tracker — 2025/26 Contract Year</div>
         <div style={{display:"flex",gap:0,background:"#0F1C34",borderRadius:9,padding:3}}>
@@ -21965,8 +21981,8 @@ function AccountsPage(){
         </div>
       </div>}
 
-      <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+      <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+        <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
           {[{l:"Total Outstanding",v:`£${total.toFixed(2)}`,c:C.teal},{l:"Overdue (>30 days)",v:`£${overdue.toFixed(2)}`,c:C.red},{l:"Collected this month",v:"£2,840.00",c:C.green}].map(s=>(
             <div key={s.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:"14px 16px"}}>
               <div style={{fontSize:10,color:"#CBD5E1",marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>{s.l}</div>
@@ -22041,7 +22057,7 @@ function LabPage(){
   const arrived=labs.filter(l=>l.status==="arrived").length;
 
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
 
       {/* Note modal */}
@@ -22071,7 +22087,7 @@ function LabPage(){
       </div>
 
       {/* Stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+      <div className="pdc-grid-3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
         {[{l:"Overdue",v:overdue,c:C.red,bg:"rgba(239,68,68,0.08)"},{l:"In Lab",v:inLab,c:C.blue,bg:"rgba(37,99,255,0.08)"},{l:"Arrived — Fit Ready",v:arrived,c:C.green,bg:"rgba(34,197,94,0.08)"}].map(s=>(
           <div key={s.l} style={{background:s.bg,border:"1px solid rgba(59,130,246,0.12)",borderRadius:12,padding:"12px 16px",display:"flex",gap:12,alignItems:"center"}}>
             <div style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
@@ -22138,7 +22154,7 @@ function ShortNoticePage(){
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2000);};
   const allSel=patients.length>0&&patients.every(p=>selected.has(p.name));
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div><div style={{fontSize:15,fontWeight:800}}>Short Notice List</div><div style={{fontSize:12,color:"#CBD5E1"}}>Patients opted in to receive last-minute slot notifications</div></div>
@@ -22484,7 +22500,7 @@ function PaymentsPage({user}){
     setConnectModal(null);setApiKeyInput("");doToast("✓ "+name+" connected successfully — test transaction sent");
   };
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
 
       {/* Connect Modal */}
@@ -22812,7 +22828,7 @@ function ReportsPage(){
           <button onClick={()=>doToast("Report exported to PDF")} style={{padding:"6px 14px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",gap:4,alignItems:"center"}}><Download size={11}/>PDF</button>
           <button onClick={()=>doToast("Report exported to CSV")} style={{padding:"6px 14px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",gap:4,alignItems:"center"}}><Download size={11}/>CSV</button>
         </div>
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
           {rd?<>
             {/* KPIs */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8})}}>
@@ -22838,7 +22854,7 @@ function ReportsPage(){
   }
 
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
       <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{fontSize:15,fontWeight:800,flex:1}}>Reports & Analytics</div>
@@ -22878,7 +22894,7 @@ function XRayPage(){
     {id:"X2",patient:"Sarah Chen",type:"PA UR6",date:"13 May 2025",dentist:"Dr. S. Patel",reason:"Pre-crown periapical check",report:"Periapical area clear. Bone levels satisfactory."},
     {id:"X3",patient:"David Park",type:"OPG",date:"8 May 2025",dentist:"Dr. M. Chen",reason:"Implant planning — UL2",report:"Bone height satisfactory UL2 region. Sinus floor noted at 14mm. CBCT recommended before placement."}];
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:14,alignItems:"center"}}>
         <div><div style={{fontSize:15,fontWeight:800}}>X-Ray & Imaging</div><div style={{fontSize:11,color:"#CBD5E1"}}>IRMER compliant · Full justification and reporting log</div></div>
@@ -23391,7 +23407,7 @@ function UserManagementPage({plan="Growth"}){
         </div>
 
         {/* Permission editor */}
-        {sel&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+        {sel&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
           <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16,marginBottom:14,display:"flex",gap:14,alignItems:"center"}}>
             <div style={{width:48,height:48,borderRadius:"50%",background:sel.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#132238",flexShrink:0}}>{sel.avatar}</div>
             <div style={{flex:1}}>
@@ -23517,7 +23533,7 @@ function FinancePage({openPatient,user}){
         </div>
       </div>
 
-      {tab==="applications"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+      {tab==="applications"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr",gap:8})}}>
           {[{l:"Applications Sent",v:apps.length,c:C.teal},{l:"Approved",v:apps.filter(a=>a.status==="approved").length,c:C.green},{l:"Finance Arranged",v:`£${apps.filter(a=>a.status==="approved").reduce((s,a)=>s+a.amount,0).toLocaleString()}`,c:C.purple}].map(s=><div key={s.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:"12px 14px"}}><div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{s.l}</div><div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div></div>)}
         </div>
@@ -23543,7 +23559,7 @@ function FinancePage({openPatient,user}){
         </div>
       </div>}
 
-      {tab==="providers"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="providers"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
           {providers.map(p=>(
             <div key={p.id} style={{background:"#132238",border:`2px solid ${p.connected?p.color+"40":C.border}`,borderRadius:18,overflow:"hidden"}}>
@@ -23583,7 +23599,7 @@ function FinancePage({openPatient,user}){
         </div>
       </div>}
 
-      {tab==="howit"&&<div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+      {tab==="howit"&&<div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
         <div style={{maxWidth:640}}>
           <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>How Patient Finance Works</div>
           <div style={{fontSize:12,color:"#CBD5E1",marginBottom:20,lineHeight:1.7}}>Integrated with Chrysalis Finance and Medenta — the UK's leading dental finance providers. Patients apply online, get instant decisions, and their agreements automatically attach to their record.</div>
@@ -23643,7 +23659,7 @@ function PracticeDetailModal({practice,onClose}){
         <div style={{display:"flex",borderBottom:"1px solid rgba(56,189,248,0.07)",flexShrink:0,background:"#0F1C34"}}>
           {["overview","contact","subscription","tickets"].map(t=><button key={t} onClick={()=>setTab(t)} style={{padding:"9px 16px",border:"none",borderBottom:`2px solid ${tab===t?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:12,fontWeight:tab===t?700:400,color:tab===t?C.teal:C.muted,textTransform:"capitalize",whiteSpace:"nowrap",marginBottom:-1}}>{t}</button>)}
         </div>
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
           {tab==="overview"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             {[{l:"Plan",v:p.plan},{l:"MRR",v:`£${p.mrr||0}/mo`},{l:"Status",v:p.status},{l:"Location",v:p.location},{l:"Users",v:p.users},{l:"Patients",v:p.patients?.toLocaleString()},{l:"UDA Target",v:p.uda?.toLocaleString()},{l:"Joined",v:p.joined||"Jan 2024"}].map(([l,v])=><div key={l} style={{background:"#0F1C34",borderRadius:9,padding:"10px 12px"}}>
               <div style={{fontSize:10,color:"#CBD5E1",fontWeight:700,marginBottom:2}}>{l}</div>
@@ -24238,6 +24254,7 @@ const WALES_CONTRACTS=[
 // Applies only to NHS Wales — does not replace FP17/claims workflow
 // ════════════════════════════════════════════════════════════════
 function NHSWalesClaimPage(){
+  const nwcpvw=useWindowWidth();const isMob=nwcpvw<768;
   const [walesClaims,setWalesClaims]=useState([
     {id:"WC001",patient:"James Wright",nhs:"114 773 6690",dentist:"Dr. S. Patel",
      contract:"WC001",date:"06 May 2026",txStart:"22 Apr 2026",txEnd:"06 May 2026",
@@ -24463,7 +24480,7 @@ function NHSWalesClaimPage(){
         const totalNHS=cl.items?.reduce((s,i)=>s+i.nhsFee,0)||0;
         const totalPt=cl.items?.reduce((s,i)=>s+(i.frStatus!=="none"?0:i.patientFee),0)||0;
         return(
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
           {/* Claim header */}
           <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:16}}>
             <div style={{flex:1}}>
@@ -24666,7 +24683,7 @@ function NHSWalesClaimPage(){
     </div>}
 
     {/* Wales Reporting */}
-    {activeTab==="reporting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {activeTab==="reporting"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{fontSize:14,fontWeight:800,marginBottom:14,color:"#F8FAFC"}}>🏴󠁧󠁢󠁷󠁬󠁳󠁿 NHS Wales — Care Package Reporting</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
@@ -24746,6 +24763,7 @@ function NHSWalesClaimPage(){
 
 
 function NHSReconciliationPage(){
+  const nrpvw=useWindowWidth();const isMob=nrpvw<768;
   const [tab,setTab]=useState("issues");
   const [dateRange,setDateRange]=useState({from:"2026-01-01",to:"2026-05-31"});
   const [filterPractitioner,setFilterPractitioner]=useState("All");
@@ -24919,7 +24937,7 @@ function NHSReconciliationPage(){
     </div>}
 
     {/* ── PRACTITIONER ALLOCATION ── */}
-    {tab==="practitioner"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="practitioner"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:14}}>Practitioner-Level NHS Reconciliation</div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,background:"#0F1C34",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 16px rgba(0,0,0,0.2),0 0 0 1px rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.16)"}}>
@@ -24957,7 +24975,7 @@ function NHSReconciliationPage(){
     </div>}
 
     {/* ── NHS PAYMENTS ── */}
-    {tab==="payments"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="payments"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:14}}>NHS Payment Records — BSA Matching</div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,background:"#0F1C34",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 16px rgba(0,0,0,0.2),0 0 0 1px rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.16)"}}>
@@ -24990,7 +25008,7 @@ function NHSReconciliationPage(){
     </div>}
 
     {/* ── CLAIM EXCEPTIONS ── */}
-    {tab==="exceptions"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="exceptions"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:14}}>Claims Requiring Attention</div>
       <div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:900}}>
         {ISSUES.filter(i=>["claim_rejected","no_claim","underpaid","unallocated","adjusted"].includes(i.issueType)).map((i,idx)=>{
@@ -25018,7 +25036,7 @@ function NHSReconciliationPage(){
     </div>}
 
     {/* ── AUDIT TRAIL ── */}
-    {tab==="audit"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="audit"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:14}}>Reconciliation Audit Trail</div>
       <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden",maxWidth:900}}>
         <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:11,fontWeight:700,color:"#F8FAFC"}}>All manual corrections and reviews</div>
@@ -25089,6 +25107,7 @@ const NURSE_FV_CODES=["155","204"];
 // NHS ENGLAND APRIL 2026 PAGE
 // ════════════════════════════════════════════════════════════════
 function NHSEnglandApr2026Page(){
+  const neapvw=useWindowWidth();const isMob=neapvw<768;
   const [tab,setTab]=useState("unscheduled");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -25178,7 +25197,7 @@ function NHSEnglandApr2026Page(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── UNSCHEDULED CARE ── */}
     {tab==="unscheduled"&&<div style={{maxWidth:900}}>
@@ -25384,6 +25403,7 @@ function NHSEnglandApr2026Page(){
 // NHS WALES ADVANCED — WORKFLOW REFINEMENTS
 // ════════════════════════════════════════════════════════════════
 function NHSWalesAdvancedPage(){
+  const nwapvw=useWindowWidth();const isMob=nwapvw<768;
   const [tab,setTab]=useState("catalogue");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -25424,7 +25444,7 @@ function NHSWalesAdvancedPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── APRIL 2026 CATALOGUE ── */}
     {tab==="catalogue"&&<div style={{maxWidth:940}}>
@@ -25679,6 +25699,7 @@ const COT_ROUTING_RULES={
 // Settings → NHS Compliance → CDS Migration
 // ════════════════════════════════════════════════════════════════
 function NHSCDSCompliancePage(){
+  const ncdsvw=useWindowWidth();const isMob=ncdsvw<768;
   const [tab,setTab]=useState("migration");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -25757,7 +25778,7 @@ function NHSCDSCompliancePage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── CDS MIGRATION ASSISTANT ── */}
     {tab==="migration"&&<div style={{maxWidth:960}}>
@@ -25950,6 +25971,7 @@ function NHSCDSCompliancePage(){
 // NHS DENTURE REPAIR WORKFLOW PAGE
 // ════════════════════════════════════════════════════════════════
 function NHSDentureRepairPage(){
+  const ndrpvw=useWindowWidth();const isMob=ndrpvw<768;
   const [tab,setTab]=useState("claims");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -26063,7 +26085,7 @@ function NHSDentureRepairPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {tab==="claims"&&<div style={{maxWidth:960,display:"flex",gap:16,minHeight:0}}>
       {/* Claims list */}
@@ -26183,6 +26205,7 @@ function NHSDentureRepairPage(){
 const NI_PANEL_LABEL_PRESETS=["Main","Secondary","Tertiary","Locum","Emergency Contract","Out-of-Hours","Bank"];
 
 function NHSNIPage(){
+  const nnipvw=useWindowWidth();const isMob=nnipvw<768;
   const [tab,setTab]=useState("panels");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -26368,7 +26391,7 @@ function NHSNIPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── PANEL NUMBERS ── */}
     {tab==="panels"&&<div style={{maxWidth:960}}>
@@ -26537,6 +26560,7 @@ function NHSNIPage(){
 // Pro Dental Connect — Reports → NHS UDAs/UOAs
 // ════════════════════════════════════════════════════════════════
 function NHSUDAReportPage(){
+  const nurpvw=useWindowWidth();const isMob=nurpvw<768;
   const [actType,setActType]=useState("UDA"); // UDA | UOA
   const [dateRange,setDateRange]=useState({from:"2026-04-01",to:"2026-05-31"});
   const [filterPractitioner,setFilterPractitioner]=useState("All");
@@ -26630,7 +26654,7 @@ function NHSUDAReportPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:960,display:"flex",flexDirection:"column",gap:16}}>
 
         {/* ── PRACTITIONER PERFORMANCE ── */}
@@ -26861,6 +26885,7 @@ const PERFORMER_ASSIGNMENTS=[
 ];
 
 function NHSClaimCompliancePage(){
+  const nccpvw=useWindowWidth();const isMob=nccpvw<768;
   const [tab,setTab]=useState("invalid");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2600);};
@@ -27031,7 +27056,7 @@ function NHSClaimCompliancePage(){
         const cl=NHS_INVALID_CLAIMS.find(c=>c.id===selInvalid);
         if(!cl)return null;
         return(
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
           {/* Claim header — matches Image 1 */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
             <div style={{fontSize:16,fontWeight:800}}>{cl.ref}</div>
@@ -27148,7 +27173,7 @@ function NHSClaimCompliancePage(){
         if(!cl)return null;
         const isAccepted=acceptedValues.has(cl.id);
         return(
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
             <div style={{fontSize:16,fontWeight:800}}>{cl.ref}</div>
             <button onClick={()=>setSelQueried(null)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>✕ Close</button>
@@ -27208,7 +27233,7 @@ function NHSClaimCompliancePage(){
     {/* ══════════════════════════════════════════ */}
     {/* ── XML DIAGNOSTICS ── */}
     {/* ══════════════════════════════════════════ */}
-    {tab==="xml"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="xml"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"rgba(239,68,68,0.12)",borderRadius:16,border:"1px solid rgba(239,68,68,0.2)",padding:"12px 16px",marginBottom:16,display:"flex",gap:10}}>
           <span style={{fontSize:18}}>🔧</span>
@@ -27273,7 +27298,7 @@ function NHSClaimCompliancePage(){
     {/* ══════════════════════════════════════════ */}
     {/* ── CONTRACT TENURE ── */}
     {/* ══════════════════════════════════════════ */}
-    {tab==="tenure"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="tenure"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:960}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
           {/* NHS Contracts — matches Image 4/8 */}
@@ -27352,7 +27377,7 @@ function NHSClaimCompliancePage(){
     {/* ══════════════════════════════════════════ */}
     {/* ── OVERLAP DETECTION ── */}
     {/* ══════════════════════════════════════════ */}
-    {tab==="overlap"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="overlap"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden",marginBottom:16}}>
           <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800}}>Overlap Detection — Test Claim Date Range</div>
@@ -27406,7 +27431,7 @@ function NHSClaimCompliancePage(){
     {/* ══════════════════════════════════════════ */}
     {/* ── LOCATION IDs ── */}
     {/* ══════════════════════════════════════════ */}
-    {tab==="location"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="location"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         {contractsMissingLoc.length>0&&<div style={{padding:"10px 14px",background:"rgba(239,68,68,0.12)",borderRadius:14,border:"1px solid rgba(239,68,68,0.2)",marginBottom:14,fontSize:11,fontWeight:700,color:"#EF4444"}}>
           ⛔ {contractsMissingLoc.length} active contract{contractsMissingLoc.length!==1?"s":""} missing NHS Location ID — claims will be rejected at submission
@@ -27443,7 +27468,7 @@ function NHSClaimCompliancePage(){
     {/* ══════════════════════════════════════════ */}
     {/* ── TREATMENT VALIDATION ── */}
     {/* ══════════════════════════════════════════ */}
-    {tab==="treatment"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="treatment"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden",marginBottom:16}}>
           <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800}}>NHS Significant Treatment Validator</div>
@@ -27484,7 +27509,7 @@ function NHSClaimCompliancePage(){
     {/* ── REPORTING ── */}
     {/* ══════════════════════════════════════════ */}
     {/* ── CONTINUATION VALIDATION ── */}
-    {tab==="continuation"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="continuation"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"#0F1C34",borderRadius:16,border:"1px solid rgba(80,140,255,0.25)",padding:"12px 16px",marginBottom:16}}>
           <div style={{fontSize:12,fontWeight:800,color:"#38BDF8",marginBottom:3}}>🔄 Continuation of Treatment — 2-Month Eligibility Engine</div>
@@ -27564,7 +27589,7 @@ function NHSClaimCompliancePage(){
     </div>}
 
     {/* ── PERFORMER PIN VALIDATION ── */}
-    {tab==="pin"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="pin"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"rgba(245,158,11,0.06)",borderRadius:16,border:"1px solid rgba(245,158,11,0.2)",padding:"12px 16px",marginBottom:16}}>
           <div style={{fontSize:12,fontWeight:800,color:"#F59E0B",marginBottom:3}}>🔑 Performer PIN Validation — matching Image 2 (Practitioner edit screen)</div>
@@ -27600,7 +27625,7 @@ function NHSClaimCompliancePage(){
     </div>}
 
     {/* ── SQ INDICATOR ── */}
-    {tab==="sq"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="sq"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid #ddd6fe",padding:"12px 16px",marginBottom:16}}>
           <div style={{fontSize:12,fontWeight:800,color:"#8B5CF6",marginBottom:3}}>↩ NHS SQ Indicator — NEW vs REPLACE Logic</div>
@@ -27640,7 +27665,7 @@ function NHSClaimCompliancePage(){
       </div>
     </div>}
 
-        {tab==="reporting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+        {tab==="reporting"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
           {[
@@ -27706,6 +27731,7 @@ function calcPackages(items,labFees){
 }
 
 function NHSWalesCPEnginePage(){
+  const nwcevw=useWindowWidth();const isMob=nwcevw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [urgentReferral,setUrgentReferral]=useState(false);
@@ -27794,7 +27820,7 @@ function NHSWalesCPEnginePage(){
       <div style={{marginLeft:"auto",fontSize:10,color:"#CBD5E1"}}>Plan: {plan.name} · Started: {plan.startDate}</div>
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:1000}}>
 
         {/* Appointment 1 — matches Images 6/7 */}
@@ -27998,6 +28024,7 @@ const ACORN_TEMPLATE={
 };
 
 function NHSWalesACORNPage(){
+  const nwacvw=useWindowWidth();const isMob=nwacvw<768;
   const [tab,setTab]=useState("templates");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -28030,7 +28057,7 @@ function NHSWalesACORNPage(){
         <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 14px",border:"none",borderBottom:`2px solid ${tab===t.id?"#16a34a":"transparent"}`,background:"transparent",cursor:"pointer",fontSize:11,fontWeight:tab===t.id?700:400,color:tab===t.id?"#16a34a":"#64748b",whiteSpace:"nowrap"}}>{t.l}</button>
       ))}
     </div>
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {tab==="templates"&&<div style={{maxWidth:900}}>
       <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
@@ -28131,6 +28158,7 @@ function NHSWalesACORNPage(){
 // NHS WALES LAB FEE MANAGEMENT
 // ════════════════════════════════════════════════════════════════
 function NHSWalesLabFeePage(){
+  const nwlfvw=useWindowWidth();const isMob=nwlfvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [tab,setTab]=useState("labs");
@@ -28208,7 +28236,7 @@ function NHSWalesLabFeePage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
     {tab==="labs"&&<div style={{maxWidth:960}}>
       <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px 80px 80px 80px 80px 80px",padding:"8px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",gap:8}}>
@@ -28292,6 +28320,7 @@ const WALES_REFERRAL_TYPES=[
 ];
 
 function NHSWalesReferralPage(){
+  const nwrfvw=useWindowWidth();const isMob=nwrfvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [tab,setTab]=useState("referrals");
@@ -28393,7 +28422,7 @@ function NHSWalesReferralPage(){
         if(!pl)return null;
         const rt=WALES_REFERRAL_TYPES.find(r=>r.id===pl.referralType);
         return(
-        <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
+        <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#132238"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
             <div style={{fontSize:15,fontWeight:800}}>{pl.patient}</div>
             <button onClick={()=>setSel(null)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>✕</button>
@@ -28468,7 +28497,7 @@ function NHSWalesReferralPage(){
       })()}
     </>}
 
-    {tab==="types"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="types"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         {WALES_REFERRAL_TYPES.map((rt,i)=>(
           <div key={i} style={{background:"#132238",borderRadius:16,border:`1.5px solid ${rt.color}30`,marginBottom:10,overflow:"hidden"}}>
@@ -28491,7 +28520,7 @@ function NHSWalesReferralPage(){
       </div>
     </div>}
 
-    {tab==="reporting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="reporting"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
         {[{l:"Total referral plans",v:plans.length,c:"#374151"},{l:"Urgent referrals",v:plans.filter(p=>p.referralType==="urgent").length,c:"#dc2626"},{l:"Non-attended claims",v:plans.filter(p=>p.nonAttended).length,c:"#d97706"},{l:"High needs",v:plans.filter(p=>p.outgoing?.highNeeds).length,c:"#7c3aed"},{l:"Advanced services",v:plans.filter(p=>p.outgoing?.advanced).length,c:"#1d4ed8"},{l:"Submitted",v:plans.filter(p=>p.status==="submitted").length,c:"#16a34a"}].map((r,i)=>(
           <div key={i} style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",padding:"14px",borderTop:`3px solid ${r.c}`}}>
@@ -28511,6 +28540,7 @@ function NHSWalesReferralPage(){
 // NHS WALES INCOMPLETE WORK & PREP-ONLY ELIGIBILITY
 // ════════════════════════════════════════════════════════════════
 function NHSWalesIncompleteWorkPage(){
+  const nwipvw=useWindowWidth();const isMob=nwipvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [packages,setPackages]=useState([
@@ -28554,7 +28584,7 @@ function NHSWalesIncompleteWorkPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         {/* Tooth count */}
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",padding:"12px 16px",marginBottom:14,display:"flex",gap:12,alignItems:"center"}}>
@@ -28614,6 +28644,7 @@ const NHS_REGIONS={
 };
 
 function NHSRegionalRoutingPage(){
+  const nrrpvw=useWindowWidth();const isMob=nrrpvw<768;
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
   const [tab,setTab]=useState("routing");
@@ -28662,7 +28693,7 @@ function NHSRegionalRoutingPage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {tab==="routing"&&<div style={{maxWidth:900}}>
       {/* Region overview */}
@@ -28779,6 +28810,7 @@ const IOTN_DHC_GRADES=[
 ];
 
 function NHSEnterprisePage(){
+  const nepvw=useWindowWidth();const isMob=nepvw<768;
   const [tab,setTab]=useState("ortho");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
@@ -28856,7 +28888,7 @@ function NHSEnterprisePage(){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── ORTHODONTICS ── */}
     {tab==="ortho"&&<div style={{maxWidth:960}}>
@@ -29170,6 +29202,7 @@ const LEAVE_TYPE_META={
 };
 
 function HRLeavePage({user}){
+  const hrlvw=useWindowWidth();const isMob=hrlvw<768;
   const [tab,setTab]=useState("overview");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
@@ -29320,7 +29353,7 @@ function HRLeavePage({user}){
       ))}
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
 
     {/* ── STAFF OVERVIEW ── */}
     {tab==="overview"&&<div style={{maxWidth:960}}>
@@ -29642,6 +29675,7 @@ const REGIONAL_RULES={
 // NHS REGIONAL ARCHITECTURE PAGE
 // ════════════════════════════════════════════════════════════════
 function NHSRegionalArchitecturePage({user}){
+  const nrapvw=useWindowWidth();const isMob=nrapvw<768;
   const [tab,setTab]=useState("locations");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
@@ -29810,7 +29844,7 @@ function NHSRegionalArchitecturePage({user}){
       </div>
 
       {/* Location detail — right panel */}
-      {activeLoc&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+      {activeLoc&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
         <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:16}}>
           <div style={{width:48,height:48,borderRadius:16,background:activeRegion.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{activeRegion.flag}</div>
           <div style={{flex:1}}>
@@ -29873,7 +29907,7 @@ function NHSRegionalArchitecturePage({user}){
     </>}
 
     {/* ── CLAIM RESOLVER ── */}
-    {tab==="resolver"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="resolver"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:840}}>
         <div style={{background:"linear-gradient(135deg,#020817 0%,#0d0a20 100%)",borderRadius:18,padding:"20px",marginBottom:20}}>
           <div style={{fontSize:14,fontWeight:800,color:"#132238",marginBottom:4}}>🔀 Claim Resolver Engine</div>
@@ -29951,7 +29985,7 @@ function NHSRegionalArchitecturePage({user}){
     </div>}
 
     {/* ── REGIONAL RULES ENGINE ── */}
-    {tab==="rules"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="rules"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:960,display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         {Object.entries(REGIONAL_RULES).map(([rid,rules])=>{
           const region=NHS_REGION_DEFS[rid];
@@ -29982,7 +30016,7 @@ function NHSRegionalArchitecturePage({user}){
     </div>}
 
     {/* ── SUBMISSION ROUTING ── */}
-    {tab==="routing"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="routing"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {Object.values(NHS_REGION_DEFS).filter(r=>r.id!=="private").map((region,i)=>{
@@ -30016,7 +30050,7 @@ function NHSRegionalArchitecturePage({user}){
     </div>}
 
     {/* ── RULES VERSIONING ── */}
-    {tab==="versioning"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    {tab==="versioning"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       <div style={{maxWidth:900}}>
         <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
           <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800}}>NHS Rules Version History — Effective Dates</div>
@@ -30098,7 +30132,7 @@ function AdminFeatures(){
   const totalAddOnRev=FEATURES_DATA.reduce((s,f)=>s+(f.price*countEnabled(f.id)),0);
 
   return(
-  <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600}}>{toast}</div>}
 
     {/* Manage Per-Practice Modal */}
@@ -30327,7 +30361,7 @@ function AdminPractices(){
   if(selPractice){
     const p=selPractice;
     return(
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600}}>{toast}</div>}
       <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:16}}>
         <button onClick={()=>setSelPractice(null)} style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",gap:4,alignItems:"center"}}>← Back to All Practices</button>
@@ -30504,7 +30538,7 @@ function AdminDataManager(){
   ];
 
   return(
-  <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+  <div className="pdc-page-pad" style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
     {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:999,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,.1)"}}>{toast}</div>}
 
     {/* File Upload / Import Modal */}
@@ -30646,7 +30680,7 @@ function AdminSystemMonitoring(){
         {["health","api","errors","performance"].map(t=><button key={t} onClick={()=>setTab(t)} style={{padding:"6px 14px",border:"none",borderBottom:`2px solid ${tab===t?"#2563FF":"transparent"}`,background:"transparent",cursor:"pointer",fontSize:11,fontWeight:tab===t?700:400,color:tab===t?"#2563FF":"#64748b",textTransform:"capitalize"}}>{t}</button>)}
       </div>
     </div>
-    <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
       {tab==="health"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
         {[{l:"API Gateway",v:"✓ Online",c:"#16a34a",sub:"Latency: 42ms"},{l:"Database",v:"✓ Healthy",c:"#16a34a",sub:"Pool: 12/50"},{l:"NHS BSA Compass",v:"✓ Connected",c:"#16a34a",sub:"Last sync: 2m ago"},{l:"WebEDI Wales",v:"⚠ Degraded",c:"#d97706",sub:"Response slow"},{l:"WhatsApp API",v:"✓ Connected",c:"#16a34a",sub:"Meta verified"},{l:"Twilio (AI Phone)",v:"✓ Active",c:"#16a34a",sub:"8 AI agents online"},{l:"AWS S3 Backup",v:"✓ Synced",c:"#16a34a",sub:"Last: 5m ago"},{l:"Email / SMTP",v:"✓ Healthy",c:"#16a34a",sub:"SendGrid — 98% delivery"},{l:"System Uptime",v:"99.98%",c:"#16a34a",sub:"Last 30 days"}].map(s=>(
           <div key={s.l} style={{background:"#132238",borderRadius:14,border:`1px solid ${s.c}30`,padding:"12px 14px",borderLeft:`3px solid ${s.c}`}}>
@@ -30824,7 +30858,7 @@ function AdminCloudBackup(){
             </div>
           </div>
           {/* Job metadata */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px",borderBottom:"1px solid rgba(80,140,255,0.08)",flexShrink:0}}>
+          <div className="pdc-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"14px 20px",borderBottom:"1px solid rgba(80,140,255,0.08)",flexShrink:0}}>
             {[{l:"Status",v:<span style={{color:BK_HEALTH[logsModal.status]?.color||C.muted,fontWeight:700}}>{BK_HEALTH[logsModal.status]?.icon} {logsModal.status.toUpperCase()}</span>},{l:"Duration",v:logsModal.duration},{l:"Files",v:logsModal.filesCount.toLocaleString()},{l:"Size",v:logsModal.sizeFmt},{l:"Encryption",v:logsModal.encrypted?"AES-256 ✓":"⚠ Disabled"},{l:"Replication",v:logsModal.replicated?"Multi-region ✓":"⚠ None"},{l:"Compression",v:logsModal.compressed?"zstd ✓":"No"},{l:"Initiated",v:logsModal.initiated}].map(m=>(
               <div key={m.l} style={{background:"rgba(7,20,40,0.8)",borderRadius:8,padding:"8px 10px"}}>
                 <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{m.l}</div>
@@ -31032,7 +31066,7 @@ function AdminCloudBackup(){
       </div>
 
       {/* ── Practice Table ──────────────────────────────────────── */}
-      <div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
 
         {/* Smart alerts */}
         {jobs.some(j=>j.status==="critical")&&<div style={{padding:"10px 16px",background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
@@ -31144,7 +31178,7 @@ function AdminActivityLog(){
       </div>
     </div>
 
-    {tab==="activity"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+    {tab==="activity"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <select style={{padding:"6px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:12,fontSize:11,outline:"none",fontFamily:"inherit"}}>
           <option>All Practices</option>
@@ -31172,7 +31206,7 @@ function AdminActivityLog(){
       </div>
     </div>}
 
-    {tab==="appointments"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+    {tab==="appointments"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
         <label style={{fontSize:11,fontWeight:700,color:"#CBD5E1"}}>Practice:</label>
         <select value={selPractice} onChange={e=>setSelPractice(e.target.value)} style={{padding:"7px 12px",border:"1.5px solid #0d9488",borderRadius:12,fontSize:12,outline:"none",fontFamily:"inherit",background:"rgba(80,140,255,0.06)",color:"#2563FF",fontWeight:600}}>
@@ -31998,7 +32032,7 @@ function ConsentFormsPanel({patient,user}){
   };
 
   return(
-    <div style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
+    <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:20}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.3)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:600}}>✓ {toast}</div>}
       {showModal&&<ConsentFormModal
         template={CONSENT_TEMPLATES.find(t=>t.id===showModal)}
