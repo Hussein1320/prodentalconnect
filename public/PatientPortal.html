@@ -15,13 +15,16 @@ h1{font-size:20px;font-weight:800;margin-bottom:6px;text-align:center}
 label{display:block;font-size:11px;font-weight:700;color:#CBD5E1;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 input{width:100%;padding:12px 14px;background:#0F1C34;border:1.5px solid rgba(80,140,255,0.25);border-radius:12px;color:#F8FAFC;font-size:14px;outline:none;margin-bottom:14px;font-family:inherit}
 input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
-.btn{width:100%;padding:12px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;transition:opacity .15s}
-.btn:hover{opacity:.9}
-.btn-ghost{background:transparent;border:1px solid rgba(80,140,255,0.25);color:#CBD5E1}
-.btn-ghost:hover{background:rgba(80,140,255,0.08);opacity:1}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;transition:all .15s}
+.btn:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;border:1.5px solid rgba(80,140,255,0.3);color:#CBD5E1}
+.btn-ghost:hover:not(:disabled){background:rgba(80,140,255,0.1);border-color:rgba(80,140,255,0.5);opacity:1}
 .btn-success{background:linear-gradient(135deg,#16a34a,#15803d)}
-.btn-danger{background:linear-gradient(135deg,#dc2626,#b91c1c)}
-.btn-sm{padding:9px 16px;width:auto;font-size:12px}
+.btn-success:hover:not(:disabled){background:linear-gradient(135deg,#15803d,#166534);opacity:1}
+.btn-danger{background:transparent;border:1.5px solid rgba(239,68,68,0.4);color:#FCA5A5}
+.btn-danger:hover:not(:disabled){background:rgba(239,68,68,0.1);opacity:1}
+.btn-sm{padding:10px 18px;width:auto;font-size:13px}
 .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .link{color:#38BDF8;font-size:12px;text-decoration:none;cursor:pointer;border:none;background:none;font-family:inherit}
 .link:hover{text-decoration:underline}
@@ -30,16 +33,17 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
 .alt button{width:auto;display:inline;padding:0;background:none;color:#38BDF8;font-weight:600;margin-left:4px}
 .view{display:none}
 .view.show{display:block}
-.tile{background:rgba(80,140,255,0.06);border:1px solid rgba(80,140,255,0.2);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:background .15s,border-color .15s;display:flex;align-items:center;gap:12px}
-.tile:hover{background:rgba(80,140,255,0.13);border-color:rgba(80,140,255,0.4)}
+.tile{background:rgba(80,140,255,0.06);border:1px solid rgba(80,140,255,0.2);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.tile:hover{background:rgba(80,140,255,0.13);border-color:rgba(80,140,255,0.4);transform:translateY(-1px)}
 .tile-icon{font-size:22px;flex-shrink:0}
 .tile-title{font-size:13px;font-weight:700;margin-bottom:3px}
 .tile-sub{font-size:11px;color:#94A3B8}
-.tile-arrow{margin-left:auto;color:#64748B;font-size:16px;flex-shrink:0}
-.status{display:none;padding:10px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:9px;font-size:12px;color:#EF4444;margin-top:6px}
-.status.show{display:block}
+.tile-arrow{margin-left:auto;color:#64748B;font-size:16px;flex-shrink:0;transition:transform .15s}
+.tile:hover .tile-arrow{transform:translateX(3px)}
+.err{display:none;padding:10px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:9px;font-size:12px;color:#EF4444;margin-top:6px}
+.err.show{display:block}
 .foot{text-align:center;font-size:10px;color:#64748B;margin-top:24px}
-.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:#94A3B8;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:18px;font-family:inherit}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:#94A3B8;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:18px;font-family:inherit;transition:color .12s}
 .back-btn:hover{color:#F8FAFC}
 .detail-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .detail-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
@@ -49,14 +53,22 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
 .info-row:last-child{border-bottom:none}
 .info-label{color:#94A3B8;font-size:12px}
 .info-val{font-weight:600;text-align:right}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
 .badge-amber{background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.3)}
 .badge-green{background:rgba(34,197,94,0.12);color:#4ADE80;border:1px solid rgba(34,197,94,0.25)}
 .badge-red{background:rgba(239,68,68,0.12);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25)}
 .badge-blue{background:rgba(37,99,255,0.12);color:#60A5FA;border:1px solid rgba(80,140,255,0.25)}
 .info-box{background:rgba(7,20,40,0.6);border:1px solid rgba(80,140,255,0.15);border-radius:10px;padding:14px}
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#132238;border:1px solid rgba(56,189,248,0.3);border-radius:12px;padding:10px 20px;font-size:12px;color:#4ADE80;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:none;z-index:999}
-.toast.show{display:block}
+.success-banner{display:none;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.35);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center}
+.success-banner.show{display:block}
+.success-banner .icon{font-size:32px;margin-bottom:8px}
+.success-banner .title{font-size:15px;font-weight:800;color:#4ADE80;margin-bottom:4px}
+.success-banner .sub{font-size:12px;color:#86EFAC}
+.info-banner{display:none;background:rgba(37,99,255,0.08);border:1.5px solid rgba(80,140,255,0.3);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center}
+.info-banner.show{display:block}
+.info-banner .icon{font-size:32px;margin-bottom:8px}
+.info-banner .title{font-size:14px;font-weight:800;color:#60A5FA;margin-bottom:4px}
+.info-banner .sub{font-size:12px;color:#93C5FD}
 .med-field{margin-bottom:14px}
 .med-field label{margin-bottom:6px}
 .med-field select{width:100%;padding:10px 12px;background:#0F1C34;border:1.5px solid rgba(80,140,255,0.2);border-radius:10px;color:#F8FAFC;font-size:13px;font-family:inherit;outline:none}
@@ -69,11 +81,10 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
 <body>
 <div class="card">
 
-  <!-- ── Header (always visible) ── -->
   <div class="logo">🦷 ProDentalConnect</div>
   <div class="subtitle">Patient Portal</div>
 
-  <!-- ══ LOGIN VIEW ══ -->
+  <!-- ══ LOGIN ══ -->
   <div class="view show" id="vLogin">
     <h1>Sign in to your account</h1>
     <div class="welcome">View appointments, treatment plans, invoices and more.</div>
@@ -83,15 +94,15 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
     <input id="dob" type="password" placeholder="••••••••"/>
     <div class="row">
       <label style="margin:0;font-size:11px"><input type="checkbox" style="width:auto;margin-right:6px"/>Remember me</label>
-      <button class="link">Forgot details?</button>
+      <button class="link" onclick="showInfo('forgot','🔑','Reset details','Please call us on 0208 123 4567 and we\'ll help you regain access.')">Forgot details?</button>
     </div>
     <button class="btn" onclick="login()">Sign In →</button>
-    <div class="status" id="msg"></div>
+    <div class="err" id="msg"></div>
     <div class="divider"></div>
-    <div class="alt">New patient? <button class="link" onclick="showToast('Patient registration is handled by reception. Please call 0208 123 4567.')">Register here</button></div>
+    <div class="alt">New patient? <button class="link" onclick="showInfo('forgot','📋','Register as a new patient','Please call reception on 0208 123 4567 or visit us in practice to register.')">Register here</button></div>
   </div>
 
-  <!-- ══ DASHBOARD VIEW ══ -->
+  <!-- ══ DASHBOARD ══ -->
   <div class="view" id="vDash">
     <h1>Hi <span id="nameDisp">John</span> 👋</h1>
     <div class="welcome">Your patient dashboard</div>
@@ -125,22 +136,39 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
       <div class="detail-icon" style="background:rgba(37,99,255,0.12);border:1px solid rgba(80,140,255,0.25)">📅</div>
       <div><div class="detail-title">Next Appointment</div><div class="detail-sub">Upcoming booking</div></div>
     </div>
-    <div class="info-box" style="margin-bottom:14px">
+
+    <!-- Success banner (hidden until action taken) -->
+    <div class="success-banner" id="apptBanner">
+      <div class="icon" id="apptBannerIcon">✅</div>
+      <div class="title" id="apptBannerTitle">Confirmed!</div>
+      <div class="sub" id="apptBannerSub">We look forward to seeing you.</div>
+    </div>
+    <div class="info-banner" id="apptInfoBanner">
+      <div class="icon">📞</div>
+      <div class="title" id="apptInfoTitle">Request sent</div>
+      <div class="sub" id="apptInfoSub">We will be in touch shortly.</div>
+    </div>
+
+    <div class="info-box" style="margin-bottom:16px" id="apptDetails">
       <div class="info-row"><span class="info-label">Date</span><span class="info-val">Tuesday, 27 May 2026</span></div>
       <div class="info-row"><span class="info-label">Time</span><span class="info-val">14:00</span></div>
       <div class="info-row"><span class="info-label">Clinician</span><span class="info-val">Dr. S. Patel</span></div>
       <div class="info-row"><span class="info-label">Type</span><span class="info-val">Routine Check-up</span></div>
       <div class="info-row"><span class="info-label">Duration</span><span class="info-val">30 minutes</span></div>
       <div class="info-row"><span class="info-label">Location</span><span class="info-val">Riverside Dentistry, 14 High Street</span></div>
-      <div class="info-row" style="border-bottom:none"><span class="info-label">Status</span><span class="info-val"><span class="badge badge-green">Confirmed</span></span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="info-val" id="apptStatusVal"><span class="badge badge-green">Confirmed</span></span></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button class="btn btn-sm" onclick="showToast('✓ Appointment confirmed — see you 27 May!')">✓ Confirm Attendance</button>
-      <button class="btn btn-sm btn-ghost" onclick="showToast('A reschedule request has been sent to the practice.')">Reschedule</button>
+
+    <div id="apptActions">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-success btn-sm" id="btnConfirm" onclick="confirmAppt()">✓ Confirm Attendance</button>
+        <button class="btn btn-sm btn-ghost" onclick="requestReschedule()">Reschedule</button>
+      </div>
+      <button class="btn btn-danger" onclick="cancelAppt()">Cancel Appointment</button>
     </div>
-    <button class="btn btn-sm btn-ghost" style="width:100%;color:#FCA5A5;border-color:rgba(239,68,68,0.3)" onclick="showToast('Cancellation request sent. We will be in touch shortly.')">Cancel Appointment</button>
+
     <div class="divider"></div>
-    <div style="font-size:11px;color:#64748B;text-align:center">To make any changes please also call us on 0208 123 4567</div>
+    <div style="font-size:11px;color:#64748B;text-align:center">To make any changes you can also call us on 0208 123 4567</div>
   </div>
 
   <!-- ══ OUTSTANDING BALANCE ══ -->
@@ -150,22 +178,36 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
       <div class="detail-icon" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25)">💷</div>
       <div><div class="detail-title">Outstanding Balance</div><div class="detail-sub">Account statement</div></div>
     </div>
-    <div class="info-box" style="margin-bottom:14px">
-      <div class="info-row"><span class="info-label">Balance due</span><span class="info-val" style="color:#FCA5A5;font-size:18px;font-weight:800">£73.50</span></div>
-      <div class="info-row"><span class="info-label">Invoice ref</span><span class="info-val" style="font-family:ui-monospace,monospace">INV-2026-0334</span></div>
-      <div class="info-row"><span class="info-label">Treatment</span><span class="info-val">Scale &amp; Polish — 3 May 2026</span></div>
-      <div class="info-row"><span class="info-label">Due date</span><span class="info-val"><span class="badge badge-red">Overdue</span></span></div>
+
+    <div class="success-banner" id="balBanner">
+      <div class="icon">💳</div>
+      <div class="title">Payment initiated</div>
+      <div class="sub">You will receive a confirmation email once payment is processed.</div>
     </div>
-    <div class="section-head">Payment breakdown</div>
-    <div class="info-box" style="margin-bottom:14px">
-      <div class="info-row"><span class="info-label">Scale &amp; Polish (Band 1)</span><span class="info-val">£26.80</span></div>
-      <div class="info-row"><span class="info-label">Composite Filling UL4</span><span class="info-val">£46.70</span></div>
-      <div class="info-row" style="border-bottom:none"><span class="info-label" style="color:#F8FAFC;font-weight:700">Total</span><span class="info-val" style="color:#FCA5A5;font-weight:800">£73.50</span></div>
+    <div class="info-banner" id="balInfoBanner">
+      <div class="icon" id="balInfoIcon">📧</div>
+      <div class="title" id="balInfoTitle">Request received</div>
+      <div class="sub" id="balInfoSub">We will be in touch shortly.</div>
     </div>
-    <button class="btn btn-success" onclick="showToast('Redirecting to secure payment… (demo mode)')">💳 Pay £73.50 Online</button>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-sm btn-ghost" onclick="showToast('Payment plan request sent to the practice.')">Set up payment plan</button>
-      <button class="btn btn-sm btn-ghost" onclick="showToast('Invoice has been sent to your email address.')">Email invoice</button>
+
+    <div id="balDetails">
+      <div class="info-box" style="margin-bottom:14px">
+        <div class="info-row"><span class="info-label">Balance due</span><span class="info-val" style="color:#FCA5A5;font-size:18px;font-weight:800">£73.50</span></div>
+        <div class="info-row"><span class="info-label">Invoice ref</span><span class="info-val" style="font-family:ui-monospace,monospace">INV-2026-0334</span></div>
+        <div class="info-row"><span class="info-label">Treatment</span><span class="info-val">Scale &amp; Polish — 3 May 2026</span></div>
+        <div class="info-row"><span class="info-label">Due date</span><span class="info-val"><span class="badge badge-red">Overdue</span></span></div>
+      </div>
+      <div class="section-head">Payment breakdown</div>
+      <div class="info-box" style="margin-bottom:16px">
+        <div class="info-row"><span class="info-label">Scale &amp; Polish (Band 1)</span><span class="info-val">£26.80</span></div>
+        <div class="info-row"><span class="info-label">Composite Filling UL4</span><span class="info-val">£46.70</span></div>
+        <div class="info-row"><span class="info-label" style="color:#F8FAFC;font-weight:700">Total</span><span class="info-val" style="color:#FCA5A5;font-weight:800">£73.50</span></div>
+      </div>
+      <button class="btn btn-success" onclick="payOnline()">💳 Pay £73.50 Online</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-sm btn-ghost" onclick="requestPaymentPlan()">Set up payment plan</button>
+        <button class="btn btn-sm btn-ghost" onclick="emailInvoice()">Email invoice</button>
+      </div>
     </div>
   </div>
 
@@ -174,29 +216,40 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
     <button class="back-btn" onclick="nav('vDash')">← Back to dashboard</button>
     <div class="detail-header">
       <div class="detail-icon" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25)">📋</div>
-      <div><div class="detail-title">Treatment Plan</div><div class="detail-sub"><span class="badge badge-amber">Awaiting acceptance</span></div></div>
+      <div><div class="detail-title">Treatment Plan</div><div class="detail-sub" id="planStatus"><span class="badge badge-amber">Awaiting acceptance</span></div></div>
     </div>
     <div class="info-box" style="margin-bottom:14px">
       <div class="info-row"><span class="info-label">Plan reference</span><span class="info-val" style="font-family:ui-monospace,monospace">TP-2026-0088</span></div>
       <div class="info-row"><span class="info-label">Issued by</span><span class="info-val">Dr. S. Patel</span></div>
       <div class="info-row"><span class="info-label">Issued date</span><span class="info-val">14 May 2026</span></div>
-      <div class="info-row" style="border-bottom:none"><span class="info-label">NHS Band</span><span class="info-val"><span class="badge badge-blue">Band 2</span></span></div>
+      <div class="info-row"><span class="info-label">NHS Band</span><span class="info-val"><span class="badge badge-blue">Band 2</span></span></div>
     </div>
     <div class="section-head">Proposed treatments</div>
     <div class="info-box" style="margin-bottom:14px">
       <div class="info-row"><span class="info-label">Composite Filling UR6</span><span class="info-val">£46.70</span></div>
       <div class="info-row"><span class="info-label">Scale &amp; Polish</span><span class="info-val">Included</span></div>
-      <div class="info-row" style="border-bottom:none"><span class="info-label" style="color:#F8FAFC;font-weight:700">Total</span><span class="info-val" style="font-weight:800">£46.70</span></div>
+      <div class="info-row"><span class="info-label" style="color:#F8FAFC;font-weight:700">Total</span><span class="info-val" style="font-weight:800">£46.70</span></div>
     </div>
-    <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px;font-size:11px;color:#FCD34D;margin-bottom:14px">
-      ⚠️ Please accept or decline this plan. If you have questions call us on 0208 123 4567 or reply to the email we sent you.
+
+    <div id="planActions">
+      <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px;font-size:11px;color:#FCD34D;margin-bottom:14px">
+        ⚠️ Please accept or decline this plan. Questions? Call 0208 123 4567.
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success" onclick="acceptPlan()">✓ Accept Plan</button>
+        <button class="btn btn-sm btn-ghost" style="color:#FCA5A5;border-color:rgba(239,68,68,0.3)" onclick="declinePlan()">Decline</button>
+      </div>
     </div>
-    <div id="planActions" style="display:flex;gap:8px">
-      <button class="btn btn-success" onclick="acceptPlan()">✓ Accept Plan</button>
-      <button class="btn btn-danger btn-sm" onclick="showToast('Decline noted — a member of staff will contact you.')">Decline</button>
+
+    <div class="success-banner" id="planAccepted">
+      <div class="icon">🎉</div>
+      <div class="title">Treatment plan accepted!</div>
+      <div class="sub">We will contact you to book your appointment. Ref: TP-2026-0088</div>
     </div>
-    <div id="planAccepted" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:14px;font-size:13px;color:#4ADE80;font-weight:700;text-align:center">
-      ✓ Treatment plan accepted — we will be in touch to book your appointment.
+    <div class="info-banner" id="planDeclined">
+      <div class="icon">📞</div>
+      <div class="title">Decline noted</div>
+      <div class="sub">A member of our team will call you to discuss alternatives.</div>
     </div>
   </div>
 
@@ -208,104 +261,209 @@ input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
       <div><div class="detail-title">Medical History</div><div class="detail-sub">Last updated 10 Feb 2026 — please review</div></div>
     </div>
 
-    <div class="section-head">General health</div>
-    <div class="med-field">
-      <label>Do you have any serious medical conditions?</label>
-      <select id="mh_conditions">
-        <option value="none">No known conditions</option>
-        <option value="diabetes">Diabetes</option>
-        <option value="heart">Heart condition</option>
-        <option value="blood">Blood disorder</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
-    <div class="med-field">
-      <label>Are you currently taking any medications?</label>
-      <select id="mh_meds">
-        <option value="no">No</option>
-        <option value="yes">Yes</option>
-      </select>
-    </div>
-    <div class="med-field">
-      <label>If yes, please list medications</label>
-      <textarea id="mh_med_list" placeholder="e.g. Aspirin 75mg daily, Metformin 500mg…"></textarea>
+    <div class="success-banner" id="medBanner">
+      <div class="icon">✅</div>
+      <div class="title">Medical history saved!</div>
+      <div class="sub">Your clinical team has been notified. Returning to dashboard…</div>
     </div>
 
-    <div class="section-head">Allergies &amp; reactions</div>
-    <div class="med-field">
-      <label>Do you have any known allergies?</label>
-      <select id="mh_allergy">
-        <option value="none">None known</option>
-        <option value="penicillin">Penicillin / antibiotics</option>
-        <option value="latex">Latex</option>
-        <option value="aspirin">Aspirin / NSAIDs</option>
-        <option value="anaesthetic">Local anaesthetic</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
+    <div id="medForm">
+      <div class="section-head">General health</div>
+      <div class="med-field">
+        <label>Do you have any serious medical conditions?</label>
+        <select id="mh_conditions">
+          <option value="none">No known conditions</option>
+          <option value="diabetes">Diabetes</option>
+          <option value="heart">Heart condition</option>
+          <option value="blood">Blood disorder</option>
+          <option value="other">Other — please describe below</option>
+        </select>
+      </div>
+      <div class="med-field">
+        <label>Are you currently taking any medications?</label>
+        <select id="mh_meds">
+          <option value="no">No</option>
+          <option value="yes">Yes — listed below</option>
+        </select>
+      </div>
+      <div class="med-field">
+        <label>If yes, please list medications</label>
+        <textarea id="mh_med_list" placeholder="e.g. Aspirin 75mg daily, Metformin 500mg…"></textarea>
+      </div>
 
-    <div class="section-head">Dental history</div>
-    <div class="med-field">
-      <label>Any previous reactions to dental treatment?</label>
-      <select id="mh_dental_rx">
-        <option value="no">No</option>
-        <option value="anxiety">Dental anxiety</option>
-        <option value="la_reaction">Reaction to local anaesthetic</option>
-        <option value="other">Other</option>
-      </select>
+      <div class="section-head">Allergies &amp; reactions</div>
+      <div class="med-field">
+        <label>Do you have any known allergies?</label>
+        <select id="mh_allergy">
+          <option value="none">None known</option>
+          <option value="penicillin">Penicillin / antibiotics</option>
+          <option value="latex">Latex</option>
+          <option value="aspirin">Aspirin / NSAIDs</option>
+          <option value="anaesthetic">Local anaesthetic</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="section-head">Dental history</div>
+      <div class="med-field">
+        <label>Any previous reactions to dental treatment?</label>
+        <select id="mh_dental_rx">
+          <option value="no">No</option>
+          <option value="anxiety">Dental anxiety</option>
+          <option value="la_reaction">Reaction to local anaesthetic</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="med-field">
+        <label>Additional notes for your dentist</label>
+        <textarea id="mh_notes" placeholder="Anything else your dentist should know…"></textarea>
+      </div>
+
+      <button class="btn btn-success" id="btnSaveMed" onclick="saveMedHx()">✓ Save &amp; Submit</button>
+      <div style="font-size:10px;color:#64748B;text-align:center;margin-top:10px">Your medical history is stored securely and shared only with your clinical team.</div>
     </div>
-    <div class="med-field">
-      <label>Additional notes for your dentist</label>
-      <textarea id="mh_notes" placeholder="Anything else your dentist should know…"></textarea>
+  </div>
+
+  <!-- ══ INFO VIEW (generic) ══ -->
+  <div class="view" id="vInfo">
+    <button class="back-btn" onclick="nav(infoBack||'vDash')">← Back</button>
+    <div style="text-align:center;padding:24px 0">
+      <div style="font-size:48px;margin-bottom:16px" id="infoIcon">ℹ️</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:8px" id="infoTitle">Information</div>
+      <div style="font-size:13px;color:#94A3B8;line-height:1.6" id="infoBody">—</div>
     </div>
-    <button class="btn btn-success" onclick="saveMedHx()">✓ Save &amp; Submit</button>
-    <div style="font-size:10px;color:#64748B;text-align:center;margin-top:12px">Your medical history is stored securely and shared only with your clinical team.</div>
+    <button class="btn btn-ghost" onclick="nav(infoBack||'vDash')">← Go back</button>
   </div>
 
   <div class="foot">Test mode · ProDentalConnect Patient Portal demo</div>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
+var infoBack='vDash';
+
 function nav(id){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('show');});
   document.getElementById(id).classList.add('show');
   window.scrollTo(0,0);
 }
-function showToast(msg,duration=2800){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),duration);
+
+function showInfo(back,icon,title,body){
+  infoBack=back||'vDash';
+  document.getElementById('infoIcon').textContent=icon;
+  document.getElementById('infoTitle').textContent=title;
+  document.getElementById('infoBody').textContent=body;
+  nav('vInfo');
 }
+
 function login(){
-  const email=document.getElementById('email').value.trim();
-  const dob=document.getElementById('dob').value.trim();
-  const msg=document.getElementById('msg');
-  if(!email||!dob){msg.textContent='Please enter both your email and date of birth';msg.className='status show';return;}
-  msg.className='status';
-  const fname=email.split('@')[0].split('.')[0].replace(/^\w/,c=>c.toUpperCase());
+  var email=document.getElementById('email').value.trim();
+  var dob=document.getElementById('dob').value.trim();
+  var msg=document.getElementById('msg');
+  if(!email||!dob){msg.textContent='Please enter both your email and date of birth.';msg.className='err show';return;}
+  msg.className='err';
+  var fname=email.split('@')[0].split('.')[0];
+  fname=fname.charAt(0).toUpperCase()+fname.slice(1);
   document.getElementById('nameDisp').textContent=fname;
   nav('vDash');
 }
+
 function logout(){
   document.getElementById('email').value='';
   document.getElementById('dob').value='';
-  document.getElementById('msg').className='status';
-  document.getElementById('planActions').style.display='flex';
-  document.getElementById('planAccepted').style.display='none';
+  document.getElementById('msg').className='err';
+  // Reset all views
+  document.getElementById('apptBanner').className='success-banner';
+  document.getElementById('apptInfoBanner').className='info-banner';
+  document.getElementById('apptActions').style.display='block';
+  document.getElementById('btnConfirm').disabled=false;
+  document.getElementById('btnConfirm').textContent='✓ Confirm Attendance';
+  document.getElementById('balBanner').className='success-banner';
+  document.getElementById('balInfoBanner').className='info-banner';
+  document.getElementById('balDetails').style.display='block';
+  document.getElementById('planActions').style.display='block';
+  document.getElementById('planAccepted').className='success-banner';
+  document.getElementById('planDeclined').className='info-banner';
+  document.getElementById('medBanner').className='success-banner';
+  document.getElementById('medForm').style.display='block';
+  document.getElementById('btnSaveMed').disabled=false;
+  document.getElementById('btnSaveMed').textContent='✓ Save & Submit';
   nav('vLogin');
 }
+
+// ── Appointment actions ──
+function confirmAppt(){
+  var btn=document.getElementById('btnConfirm');
+  btn.disabled=true;
+  btn.textContent='✓ Confirmed';
+  var b=document.getElementById('apptBanner');
+  document.getElementById('apptBannerIcon').textContent='✅';
+  document.getElementById('apptBannerTitle').textContent='Attendance confirmed!';
+  document.getElementById('apptBannerSub').textContent='We look forward to seeing you on Tuesday, 27 May at 14:00.';
+  b.className='success-banner show';
+}
+
+function requestReschedule(){
+  var b=document.getElementById('apptInfoBanner');
+  document.getElementById('apptInfoTitle').textContent='Reschedule request sent';
+  document.getElementById('apptInfoSub').textContent='A member of our team will contact you within 1 working day to offer alternative times.';
+  b.className='info-banner show';
+  document.getElementById('apptActions').style.display='none';
+}
+
+function cancelAppt(){
+  if(!confirm('Are you sure you want to cancel your appointment on 27 May 2026 at 14:00?\n\nThis cannot be undone. Please call 0208 123 4567 if you need help rescheduling.')){return;}
+  var b=document.getElementById('apptInfoBanner');
+  document.getElementById('apptInfoTitle').textContent='Cancellation request received';
+  document.getElementById('apptInfoSub').textContent='Your appointment has been cancelled. Please call us to rebook at a time that suits you.';
+  b.className='info-banner show';
+  document.getElementById('apptActions').style.display='none';
+}
+
+// ── Balance actions ──
+function payOnline(){
+  document.getElementById('balDetails').style.display='none';
+  document.getElementById('balBanner').className='success-banner show';
+}
+
+function requestPaymentPlan(){
+  document.getElementById('balInfoIcon').textContent='📋';
+  document.getElementById('balInfoTitle').textContent='Payment plan request sent';
+  document.getElementById('balInfoSub').textContent='A member of our accounts team will contact you within 1 working day to set up a suitable plan.';
+  document.getElementById('balDetails').style.display='none';
+  document.getElementById('balInfoBanner').className='info-banner show';
+}
+
+function emailInvoice(){
+  document.getElementById('balInfoIcon').textContent='📧';
+  document.getElementById('balInfoTitle').textContent='Invoice sent to your email';
+  document.getElementById('balInfoSub').textContent='A copy of INV-2026-0334 for £73.50 has been sent to your registered email address.';
+  document.getElementById('balInfoBanner').className='info-banner show';
+}
+
+// ── Treatment plan actions ──
 function acceptPlan(){
   document.getElementById('planActions').style.display='none';
-  document.getElementById('planAccepted').style.display='block';
-  showToast('✓ Treatment plan accepted — thank you!');
+  document.getElementById('planAccepted').className='success-banner show';
+  document.getElementById('planStatus').innerHTML='<span class="badge badge-green">Accepted</span>';
 }
+
+function declinePlan(){
+  document.getElementById('planActions').style.display='none';
+  document.getElementById('planDeclined').className='info-banner show';
+  document.getElementById('planStatus').innerHTML='<span class="badge badge-red">Declined</span>';
+}
+
+// ── Medical history ──
 function saveMedHx(){
-  showToast('✓ Medical history saved and sent to your clinical team.');
-  setTimeout(()=>nav('vDash'),1800);
+  var btn=document.getElementById('btnSaveMed');
+  btn.disabled=true;
+  btn.textContent='Saving…';
+  document.getElementById('medForm').style.display='none';
+  document.getElementById('medBanner').className='success-banner show';
+  setTimeout(function(){nav('vDash');},2200);
 }
-document.getElementById('dob').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+
+document.getElementById('dob').addEventListener('keydown',function(e){if(e.key==='Enter')login();});
 </script>
 </body>
 </html>
