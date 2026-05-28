@@ -784,23 +784,23 @@ const BOOKING_WIDGET_CODE=`<!-- ProDentalConnect Booking Widget -->
 
 const INIT_APPTS=[
 
-  {id:"A1",time:"08:30",patient:"John Mills",pid:"P1",col:0,status:"completed",type:"Check-up & Composite Filling",color:C.green},
+  {id:"A1",time:"08:30",patient:"John Mills",pid:"P1",col:0,status:"completed",type:"Check-up & Composite Filling",color:C.green,reason:"Routine 6-month check-up + cold sensitivity in LL5"},
 
-  {id:"A2",time:"09:00",patient:"Tom Bright",pid:null,col:0,status:"in_surgery",type:"Extraction LL7",color:C.blue},
+  {id:"A2",time:"09:00",patient:"Tom Bright",pid:null,col:0,status:"in_surgery",type:"Extraction LL7",color:C.blue,reason:"Acute pain — referred from A&E last night"},
 
-  {id:"A3",time:"09:30",patient:"Sarah Chen",pid:"P2",col:0,status:"waiting",type:"Crown Fit UR6",color:C.amber},
+  {id:"A3",time:"09:30",patient:"Sarah Chen",pid:"P2",col:0,status:"waiting",type:"Crown Fit UR6",color:C.amber,reason:"Crown prep completed last visit, fit appointment today"},
 
-  {id:"A4",time:"09:00",patient:"Robert Hall",pid:"P3",col:1,status:"in_surgery",type:"RCT Session 2 — LL7",color:C.blue},
+  {id:"A4",time:"09:00",patient:"Robert Hall",pid:"P3",col:1,status:"in_surgery",type:"RCT Session 2 — LL7",color:C.blue,reason:"Continuing RCT — pain resolved, ready for obturation"},
 
-  {id:"A5",time:"09:00",patient:"Amy Torres",pid:"P4",col:2,status:"completed",type:"Hygiene Appointment",color:C.green},
+  {id:"A5",time:"09:00",patient:"Amy Torres",pid:"P4",col:2,status:"completed",type:"Hygiene Appointment",color:C.green,reason:"Routine scale & polish + BPE — 6-month recall"},
 
-  {id:"A6",time:"10:30",patient:"David Park",pid:"P5",col:1,status:"booked",type:"Implant Consultation",color:"#CBD5E1"},
+  {id:"A6",time:"10:30",patient:"David Park",pid:"P5",col:1,status:"booked",type:"Implant Consultation",color:"#CBD5E1",reason:"Enquired online — missing LL6, interested in single implant"},
 
-  {id:"A7",time:"11:00",patient:"Lisa White",pid:"P6",col:0,status:"booked",type:"Scale & Polish",color:"#CBD5E1"},
+  {id:"A7",time:"11:00",patient:"Lisa White",pid:"P6",col:0,status:"booked",type:"Scale & Polish",color:"#CBD5E1",reason:"9-month recall — no concerns, routine hygiene visit"},
 
-  {id:"A8",time:"14:00",patient:"Helen Rowe",pid:null,col:1,status:"booked",type:"New Patient Exam",color:"#CBD5E1"},
+  {id:"A8",time:"14:00",patient:"Helen Rowe",pid:null,col:1,status:"booked",type:"New Patient Exam",color:"#CBD5E1",reason:"New patient — self-referred, general check-up & X-rays"},
 
-  {id:"A9",time:"14:30",patient:"Emily Cooper",pid:null,col:2,status:"booked",type:"Recall Hygiene",color:"#CBD5E1"},
+  {id:"A9",time:"14:30",patient:"Emily Cooper",pid:null,col:2,status:"booked",type:"Recall Hygiene",color:"#CBD5E1",reason:"6-month recall booked via online patient portal"},
 
 ];
 
@@ -2988,6 +2988,8 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
 
+  const [encryptedReports,setEncryptedReports]=useState(true);
+
   const [showInvite,setShowInvite]=useState(false);
   const [inviteForm,setInviteForm]=useState({name:"",email:"",role:"reception"});
   const PLAN_SEATS_MGR={Starter:5,Growth:15,Enterprise:999};
@@ -3641,13 +3643,11 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
             {/* Encrypted reports setting */}
             <div style={{padding:"12px 0",borderBottom:"1px solid rgba(80,140,255,0.12)",display:"flex",alignItems:"center",gap:14,marginBottom:8}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC",display:"flex",gap:8,alignItems:"center"}}>🔒 Encrypted Patient Reports &amp; Invoices<span style={{fontSize:9,padding:"2px 7px",borderRadius:20,background:"rgba(34,197,94,0.12)",color:"#4ADE80",border:"1px solid rgba(34,197,94,0.2)"}}>Active</span></div>
-                <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>PDFs sent to patients are password-protected using their date of birth (DDMMYYYY format). The password is never included in the email.</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC",display:"flex",gap:8,alignItems:"center"}}>🔒 Encrypted Patient Reports &amp; Invoices{encryptedReports&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:20,background:"rgba(34,197,94,0.12)",color:"#4ADE80",border:"1px solid rgba(34,197,94,0.2)"}}>Active</span>}</div>
+                <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{encryptedReports?"PDFs sent to patients are password-protected using their date of birth (DDMMYYYY format). The password is never included in the email.":"Patients will receive unencrypted PDF reports and invoices. Enable to add password protection."}</div>
               </div>
               <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:44,height:24,borderRadius:12,background:"#2563FF",border:"none",cursor:"pointer",position:"relative",transition:"background .2s"}}>
-                  <div style={{position:"absolute",top:3,left:22,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
-                </div>
+                <Toggle on={encryptedReports} onToggle={()=>{setEncryptedReports(v=>!v);doToast(encryptedReports?"Encrypted reports disabled":"✓ Encrypted reports enabled — DOB used as password");}} size="lg"/>
               </div>
             </div>
                         <SecurityAndSsoPanel doToast={doToast}/>
@@ -4301,19 +4301,19 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
   const [sigReqModal,setSigReqModal]=useState(null);     // {appt, formType, status}
 
   const [booking,setBooking]=useState(null);
-  const [bForm,setBForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});
-  const openBooking=(time,col)=>{setBooking({time,col});setBForm({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});};
+  const [bForm,setBForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});
+  const openBooking=(time,col)=>{setBooking({time,col});setBForm({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});};
 
   // ── Edit appointment state ───────────────────────────────────────
   const [editAppt,setEditAppt]=useState(null); // the appt being edited
-  const [eForm,setEForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",notes:""});
+  const [eForm,setEForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});
   const openEdit=(appt)=>{
     setEditAppt(appt);
-    setEForm({patient:appt.patient,type:appt.type||"Check-up",duration:String(appt.duration||30),dentist:appt.dentist||"Dr. S. Patel",notes:appt.notes||""});
+    setEForm({patient:appt.patient,type:appt.type||"Check-up",duration:String(appt.duration||30),dentist:appt.dentist||"Dr. S. Patel",reason:appt.reason||"",notes:appt.notes||""});
   };
   const saveEdit=()=>{
     const colors={"Check-up":C.teal,"Filling":C.blue,"Crown":C.purple,"Extraction":C.red,"Hygiene":C.green,"Implant":"#7c3aed","Consultation":C.amber};
-    setAppts(p=>p.map(a=>a.id===editAppt.id?{...a,patient:eForm.patient,type:eForm.type,duration:parseInt(eForm.duration),dentist:eForm.dentist,notes:eForm.notes,color:colors[eForm.type]||a.color}:a));
+    setAppts(p=>p.map(a=>a.id===editAppt.id?{...a,patient:eForm.patient,type:eForm.type,duration:parseInt(eForm.duration),dentist:eForm.dentist,reason:eForm.reason,notes:eForm.notes,color:colors[eForm.type]||a.color}:a));
     setEditAppt(null);
     doToast("✓ Appointment updated");
   };
@@ -4353,7 +4353,7 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
     const colors={"Check-up":C.teal,"Filling":C.blue,"Crown":C.purple,"Extraction":C.red,"Hygiene":C.green,"Implant":"#7c3aed","Consultation":C.amber};
 
-    const newA={id:"A"+Date.now(),time:booking.time,col:booking.col,patient:bForm.patient,pid:null,status:"booked",type:bForm.type,color:colors[bForm.type]||C.teal,duration:parseInt(bForm.duration)||30,dentist:bForm.dentist,notes:bForm.notes};
+    const newA={id:"A"+Date.now(),time:booking.time,col:booking.col,patient:bForm.patient,pid:null,status:"booked",type:bForm.type,color:colors[bForm.type]||C.teal,duration:parseInt(bForm.duration)||30,dentist:bForm.dentist,reason:bForm.reason,notes:bForm.notes};
 
     setAppts(p=>[...p,newA]);
 
@@ -4659,6 +4659,10 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
             }
           </div>
         ))}
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#CBD5E1",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Booking Reason</label>
+          <input value={eForm.reason} onChange={e=>setEForm(p=>({...p,reason:e.target.value}))} placeholder="Why is the patient booking? e.g. tooth pain, recall due…" style={{width:"100%",padding:"9px 12px",background:"#132238",border:"1.5px solid rgba(80,140,255,0.28)",borderRadius:10,color:"#F8FAFC",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        </div>
         <div style={{marginBottom:16}}>
           <label style={{fontSize:11,fontWeight:700,color:"#CBD5E1",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Notes</label>
           <input value={eForm.notes} onChange={e=>setEForm(p=>({...p,notes:e.target.value}))} placeholder="Clinical notes, alerts..." style={{width:"100%",padding:"9px 12px",background:"#132238",border:"1.5px solid rgba(80,140,255,0.28)",borderRadius:10,color:"#F8FAFC",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
@@ -4781,6 +4785,11 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
             </div>
           );
         })()}
+        {/* Booking reason field */}
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Booking Reason <span style={{color:"#64748B",fontWeight:400}}>(helps staff prepare)</span></label>
+          <input value={bForm.reason} onChange={e=>setBForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. toothache, routine check-up, crown fit…" style={{width:"100%",padding:"7px 10px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        </div>
         {/* Notes field */}
         <div style={{marginBottom:10}}>
           <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Notes (optional)</label>
@@ -4908,6 +4917,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                       const tipLines=[
                         appt.patient+" · "+appt.time+(appt.duration?" ("+appt.duration+"m)":""),
                         "Type: "+appt.type,
+                        appt.reason?"Reason: "+appt.reason:"",
                         hasBalance?"⚠️ Balance: £"+apptPt.balance+(isOverdue?" — OVERDUE":""):"",
                         hasMedAlert?"🚨 "+apptPt.medAlerts.join(", "):"",
                         appt.notes?"Note: "+appt.notes:"",
@@ -4923,6 +4933,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                             {hasMedAlert&&<span title={apptPt.medAlerts.join(", ")} style={{fontSize:8,background:"rgba(239,68,68,0.15)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0}}>⚕</span>}
                           </div>
                           <span style={{fontSize:10,opacity:.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>
+                          {appt.reason&&rowSpanCount>2&&<span style={{fontSize:9,opacity:.65,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontStyle:"italic",fontWeight:400}}>{appt.reason}</span>}
                           {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
                         </div>
                       );
@@ -23126,7 +23137,6 @@ function CommsPage({user}){
         {[
           {id:"email",label:"Email",icon:"✉️",count:unreadEmailCount},
           {id:"sms",label:"SMS",icon:"📱",count:unreadSmsCount},
-          {id:"whatsapp",label:"WhatsApp",icon:"💬",count:0},
         ].map(t=>(
           <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSearch("");}}
             style={{height:"100%",padding:"0 14px",border:"none",background:"transparent",
@@ -23139,22 +23149,13 @@ function CommsPage({user}){
           </button>
         ))}
         <div style={{flex:1}}/>
-        {tab!=="whatsapp"&&<button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeSubj("");setComposeBody("");}}
+        <button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeSubj("");setComposeBody("");}}
           style={{padding:"6px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.3)"}}>
           + Compose
-        </button>}
+        </button>
       </div>
 
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-
-        {/* ── WhatsApp redirect hint ── */}
-        {tab==="whatsapp"&&(
-          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,color:"#475569"}}>
-            <div style={{width:60,height:60,borderRadius:16,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>💬</div>
-            <div style={{fontSize:14,fontWeight:700,color:"#94A3B8"}}>WhatsApp conversations</div>
-            <div style={{fontSize:11,color:"#475569",textAlign:"center",maxWidth:260}}>Open the WhatsApp section in the sidebar to view and reply to patient messages.</div>
-          </div>
-        )}
 
         {/* ── SMS tab ── */}
         {tab==="sms"&&(
