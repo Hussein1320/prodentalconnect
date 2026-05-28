@@ -78,6 +78,43 @@ function useWindowWidth(){
   return w;
 }
 
+// ── Inject global mobile-responsive CSS once (additive — no existing styles changed)
+if(typeof document!=="undefined"&&!document.getElementById("pdc-mobile-css")){
+  const ms=document.createElement("style");ms.id="pdc-mobile-css";
+  ms.textContent=`
+    @media(max-width:767px){
+      /* Modals — full viewport width on mobile */
+      .pdc-modal{width:calc(100vw - 24px)!important;border-radius:14px!important;max-height:85vh!important;overflow-y:auto!important;}
+      /* Finance/payments/reports — stack grids */
+      .pdc-grid-2,.pdc-grid-3,.pdc-grid-4{grid-template-columns:1fr!important;}
+      /* All padded page containers */
+      .pdc-page-pad{padding:12px!important;}
+      /* Tab bars — reduce padding */
+      .pdc-tab-btn{padding:8px 10px!important;font-size:11px!important;}
+      /* Tables — force horizontal scroll */
+      .pdc-table-wrap{overflow-x:auto!important;}
+      .pdc-table-wrap table{min-width:540px!important;}
+      /* Header toolbars */
+      .pdc-toolbar{flex-wrap:wrap!important;padding:8px 12px!important;}
+      /* Section cards */
+      .pdc-section-card{padding:12px!important;}
+      /* Reduce oversized headings */
+      .pdc-page-title{font-size:13px!important;}
+      /* Inline stat rows — wrap */
+      .pdc-stat-row{flex-wrap:wrap!important;gap:6px!important;}
+      /* Chat sidebar — collapsed by default override handled by JS */
+      .pdc-chat-sidebar{display:none!important;}
+      .pdc-chat-sidebar.open{display:flex!important;}
+      /* Rota table */
+      .pdc-rota-table{min-width:600px!important;}
+      /* Reception AI tab bar */
+      .pdc-rx-tabs{overflow-x:auto!important;scrollbar-width:none!important;}
+      .pdc-rx-tabs::-webkit-scrollbar{display:none!important;}
+    }
+  `;
+  document.head.appendChild(ms);
+}
+
 const f = n => n?.toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 // ── VAT helpers (all prices ex. VAT; 20% VAT added at checkout/billing)
@@ -1061,6 +1098,8 @@ const DCOLS=["Dr. S. Patel · Surgery 1","Dr. M. Chen · Surgery 2","Amy Grant �
 // ═══════════════════════════════════════════════════════════════════
 
 function LoginScreen({onLogin}){
+  // Mobile responsive (additive)
+  const lvw=useWindowWidth();const isMobL=lvw<768;
 
   const [username,setUsername]=useState("");
 
@@ -1208,7 +1247,7 @@ function LoginScreen({onLogin}){
 
           {/* Header gradient */}
 
-          <div style={{padding:"30px 36px 22px",background:"linear-gradient(160deg,#020817 0%,#071225 60%,#0D2040 100%)",textAlign:"center",borderBottom:"1px solid rgba(80,140,255,0.22)"}}>
+          <div style={{padding:"30px 36px 22px",background:"linear-gradient(160deg,#020817 0%,#071225 60%,#0D2040 100%)",textAlign:"center",borderBottom:"1px solid rgba(80,140,255,0.22)",...(isMobL&&{padding:"20px 20px 16px"})}}>
 
             <div style={{fontSize:38,marginBottom:8}}>🦷</div>
 
@@ -1228,7 +1267,7 @@ function LoginScreen({onLogin}){
 
           </div>
 
-          <div style={{padding:"26px 36px 30px"}}>
+          <div style={{padding:"26px 36px 30px",...(isMobL&&{padding:"20px 20px 24px"})}}>
 
             {step==="login"&&<>
 
@@ -3871,6 +3910,8 @@ function SignatureRequestModal({appt,onClose,doToast}){
 // ═══════════════════════════════════════════════════════════════════
 
 function CalendarPage({openPatient,user,waiting,setWaiting}){
+  // Mobile responsive (additive)
+  const cvw=useWindowWidth();const isMob=cvw<768;
   // Leave conflict checking
   const checkStaffLeave=(staffName,date)=>{
     if(!staffName||!date)return null;
@@ -4232,7 +4273,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
     </div>}
         {/* ── Edit Appointment Modal ── */}
     {editAppt&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950}} onClick={e=>{if(e.target===e.currentTarget)setEditAppt(null);}}>
-      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.35)",borderRadius:20,width:420,padding:24,boxShadow:"0 32px 80px rgba(0,0,0,0.6)"}}>
+      <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.35)",borderRadius:20,width:420,padding:24,boxShadow:"0 32px 80px rgba(0,0,0,0.6)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC"}}>Edit Appointment</div>
           <button onClick={()=>setEditAppt(null)} style={{border:"none",background:"transparent",cursor:"pointer",color:"#94A3B8",fontSize:20,lineHeight:1}}>✕</button>
@@ -4324,7 +4365,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
     {booking&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
 
-      <div style={{background:"#132238",borderRadius:18,width:380,padding:22,boxShadow:"0 20px 60px rgba(0,0,0,.3)"}}>
+      <div style={{background:"#132238",borderRadius:18,width:380,padding:22,boxShadow:"0 20px 60px rgba(0,0,0,.3)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
 
         <div style={{fontSize:15,fontWeight:800,marginBottom:2}}>New Appointment</div>
 
@@ -4393,24 +4434,24 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
     </div>}
 
-    <div style={{padding:"10px 16px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
+    <div style={{padding:"10px 16px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:10,alignItems:"center",flexShrink:0,flexWrap:"wrap",...(isMob&&{padding:"8px 12px",gap:6})}}>
 
       <Btn onClick={()=>doToast("Previous day")}><ChevronRight size={12} style={{transform:"rotate(180deg)"}}/>Prev</Btn>
 
-      <div style={{fontWeight:700,fontSize:14}}>Tuesday 14 May 2026</div>
+      <div style={{fontWeight:700,fontSize:14,...(isMob&&{fontSize:12})}}>Tuesday 14 May 2026</div>
 
       <Btn onClick={()=>doToast("Next day")}>Next<ChevronRight size={12}/></Btn>
 
-      <span style={{fontSize:11,color:"#CBD5E1",padding:"4px 10px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:20}}>💡 Double-click empty slot to book · Right-click for actions · Drag to move</span>
+      {!isMob&&<span style={{fontSize:11,color:"#CBD5E1",padding:"4px 10px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:20}}>💡 Double-click empty slot to book · Right-click for actions · Drag to move</span>}
 
-      <div style={{marginLeft:"auto",display:"flex",gap:10}}>
+      <div style={{marginLeft:"auto",display:"flex",gap:isMob?6:10}}>
 
-        {Object.entries(SC).map(([k,s])=><div key={k} style={{display:"flex",gap:4,alignItems:"center",fontSize:11,color:"#CBD5E1"}}><div style={{width:9,height:9,borderRadius:2,background:s.c}}/>{s.l}</div>)}
+        {Object.entries(SC).map(([k,s])=><div key={k} style={{display:"flex",gap:4,alignItems:"center",fontSize:isMob?9:11,color:"#CBD5E1"}}><div style={{width:9,height:9,borderRadius:2,background:s.c}}/>{!isMob&&s.l}</div>)}
 
       </div>
 
-      {isManager&&<button onClick={()=>{setEditingDoc(DCOLS[0]);setShowColorPicker(true);}} style={{padding:"7px 14px",background:"transparent",border:"1px solid rgba(80,140,255,0.28)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:"#CBD5E1",fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}>🎨 Doctor Colours</button>}
-      <Btn v="primary" onClick={()=>doToast("Double-click a time slot to book")}><Plus size={12}/>New Appointment</Btn>
+      {isManager&&!isMob&&<button onClick={()=>{setEditingDoc(DCOLS[0]);setShowColorPicker(true);}} style={{padding:"7px 14px",background:"transparent",border:"1px solid rgba(80,140,255,0.28)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:"#CBD5E1",fontFamily:"inherit",display:"flex",gap:5,alignItems:"center"}}>🎨 Doctor Colours</button>}
+      <Btn v="primary" onClick={()=>doToast("Double-click a time slot to book")}><Plus size={12}/>{!isMob&&"New Appointment"}</Btn>
 
     </div>
 
@@ -4418,7 +4459,7 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
       <table style={{borderCollapse:"collapse",minWidth:"100%",tableLayout:"fixed"}}>
 
-        <colgroup><col style={{width:54,minWidth:54}}/>{DCOLS.map((_,i)=><col key={i} style={{minWidth:220}}/>)}</colgroup>
+        <colgroup><col style={{width:isMob?40:54,minWidth:isMob?40:54}}/>{DCOLS.map((_,i)=><col key={i} style={{minWidth:isMob?140:220}}/>)}</colgroup>
 
         <thead><tr style={{background:"#0D1F3C",position:"sticky",top:0,zIndex:10,borderBottom:"2px solid rgba(255,255,255,0.15)"}}>
 
@@ -11549,6 +11590,7 @@ function PracticeInsights(){
 }
 
 function MorningHuddlePage({openPatient}){
+  const mhvw=useWindowWidth();const isMob=mhvw<768;
 
   const now=new Date();
 
@@ -11948,7 +11990,7 @@ function MorningHuddlePage({openPatient}){
 
         <div onClick={()=>setOpenBox(null)} style={{flex:1,background:"rgba(0,0,0,.35)"}}/>
 
-        <div style={{width:400,background:"#132238",boxShadow:"-8px 0 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+        <div style={{width:400,background:"#132238",boxShadow:"-8px 0 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column",overflowY:"auto",...(isMob&&{width:"100vw"})}}>
 
           {/* Panel header */}
 
@@ -12006,9 +12048,9 @@ function MorningHuddlePage({openPatient}){
 
       {/* ── HERO HEADER ── */}
 
-      <div style={{background:"linear-gradient(160deg,#020817 0%,#061826 100%)",padding:"20px 24px 16px"}}>
+      <div style={{background:"linear-gradient(160deg,#020817 0%,#061826 100%)",padding:"20px 24px 16px",...(isMob&&{padding:"14px 12px 12px"})}}>
 
-        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:14}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:14,...(isMob&&{gap:8,marginBottom:10})}}>
 
           <div style={{flex:1}}>
 
@@ -12026,7 +12068,7 @@ function MorningHuddlePage({openPatient}){
 
         {/* ── INTERACTIVE STATUS BOXES ── */}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14,...(isMob&&{gridTemplateColumns:"repeat(3,1fr)",gap:6})}}>
 
           {BOXES.map(box=>{
 
@@ -12112,7 +12154,7 @@ function MorningHuddlePage({openPatient}){
 
       {/* ── TODAY'S SCHEDULE ── */}
 
-      <div style={{padding:"16px 18px"}}>
+      <div style={{padding:"16px 18px",...(isMob&&{padding:"10px 10px"})}}>
 
         <div style={{background:"#132238",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
 
@@ -12803,6 +12845,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 // ════════════════════════════════════════════════════════════════
 // DNA WORKFLOW ENGINE — Custom Hook
 function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshold,setWaitThreshold}){
+  // Mobile responsive (additive)
+  const wvw=useWindowWidth();const isMob=wvw<768;
 
   const {dnaWorkflows,dnaModal,setDnaModal,toastDNA,triggerDNAWorkflow}=useDNAWorkflow();
   const [markedDNA,setMarkedDNA]=useState([]); // list of {apt, markedAt} for undo
@@ -13008,13 +13052,13 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
       <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 18px",flexShrink:0}}>
 
-        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12,flexWrap:isMob?"wrap":"nowrap"}}>
 
           <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#38BDF8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🚪</div>
 
-          <div style={{flex:1}}>
+          <div style={{flex:1,minWidth:0}}>
 
-            <div style={{fontSize:15,fontWeight:800}}>Waiting Room</div>
+            <div style={{fontSize:isMob?13:15,fontWeight:800}}>Waiting Room</div>
 
             <div style={{fontSize:11,color:"#CBD5E1"}}>
 
@@ -13024,7 +13068,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
           </div>
 
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <div style={{display:"flex",gap:isMob?4:6,alignItems:"center",flexWrap:"wrap"}}>
 
             {/* Stat pills */}
 
@@ -13038,9 +13082,9 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
             ].map(s=>(
 
-              <div key={s.l} style={{padding:"5px 12px",background:s.bg,borderRadius:12,textAlign:"center",minWidth:60}}>
+              <div key={s.l} style={{padding:isMob?"4px 8px":"5px 12px",background:s.bg,borderRadius:12,textAlign:"center",minWidth:isMob?44:60}}>
 
-                <div style={{fontSize:17,fontWeight:900,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+                <div style={{fontSize:isMob?14:17,fontWeight:900,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
 
                 <div style={{fontSize:9,color:s.c,opacity:.7,fontWeight:700}}>{s.l}</div>
 
@@ -13048,9 +13092,9 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
             ))}
 
-            {isReception&&<button onClick={()=>setShowAdd(v=>!v)} style={{padding:"7px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={13}/>Check In</button>}
+            {isReception&&<button onClick={()=>setShowAdd(v=>!v)} style={{padding:isMob?"6px 10px":"7px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:isMob?11:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={13}/>{!isMob&&"Check In"}{isMob&&"In"}</button>}
 
-            {isManager&&<button onClick={()=>setShowThreshold(v=>!v)} style={{padding:"7px 12px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1",fontWeight:600}}>⏱ Threshold</button>}
+            {isManager&&<button onClick={()=>setShowThreshold(v=>!v)} style={{padding:"7px 12px",border:`1.5px solid rgba(59,130,246,0.35)`,borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1",fontWeight:600}}>⏱{!isMob&&" Threshold"}</button>}
 
           </div>
 
@@ -13112,7 +13156,7 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 
       {/* ── WAITING NOW TAB ── */}
 
-      {viewTab==="waiting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)"}}>
+      {viewTab==="waiting"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,backgroundImage:"radial-gradient(ellipse at 30% 0%,rgba(0,109,255,0.06) 0%,transparent 50%)",...(isMob&&{padding:12})}}>
 
         {waitingNow.length===0&&calledIn.length===0&&<div style={{textAlign:"center",padding:"40px",background:"rgba(0,109,255,0.06)",borderRadius:16,border:"1px solid rgba(80,140,255,0.18)"}}>
 
@@ -13410,6 +13454,8 @@ function WaitingPage({waiting,setWaiting,user,openPatient,setNotifs,waitThreshol
 }
 
 function PatientsPage({patients,openPatient}){
+  // Mobile responsive (additive)
+  const ppvw=useWindowWidth();const isMob=ppvw<768;
 
   const [q,setQ]=useState("");
 
@@ -13441,7 +13487,7 @@ function PatientsPage({patients,openPatient}){
 
       {/* Toolbar */}
 
-      <div style={{padding:"12px 16px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:10,flexShrink:0,alignItems:"center"}}>
+      <div style={{padding:"12px 16px",background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:10,flexShrink:0,alignItems:"center",flexWrap:"wrap",...(isMob&&{padding:"8px 12px",gap:8})}}>
 
         <div style={{position:"relative",flex:1}}>
 
@@ -13475,9 +13521,9 @@ function PatientsPage({patients,openPatient}){
 
       {/* Table */}
 
-      <div style={{flex:1,overflowY:"auto"}}>
+      <div style={{flex:1,overflowY:"auto",overflowX:isMob?"auto":"hidden"}}>
 
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,...(isMob&&{minWidth:600})}}>
 
           <thead>
 
@@ -15986,6 +16032,8 @@ function ChartingPage({openPatient,embeddedPatient}){
 function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
 
   const [tab,setTab]=useState((defaultTab==="charting"?"chart":defaultTab)||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
+  // Mobile responsive (additive)
+  const prvw=useWindowWidth();const isMob=prvw<768;
   const [showEncryptedModal,setShowEncryptedModal]=useState(null);
   const [showSendModal,setShowSendModal]=useState(null);
   const [consentState,setConsentState]=useState({sms:true,email:false,photo:true,share:true});
@@ -16627,7 +16675,7 @@ Added by: ${showDocPreview.by}
 
     {/* ══ STICKY PATIENT HEADER ══ */}
     <div style={{background:"#071428",flexShrink:0,position:"sticky",top:0,zIndex:50}}>
-      <div style={{padding:"12px 20px",display:"flex",gap:14,alignItems:"center"}}>
+      <div style={{padding:"12px 20px",display:"flex",gap:14,alignItems:"center",...(isMob&&{padding:"8px 12px",gap:8,flexWrap:"wrap"})}}>
         {/* Back */}
         <button onClick={onBack} style={{width:32,height:32,borderRadius:12,background:"rgba(255,255,255,.08)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"rgba(255,255,255,.6)"}}>
           <ArrowLeft size={15} color="rgba(255,255,255,.7)"/>
@@ -16643,25 +16691,25 @@ Added by: ${showDocPreview.by}
           </div>
           <div style={{display:"flex",gap:12,marginTop:3,flexWrap:"wrap"}}>
             {[
-              {l:"DOB",v:patient.dob+" ("+ageStr+")"},
+              !isMob&&{l:"DOB",v:patient.dob+" ("+ageStr+")"},
               patient.nhs&&{l:"NHS",v:patient.nhs},
               {l:"📞",v:patient.phone},
-              {l:"👨‍⚕️",v:patient.dentist},
+              !isMob&&{l:"👨‍⚕️",v:patient.dentist},
             ].filter(Boolean).map(i=>(
-              <span key={i.l} style={{fontSize:11,color:"rgba(255,255,255,0.75)"}}><span style={{color:"#CBD5E1"}}>{i.l} </span>{i.v}</span>
+              <span key={i.l} style={{fontSize:isMob?10:11,color:"rgba(255,255,255,0.75)"}}><span style={{color:"#CBD5E1"}}>{i.l} </span>{i.v}</span>
             ))}
           </div>
         </div>
         {/* Balance */}
-        <div style={{textAlign:"right",flexShrink:0}}>
+        {!isMob&&<div style={{textAlign:"right",flexShrink:0}}>
           <div style={{fontSize:11,color:"#CBD5E1"}}>Balance</div>
           <div style={{fontSize:17,fontWeight:900,fontFamily:"ui-monospace,monospace",color:isOverdue?"#fca5a5":patient.balance>0?"#fde68a":"#4ade80"}}>
             £{(patient.balance||0).toFixed(2)}
           </div>
           {isOverdue&&<div style={{fontSize:9,color:"#fca5a5",fontWeight:700}}>OVERDUE</div>}
-        </div>
+        </div>}
         {/* Quick actions */}
-        <div style={{display:"flex",gap:5,flexShrink:0}}>
+        <div style={{display:"flex",gap:isMob?3:5,flexShrink:0,...(isMob&&{marginLeft:"auto"})}}>
           {[
             {l:"Book",icon:"📅",fn:()=>doToast("Opening booking…")},
             {l:"Note",icon:"📝",fn:()=>setTab("notes")},
@@ -16671,9 +16719,9 @@ Added by: ${showDocPreview.by}
             {l:"Send",icon:"📧",fn:()=>setShowSendModal({type:"Treatment Report",trigger:"manual"})},
             {l:"Report",icon:"📋",fn:()=>setShowReportModal(true)},
           ].map(a=>(
-            <button key={a.l} onClick={a.fn} title={a.l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"5px 8px",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,cursor:"pointer",minWidth:42}}>
-              <span style={{fontSize:14}}>{a.icon}</span>
-              <span style={{fontSize:8,color:"rgba(255,255,255,0.75)",fontWeight:600}}>{a.l}</span>
+            <button key={a.l} onClick={a.fn} title={a.l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:isMob?"5px 6px":"5px 8px",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,cursor:"pointer",minWidth:isMob?34:42}}>
+              <span style={{fontSize:isMob?13:14}}>{a.icon}</span>
+              {!isMob&&<span style={{fontSize:8,color:"rgba(255,255,255,0.75)",fontWeight:600}}>{a.l}</span>}
             </button>
           ))}
         </div>
@@ -16701,15 +16749,15 @@ Added by: ${showDocPreview.by}
           return(
             <button key={t.id} onClick={()=>setTab(t.id)} style={{
               display:"flex",alignItems:"center",gap:6,
-              padding:"10px 18px",border:"none",cursor:"pointer",
+              padding:isMob?"8px 10px":"10px 18px",border:"none",cursor:"pointer",
               borderBottom:`2px solid ${active?"#2563FF":"transparent"}`,
               background:active?"rgba(13,148,136,.12)":"transparent",
               whiteSpace:"nowrap",flexShrink:0,transition:"all .1s",
             }}
             onMouseEnter={e=>{if(!active)e.currentTarget.style.background="rgba(80,140,255,0.05)";}}
             onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
-              <span style={{fontSize:13}}>{t.icon}</span>
-              <span style={{fontSize:12,fontWeight:active?700:400,color:active?"#5eead4":"rgba(255,255,255,.55)"}}>{t.l}</span>
+              <span style={{fontSize:isMob?11:13}}>{t.icon}</span>
+              <span style={{fontSize:isMob?10:12,fontWeight:active?700:400,color:active?"#5eead4":"rgba(255,255,255,.55)"}}>{t.l}</span>
             </button>
           );
         })}
@@ -16720,7 +16768,7 @@ Added by: ${showDocPreview.by}
     <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}>
 
     {/* ── DETAILS (landing dashboard) ── */}
-    {tab==="details"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34"}}>
+    {tab==="details"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34",...(isMob&&{padding:12})}}>
       <div style={{maxWidth:860,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* ── Personal Details ── */}
@@ -17777,6 +17825,7 @@ const BOOKING_RULES_INIT=[
 ];
 
 function ReceptionAIPage({rxEnabled}){
+  const rxvw=useWindowWidth();const isMob=rxvw<768;
   const [tab,setTab]=useState(rxEnabled?"dashboard":"settings");
   const [period,setPeriod]=useState("Today");
   const [paused,setPaused]=useState(false);
@@ -17828,7 +17877,7 @@ function ReceptionAIPage({rxEnabled}){
 
       {/* ── Header banner ── */}
       <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 18px 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 18px 0",...(isMob&&{padding:"8px 12px 0",gap:8,flexWrap:"wrap"})}}>
           <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📞</div>
           <div style={{flex:1}}>
             <div style={{fontSize:15,fontWeight:800,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -17849,8 +17898,8 @@ function ReceptionAIPage({rxEnabled}){
             </button>
           </div>
         </div>
-        <div style={{display:"flex",gap:0,paddingLeft:4,marginTop:6}}>
-          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 15px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1}}>
+        <div style={{display:"flex",gap:0,paddingLeft:4,marginTop:6,overflowX:"auto",scrollbarWidth:"none"}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 15px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:isMob?11:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1,flexShrink:0}}>
             {t.l}{t.n?<span style={{fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:12,background:"rgba(0,109,255,0.12)",color:"#38BDF8"}}>{t.n}</span>:null}
           </button>)}
         </div>
@@ -18720,6 +18769,7 @@ const RECOVERY_DATA={
 }
 
 function RevenueRecoveryPage(){
+  const rrvw=useWindowWidth();const isMob=rrvw<768;
   const [tab,setTab]=useState("overview");
   const [data,setData]=useState(RECOVERY_DATA);
   const [modal,setModal]=useState(null);// {item,type}
@@ -18771,8 +18821,8 @@ function RevenueRecoveryPage(){
       {modal&&<OutreachModal item={modal.item} type={modal.type} onClose={()=>setModal(null)} onSend={handleSend}/>}
 
       {/* ── Header ── */}
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 18px 0",flexShrink:0}}>
-        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:12}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"12px 18px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:12,...(isMob&&{flexWrap:"wrap",gap:8})}}>
           <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#38BDF8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>💰</div>
           <div style={{flex:1}}>
             <div style={{fontSize:15,fontWeight:800,display:"flex",gap:8,alignItems:"center"}}>Revenue Recovery Engine
@@ -18792,19 +18842,19 @@ function RevenueRecoveryPage(){
             </div>
           </div>
         </div>
-        <div style={{display:"flex",gap:0}}>
-          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1}}>
+        <div style={{display:"flex",gap:0,overflowX:"auto",scrollbarWidth:"none"}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:isMob?11:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1,flexShrink:0}}>
             {t.l}
-            {t.n&&<span style={{fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:12,background:C.teal+"18",color:"#38BDF8"}}>{t.n}</span>}
-            {t.v&&<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:12,background:"rgba(239,68,68,0.12)",color:C.red}}>£{t.v.toLocaleString()}</span>}
+            {t.n&&!isMob&&<span style={{fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:12,background:C.teal+"18",color:"#38BDF8"}}>{t.n}</span>}
+            {t.v&&!isMob&&<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:12,background:"rgba(239,68,68,0.12)",color:C.red}}>£{t.v.toLocaleString()}</span>}
           </button>)}
         </div>
       </div>
 
       {/* ════ OVERVIEW ════ */}
-      {tab==="overview"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18}}>
+      {tab==="overview"&&<div style={{flex:1,overflowY:"auto",background:"#071428",padding:18,...(isMob&&{padding:12})}}>
         {/* KPI row */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr 1fr",gap:8})}}>
           {[
             {l:"Revenue at Risk",  v:`£${totalPipeline.toLocaleString()}`,c:C.red,   sub:`${notContacted} patients not yet contacted`},
             {l:"Recovered (MTD)",  v:`£${(recovered+1247).toLocaleString()}`,c:C.green,sub:"from outreach + rebooking"},
@@ -18819,7 +18869,7 @@ function RevenueRecoveryPage(){
         </div>
 
         {/* Revenue breakdown */}
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
           <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
             <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.07)",transition:"background .12s",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Revenue Pipeline by Source</span>
@@ -19200,6 +19250,8 @@ const INIT_STAFF_ACCESS=Object.fromEntries(TEAM_MEMBERS.map(m=>([m.id,{
 }])));
 
 function TeamChat({user}){
+  const tcvw=useWindowWidth();const isMob=tcvw<768;
+  const [sidebarVisible,setSidebarVisible]=useState(false);
   // ── Chat data ──
   const STAFF_LIST=[
     {id:"U1",name:"Dr. Sarah Patel",  avatar:"SP",color:"#2563FF",role:"Dentist",  status:"active"},
@@ -19352,12 +19404,13 @@ function TeamChat({user}){
   const searchResults=searchQ.length>1?Object.entries(msgs).flatMap(([chId,list])=>list.filter(m=>m.text.toLowerCase().includes(searchQ.toLowerCase())).map(m=>({...m,chId}))):[];
 
   return(
-    <div style={{display:"flex",flex:1,overflow:"hidden",background:"#132238"}}>
+    <div style={{display:"flex",flex:1,overflow:"hidden",background:"#132238",position:"relative"}}>
       {toast&&<div style={{position:"fixed",top:64,left:"50%",transform:"translateX(-50%)",padding:"8px 18px",background:"#071428",color:"#132238",borderRadius:20,fontSize:12,zIndex:800,whiteSpace:"nowrap"}}>{toast}</div>}
       {showEmoji&&<div style={{position:"fixed",inset:0,zIndex:600}} onClick={()=>setShowEmoji(null)}/>}
+      {isMob&&sidebarVisible&&<div onClick={()=>setSidebarVisible(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:299}}/>}
 
       {/* ═══ LEFT SIDEBAR ═══ */}
-      <div style={{width:240,flexShrink:0,background:"#1a1f2e",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{width:240,flexShrink:0,background:"#1a1f2e",display:"flex",flexDirection:"column",overflow:"hidden",...(isMob&&{position:"fixed",left:0,top:64,bottom:0,zIndex:300,transform:sidebarVisible?"translateX(0)":"translateX(-240px)",transition:"transform .25s ease"})}}>
         {/* Workspace header */}
         <div style={{padding:"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
           <div style={{fontSize:15,fontWeight:800,color:"#132238",marginBottom:2,display:"flex",alignItems:"center",gap:7}}>
@@ -19427,7 +19480,8 @@ function TeamChat({user}){
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#132238"}}>
 
         {/* Channel/DM header */}
-        <div style={{height:52,borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",alignItems:"center",padding:"0 18px",gap:10,flexShrink:0,background:"#132238"}}>
+        <div style={{height:52,borderBottom:"1px solid rgba(56,189,248,0.07)",display:"flex",alignItems:"center",padding:"0 18px",gap:10,flexShrink:0,background:"#132238",...(isMob&&{padding:"0 10px",gap:7})}}>
+          {isMob&&<button onClick={()=>setSidebarVisible(v=>!v)} style={{width:32,height:32,border:"1px solid rgba(80,140,255,0.22)",borderRadius:8,background:"rgba(7,20,40,0.85)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,flexShrink:0,padding:0}}><span style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1,display:"block"}}/><span style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1,display:"block"}}/><span style={{width:14,height:1.5,background:"#CBD5E1",borderRadius:1,display:"block"}}/></button>}
           {view.type==="channel"&&activeChan&&<>
             <span style={{fontSize:18}}>{activeChan.icon}</span>
             <div style={{flex:1}}>
@@ -19683,6 +19737,7 @@ const CHAN_ICON={portal:"🌐",email:"✉️",phone:"📞",whatsapp:"💬"};
 // PRACTICE — Help & Support Page
 // ══════════════════════════════════════════════════════════════════════════════
 function HelpSupportPage({user}){
+  const hsvw=useWindowWidth();const isMob=hsvw<768;
   const practicePlan="Growth"; // In real app: from practice data
   const support=PLAN_SUPPORT[practicePlan]||PLAN_SUPPORT.Starter;
   const [tickets,setTickets]=useState(TICKETS_INIT.filter(t=>t.practice==="Riverside Dentistry"));
@@ -19720,8 +19775,8 @@ function HelpSupportPage({user}){
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:"#4ADE80",zIndex:500,display:"flex",gap:6}}><Check size={12}/>{toast}</div>}
 
       {/* Header */}
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px",flexShrink:0}}>
-        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px",flexShrink:0,...(isMob&&{padding:"10px 12px"})}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12,...(isMob&&{gap:8})}}>
           <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎧</div>
           <div style={{flex:1}}>
             <div style={{fontSize:15,fontWeight:800}}>Help & Support</div>
@@ -20563,6 +20618,7 @@ const INIT_ROTA={
 
 
 function RotaPage({user}){
+  const rvw=useWindowWidth();const isMob=rvw<768;
   const isManager=user?.role==="manager"||user?.role==="superadmin";
   const myStaffId=ROTA_STAFF.find(s=>s.id===user?.id)?.id||null;
 
@@ -20673,7 +20729,7 @@ function RotaPage({user}){
   };
 
   return(
-    <div style={{flex:1,overflowY:"auto",background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%)",padding:24}}>
+    <div style={{flex:1,overflowY:"auto",background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%)",padding:24,...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 18px",background:"#0F1C34",border:"1.5px solid rgba(80,140,255,0.4)",borderRadius:12,fontSize:12,color:"#60A5FA",zIndex:700,display:"flex",gap:8,alignItems:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}><Check size={12}/>  {toast}</div>}
 
       {/* Holiday Request Modal */}
@@ -20705,14 +20761,14 @@ function RotaPage({user}){
       </div>}
 
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,...(isMob&&{flexWrap:"wrap",gap:10})}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:"#F8FAFC",letterSpacing:"-.02em"}}>Staff Rota</div>
           <div style={{fontSize:12,color:"#CBD5E1",marginTop:2}}>
             {isManager?`${ROTA_STAFF.length} staff members · ${currentWeek.label}`:`Your schedule · ${currentWeek.label}`}
           </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <div style={{display:"flex",gap:8,alignItems:"center",...(isMob&&{width:"100%"})}}>
           <button onClick={()=>setShowHolidayModal(true)} style={{padding:"8px 16px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(80,140,255,0.28)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:"#60A5FA",fontFamily:"inherit",display:"flex",gap:6,alignItems:"center"}}>
             ✈️ Request Holiday
           </button>
@@ -20755,8 +20811,8 @@ function RotaPage({user}){
         </div>
 
         {/* Rota table */}
-        <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:16,overflow:"hidden",marginBottom:16}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <div style={{background:"#0F1C34",border:"1px solid rgba(80,140,255,0.2)",borderRadius:16,overflow:"hidden",marginBottom:16,...(isMob&&{overflowX:"auto"})}}>
+          <table style={{width:"100%",borderCollapse:"collapse",...(isMob&&{minWidth:540})}}>
             <thead>
               <tr style={{background:"#071428",borderBottom:"2px solid rgba(80,140,255,0.2)"}}>
                 <th style={{padding:"11px 16px",textAlign:"left",fontSize:11,fontWeight:800,color:"rgba(80,140,255,0.85)",letterSpacing:".07em",textTransform:"uppercase",minWidth:180}}>Staff Member</th>
@@ -21090,6 +21146,7 @@ function EditFieldInline({initialValue,onSave,onCancel,label,hint}){
 }
 
 function SettingsPage({user}){
+  const svw=useWindowWidth();const isMob=svw<768;
   const [activeSection,setActiveSection]=useState("practice");
   const [toast,setToast]=useState(null);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
@@ -21193,16 +21250,21 @@ function SettingsPage({user}){
     branding:[["Practice name on comms","Riverside Dentistry"],["SMS sender name","RiversideDent"],["Email from name","Riverside Dentistry"],["Primary colour","#0d9488 (teal)"],["Logo","Uploaded ✓"]],
   };
   return(
-    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+    <div style={{flex:1,display:"flex",overflow:"hidden",...(isMob&&{flexDirection:"column"})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
-      <div style={{width:220,flexShrink:0,background:"#132238",borderRight:`1px solid ${C.border}`,padding:"12px 0"}}>
+      {!isMob&&<div style={{width:220,flexShrink:0,background:"#132238",borderRight:`1px solid ${C.border}`,padding:"12px 0"}}>
         <div style={{padding:"0 14px 10px",fontSize:12,fontWeight:700,color:C.muted}}>Settings</div>
         {SECTIONS.map(s=><button key={s.id} onClick={()=>setActiveSection(s.id)} style={{width:"100%",display:"flex",gap:9,alignItems:"center",padding:"9px 14px",border:"none",borderLeft:`3px solid ${activeSection===s.id?C.teal:"transparent"}`,background:activeSection===s.id?"rgba(0,109,255,0.06)":"transparent",cursor:"pointer",textAlign:"left"}}
           onMouseOver={e=>{if(activeSection!==s.id)e.currentTarget.style.background="rgba(59,130,246,0.05)";}} onMouseOut={e=>{if(activeSection!==s.id)e.currentTarget.style.background="transparent";}}>
           <span style={{fontSize:16,flexShrink:0}}>{s.icon}</span><span style={{fontSize:12,fontWeight:activeSection===s.id?700:400,color:activeSection===s.id?C.teal:C.text}}>{s.l}</span>
         </button>)}
-      </div>
-      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
+      </div>}
+      {isMob&&<div style={{background:"#132238",borderBottom:`1px solid ${C.border}`,padding:"10px 12px",flexShrink:0}}>
+        <select value={activeSection} onChange={e=>setActiveSection(e.target.value)} style={{width:"100%",padding:"8px 10px",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.22)",borderRadius:9,color:C.text,fontSize:13,fontFamily:"inherit",outline:"none"}}>
+          {SECTIONS.map(s=><option key={s.id} value={s.id}>{s.icon} {s.l}</option>)}
+        </select>
+      </div>}
+      <div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
         <div style={{maxWidth:600}}>
           <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>{SECTIONS.find(s=>s.id===activeSection)?.l}</div>
           {/* Pending approval banner */}
@@ -21933,6 +21995,7 @@ function AccountsPage(){
 // LAB MANAGER — case tracking kanban
 // ══════════════════════════════════════════════════════════════════════════════
 function LabPage(){
+  const lbvw=useWindowWidth();const isMob=lbvw<768;
   const LABS_INIT=[
     {id:"L1",patient:"Sarah Chen",  pid:"P2",lab:"Prestige Dental Lab",type:"PFM Crown UR6",      sent:"6 May",due:"14 May",status:"arrived", shade:"A2",notes:"Arrived today — checked shade ✓"},
     {id:"L2",patient:"James Kirk",  pid:null,lab:"Prestige Dental Lab",type:"Nightguard (hard)",   sent:"5 May",due:"13 May",status:"overdue", shade:"N/A",notes:"2 days overdue — chased by phone"},
@@ -21971,7 +22034,7 @@ function LabPage(){
   const arrived=labs.filter(l=>l.status==="arrived").length;
 
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500,display:"flex",gap:6,alignItems:"center"}}><Check size={12}/>{toast}</div>}
 
       {/* Note modal */}
@@ -21989,7 +22052,7 @@ function LabPage(){
       </div>}
 
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,...(isMob&&{flexWrap:"wrap",gap:10})}}>
         <div>
           <div style={{fontSize:15,fontWeight:800}}>Lab Manager</div>
           <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{labs.length} active cases · {overdue>0?<span style={{color:C.red,fontWeight:700}}>{overdue} overdue</span>:"all on track"} · {arrived} awaiting fit</div>
@@ -22011,8 +22074,8 @@ function LabPage(){
       </div>
 
       {/* Table */}
-      <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+      <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,overflow:"hidden",...(isMob&&{overflowX:"auto"})}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,...(isMob&&{minWidth:700})}}>
           <thead><tr style={{background:"#0F1C34",borderBottom:"2px solid rgba(80,140,255,0.15)"}}>
             {["Patient","Lab","Type","Shade","Sent","Due","Status","Notes","Actions"].map(h=>(
               <th key={h} style={{padding:"9px 14px",textAlign:"left",fontSize:9,fontWeight:800,color:"rgba(59,130,246,0.7)",letterSpacing:".06em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
@@ -22107,6 +22170,7 @@ function ShortNoticePage(){
 // COMMS HUB — outgoing communications overview
 // ══════════════════════════════════════════════════════════════════════════════
 function CommsPage({user}){
+  const cmvw=useWindowWidth();const isMob=cmvw<768;
   const [tab,setTab]=useState("email");
   const [selId,setSelId]=useState(null);
   const [search,setSearch]=useState("");
@@ -22171,8 +22235,9 @@ function CommsPage({user}){
       {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:500,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
 
       {/* Tab bar */}
-      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px 0",background:"#0D1E35",borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0,height:46}}>
-        <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginRight:16}}>Inbox</div>
+      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px 0",background:"#0D1E35",borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0,height:46,overflowX:"auto",scrollbarWidth:"none"}}>
+        {isMob&&selId&&<button onClick={()=>setSelId(null)} style={{padding:"4px 10px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:18,marginRight:4,flexShrink:0}}>←</button>}
+        <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginRight:16,flexShrink:0}}>Inbox</div>
         {[
           {id:"email",label:"Email",icon:"✉️",count:unreadEmailCount},
           {id:"sms",label:"SMS",icon:"📱",count:unreadSmsCount},
@@ -22209,7 +22274,7 @@ function CommsPage({user}){
         {/* ── SMS tab ── */}
         {tab==="sms"&&(
           <>
-            <div style={{width:300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{width:isMob?(selId?"0":"100%"):300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
               <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
                 <input placeholder="Search SMS…" value={search} onChange={e=>setSearch(e.target.value)}
                   style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
@@ -22265,7 +22330,7 @@ function CommsPage({user}){
         {tab==="email"&&(
           <>
             {/* Email list */}
-            <div style={{width:320,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{width:isMob?(selId?"0":"100%"):320,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
               <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
                 <input placeholder="Search email…" value={search} onChange={e=>setSearch(e.target.value)}
                   style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
@@ -22392,6 +22457,7 @@ function CommsPage({user}){
 // PAYMENTS — payment configuration and history
 // ══════════════════════════════════════════════════════════════════════════════
 function PaymentsPage({user}){
+  const pmvw=useWindowWidth();const isMob=pmvw<768;
   const isManager=user?.role==="manager"||user?.role==="superadmin";
   const [providers,setProviders]=useState([
     {icon:"💳",name:"Stripe",status:"Connected",type:"Card",fees:"1.4% + 20p",apiKey:"sk_live_••••••••",webhookUrl:"https://pro.dental/webhooks/stripe"},
@@ -22410,7 +22476,7 @@ function PaymentsPage({user}){
     setConnectModal(null);setApiKeyInput("");doToast("✓ "+name+" connected successfully — test transaction sent");
   };
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)",...(isMob&&{padding:12})}}>
       {toast&&<div style={{position:"fixed",top:64,right:18,padding:"8px 16px",background:"rgba(0,109,255,0.06)",border:"1px solid rgba(80,140,255,0.18)",borderRadius:9,fontSize:12,color:C.green,zIndex:500}}>{toast}</div>}
 
       {/* Connect Modal */}
@@ -22434,7 +22500,7 @@ function PaymentsPage({user}){
       </div>}
 
       <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Payment Configuration</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr 1fr"})}}>
         {providers.map(p=><div key={p.name} style={{background:"#132238",border:`1px solid ${p.status==="Connected"?C.teal:C.border}`,borderRadius:16,padding:14,display:"flex",flexDirection:"column",gap:8}}>
           <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>{p.icon}</span><div><div style={{fontSize:12,fontWeight:700}}>{p.name}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{p.type} · {p.fees}</div></div></div>
           <Chip color={p.status==="Connected"?C.green:C.muted}>{p.status}</Chip>
@@ -23366,6 +23432,7 @@ function UserManagementPage({plan="Growth"}){
 
 // ══════════════════════════════════════════════════════════════════════════════
 function FinancePage({openPatient,user}){
+  const fpvw=useWindowWidth();const isMob=fpvw<768;
   const isManager=user?.role==="manager"||user?.role==="superadmin";
   const [tab,setTab]=useState("applications");
   const [sendModal,setSendModal]=useState(null);
@@ -23426,19 +23493,19 @@ function FinancePage({openPatient,user}){
       </div>}
 
       {/* Header */}
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px 0",flexShrink:0}}>
-        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.07)",padding:"14px 20px 0",flexShrink:0,...(isMob&&{padding:"10px 12px 0"})}}>
+        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12,...(isMob&&{flexWrap:"wrap",gap:8})}}>
           <div style={{width:38,height:38,borderRadius:14,background:"linear-gradient(135deg,#16a34a,#0d9488)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>💳</div>
-          <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800}}>Patient Finance</div><div style={{fontSize:11,color:"#CBD5E1"}}>Integrated with Chrysalis Finance & Medenta — send applications, track decisions, auto-attach to patient records</div></div>
-          <button onClick={()=>setSendModal(true)} style={{padding:"8px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Send size={12}/>Send Finance Application</button>
+          <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800}}>Patient Finance</div>{!isMob&&<div style={{fontSize:11,color:"#CBD5E1"}}>Integrated with Chrysalis Finance & Medenta — send applications, track decisions, auto-attach to patient records</div>}</div>
+          <button onClick={()=>setSendModal(true)} style={{padding:"8px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center",...(isMob&&{width:"100%",justifyContent:"center"})}}><Send size={12}/>{isMob?"Send Finance App":"Send Finance Application"}</button>
         </div>
         <div style={{display:"flex",gap:0}}>
           {[{id:"applications",l:"Applications"},{id:"providers",l:"Finance Providers"},{id:"howit",l:"How It Works"}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 16px",border:"none",borderBottom:`2px solid ${tab===t.id?C.teal:"transparent"}`,background:"transparent",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.teal:C.muted,whiteSpace:"nowrap",marginBottom:-1}}>{t.l}</button>)}
         </div>
       </div>
 
-      {tab==="applications"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+      {tab==="applications"&&<div style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16,...(isMob&&{gridTemplateColumns:"1fr",gap:8})}}>
           {[{l:"Applications Sent",v:apps.length,c:C.teal},{l:"Approved",v:apps.filter(a=>a.status==="approved").length,c:C.green},{l:"Finance Arranged",v:`£${apps.filter(a=>a.status==="approved").reduce((s,a)=>s+a.amount,0).toLocaleString()}`,c:C.purple}].map(s=><div key={s.l} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:"12px 14px"}}><div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{s.l}</div><div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div></div>)}
         </div>
         <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
