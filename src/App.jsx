@@ -506,21 +506,21 @@ const FEATURE_NAV_MAP={
 // Per-feature access config — managed by practice manager
 // allowedRoles: roles that can see this feature; userOverrides: explicit per-user grant/deny
 const FEATURE_USER_CFG_INIT=()=>({
-  whatsapp:    {enabled:true,  allowedRoles:["reception","manager"],                          userOverrides:{}},
-  receptionai: {enabled:true,  allowedRoles:["reception","manager"],                          userOverrides:{}},
-  copilot:     {enabled:true,  allowedRoles:["manager"],                                      userOverrides:{}},
-  recovery:    {enabled:true,  allowedRoles:["reception","manager"],                          userOverrides:{}},
-  shortnotice: {enabled:true,  allowedRoles:["reception","manager"],                          userOverrides:{}},
-  lab:         {enabled:true,  allowedRoles:["dentist","manager"],                            userOverrides:{}},
+  whatsapp:    {enabled:true,  allowedRoles:["reception","manager","owner"],                          userOverrides:{}},
+  receptionai: {enabled:true,  allowedRoles:["reception","manager","owner"],                          userOverrides:{}},
+  copilot:     {enabled:true,  allowedRoles:["manager","owner"],                                      userOverrides:{}},
+  recovery:    {enabled:true,  allowedRoles:["reception","manager","owner"],                          userOverrides:{}},
+  shortnotice: {enabled:true,  allowedRoles:["reception","manager","owner"],                          userOverrides:{}},
+  lab:         {enabled:true,  allowedRoles:["dentist","manager","owner"],                            userOverrides:{}},
   xray_cloud:  {enabled:false, allowedRoles:[],                                               userOverrides:{}},
-  finance:     {enabled:true,  allowedRoles:["reception","manager"],                          userOverrides:{}},
-  nba:         {enabled:true,  allowedRoles:["reception","dentist","hygienist","manager"],    userOverrides:{}},
-  audit:       {enabled:true,  allowedRoles:["manager"],                                      userOverrides:{}},
-  mandatory_alert_ack:{enabled:true,allowedRoles:["reception","dentist","hygienist","manager"],userOverrides:{}},
+  finance:     {enabled:true,  allowedRoles:["reception","manager","owner"],                          userOverrides:{}},
+  nba:         {enabled:true,  allowedRoles:["reception","dentist","hygienist","manager","owner"],    userOverrides:{}},
+  audit:       {enabled:true,  allowedRoles:["manager","owner"],                                      userOverrides:{}},
+  mandatory_alert_ack:{enabled:true,allowedRoles:["reception","dentist","hygienist","manager","owner"],userOverrides:{}},
   voice_charting:{enabled:false,allowedRoles:["dentist","hygienist"],                         userOverrides:{},beta:true},
-  encrypted_reports:{enabled:true, allowedRoles:["dentist","hygienist","reception","manager"],userOverrides:{}},
-  memberships: {enabled:false, allowedRoles:["reception","manager"],                          userOverrides:{},beta:true},
-  advanced_analytics:{enabled:false,allowedRoles:["manager"],                                 userOverrides:{},beta:true},
+  encrypted_reports:{enabled:true, allowedRoles:["dentist","hygienist","reception","manager","owner"],userOverrides:{}},
+  memberships: {enabled:false, allowedRoles:["reception","manager","owner"],                          userOverrides:{},beta:true},
+  advanced_analytics:{enabled:false,allowedRoles:["manager","owner"],                                 userOverrides:{},beta:true},
 });
 
 // ── Appointment Audit Log — immutable, append-only ────────────────────────────
@@ -1735,7 +1735,83 @@ const ROLE_DEFAULTS={
   // Manager: full practice visibility
   manager:   new Set(["dashboard","nba","huddle","calendar","waiting","patients","online_booking","notes","xray","fp17","uda","teamchat","whatsapp","receptionai","comms","recovery","shortnotice","lab","accounts","payments","reports","finance","tasks","rota","myreports","manager","usermgmt","subscription","templates","audit","settings","helpsupport"]),
   superadmin: new Set([]),
+  // Practice Owner (Level 4): all manager nav + security/billing — differentiated by capabilities
+  owner: new Set(["dashboard","nba","huddle","calendar","waiting","patients","online_booking","notes","xray","fp17","uda","teamchat","whatsapp","receptionai","comms","recovery","shortnotice","lab","accounts","payments","reports","finance","tasks","rota","myreports","manager","usermgmt","subscription","templates","audit","settings","helpsupport"]),
 };
+
+// ── Permission Level hierarchy — maps level number to role ──────────────────
+// Descriptive only: the real enforcement is via resolveAccess + resolveCapability
+const PERMISSION_LEVELS={
+  0:{id:0,name:"Disabled",        role:null,        color:"#475569",bg:"rgba(71,85,105,0.15)",  border:"rgba(71,85,105,0.3)",  desc:"Suspended — no login, audit trail preserved"},
+  1:{id:1,name:"Reception",       role:"reception", color:"#0369a1",bg:"rgba(3,105,161,0.12)",   border:"rgba(3,105,161,0.3)",   desc:"Front desk & patient-facing operations"},
+  2:{id:2,name:"Clinician",       role:"clinician", color:"#2563FF",bg:"rgba(37,99,255,0.12)",   border:"rgba(37,99,255,0.3)",   desc:"Clinical access + all Level 1 permissions"},
+  3:{id:3,name:"Practice Manager",role:"manager",   color:"#8B5CF6",bg:"rgba(139,92,246,0.12)",  border:"rgba(139,92,246,0.3)",  desc:"Full practice management + Levels 1 & 2"},
+  4:{id:4,name:"Practice Owner",  role:"owner",     color:"#F59E0B",bg:"rgba(245,158,11,0.12)",  border:"rgba(245,158,11,0.3)",  desc:"Full practice control: security, billing, exports"},
+  5:{id:5,name:"Super Admin",     role:"superadmin",color:"#EF4444",bg:"rgba(239,68,68,0.12)",   border:"rgba(239,68,68,0.3)",   desc:"Platform-wide access (software owner only)"},
+};
+
+// Role → level number mapping (dentist + hygienist are both Level 2 Clinician)
+const ROLE_LEVEL_MAP={reception:1,dentist:2,hygienist:2,manager:3,owner:4,superadmin:5};
+
+// ── Capability flags — action-level permissions beyond nav visibility ─────────
+// Each flag has: id, label (l), group (g), minimum level (minLevel), description
+// CAPABILITY_DEFAULTS is derived from this array — no separate config needed
+const CAPABILITIES=[
+  // Patients
+  {id:"cap_edit_patient",       l:"Edit patient demographics",     g:"Patients",    minLevel:1,desc:"Update name, DOB, contact details"},
+  {id:"cap_merge_patients",     l:"Merge duplicate patients",      g:"Patients",    minLevel:3,desc:"Merge records for duplicate patients"},
+  {id:"cap_delete_patient",     l:"Delete patient records",        g:"Patients",    minLevel:4,desc:"Permanently remove GDPR-compliant data"},
+  // Clinical
+  {id:"cap_edit_clinical",      l:"Create & edit clinical notes",  g:"Clinical",    minLevel:2,desc:"Write and finalise clinical notes"},
+  {id:"cap_approve_tx_plan",    l:"Approve treatment plans",       g:"Clinical",    minLevel:2,desc:"Clinically sign off treatment plans"},
+  {id:"cap_prescribe",          l:"Issue prescriptions",           g:"Clinical",    minLevel:2,desc:"Create and sign prescriptions"},
+  {id:"cap_view_all_notes",     l:"View all clinicians' notes",    g:"Clinical",    minLevel:2,desc:"Read notes across all clinicians"},
+  // Finance
+  {id:"cap_create_invoice",     l:"Create invoices",               g:"Finance",     minLevel:1,desc:"Generate patient invoices"},
+  {id:"cap_record_payment",     l:"Record payments",               g:"Finance",     minLevel:1,desc:"Mark invoices as paid"},
+  {id:"cap_process_refund",     l:"Process refunds",               g:"Finance",     minLevel:3,desc:"Issue refunds to patients"},
+  {id:"cap_view_fin_reports",   l:"View financial reports",        g:"Finance",     minLevel:3,desc:"Practice financial dashboards"},
+  {id:"cap_delete_invoice",     l:"Delete invoices",               g:"Finance",     minLevel:4,desc:"Permanently remove invoice records"},
+  {id:"cap_export_finance",     l:"Export financial data",         g:"Finance",     minLevel:4,desc:"Download financial data CSV/PDF"},
+  // NHS
+  {id:"cap_nhs_submit",         l:"Submit NHS claims",             g:"NHS",         minLevel:2,desc:"Submit FP17 claims to NHS BSA"},
+  {id:"cap_void_nhs_claims",    l:"Void NHS claims",               g:"NHS",         minLevel:3,desc:"Cancel submitted NHS FP17 claims"},
+  // Admin
+  {id:"cap_manage_staff",       l:"Manage staff accounts",         g:"Admin",       minLevel:3,desc:"Create, edit, deactivate staff"},
+  {id:"cap_edit_permissions",   l:"Edit role permissions",         g:"Admin",       minLevel:3,desc:"Change role defaults & user overrides"},
+  {id:"cap_view_audit",         l:"View audit log",                g:"Admin",       minLevel:3,desc:"Access the immutable audit trail"},
+  {id:"cap_bulk_actions",       l:"Bulk patient actions",          g:"Admin",       minLevel:3,desc:"Bulk recalls, bulk communications"},
+  {id:"cap_export_data",        l:"Export practice data",          g:"Admin",       minLevel:4,desc:"Full GDPR-compliant data export"},
+  // Security & Config
+  {id:"cap_manage_settings",    l:"Manage practice settings",      g:"Security",    minLevel:4,desc:"Edit practice name, branding, config"},
+  {id:"cap_manage_security",    l:"Manage security policies",      g:"Security",    minLevel:4,desc:"MFA enforcement, session policies"},
+  {id:"cap_configure_sso",      l:"Configure SSO",                 g:"Security",    minLevel:4,desc:"Set up Google / Microsoft SSO"},
+  {id:"cap_manage_billing",     l:"Manage billing & plans",        g:"Security",    minLevel:4,desc:"Change subscription, billing details"},
+  {id:"cap_manage_integrations",l:"Manage integrations",           g:"Security",    minLevel:4,desc:"Configure third-party integrations"},
+];
+
+// Capability defaults derived from CAPABILITIES.minLevel — single source of truth
+const CAPABILITY_DEFAULTS=(()=>{
+  const out={};
+  Object.entries(ROLE_LEVEL_MAP).forEach(([role,level])=>{
+    out[role]=new Set(CAPABILITIES.filter(c=>c.minLevel<=level).map(c=>c.id));
+  });
+  return out;
+})();
+
+// Per-user capability init (mirrors INIT_USER_PERMS pattern)
+const INIT_USER_CAPS=()=>Object.fromEntries(USERS.map(u=>[u.id,new Set(CAPABILITY_DEFAULTS[u.role]||[])]));
+
+// Role templates — reusable permission presets that extend ROLE_DEFAULTS
+const ROLE_TEMPLATES=[
+  {id:"tpl_receptionist",  name:"Receptionist",           baseRole:"reception",level:1,builtIn:true,capExtras:[],                                        desc:"Standard front-desk access"},
+  {id:"tpl_senior_recep",  name:"Senior Receptionist",    baseRole:"reception",level:1,builtIn:true,capExtras:["cap_process_refund","cap_bulk_actions"],  desc:"Front-desk + refund processing + bulk actions"},
+  {id:"tpl_dentist",       name:"Dentist",                baseRole:"dentist",  level:2,builtIn:true,capExtras:[],                                        desc:"Full clinical access"},
+  {id:"tpl_hygienist",     name:"Dental Hygienist",       baseRole:"hygienist",level:2,builtIn:true,capExtras:[],                                        desc:"Hygiene clinical access"},
+  {id:"tpl_practice_mgr",  name:"Practice Manager",       baseRole:"manager",  level:3,builtIn:true,capExtras:[],                                        desc:"Full practice management"},
+  {id:"tpl_owner",         name:"Practice Owner / Admin", baseRole:"owner",    level:4,builtIn:true,capExtras:[],                                        desc:"Full practice + security + billing control"},
+];
+
 
 // Per-user permission overrides (starts = role defaults, manager can add/remove)
 
@@ -1765,6 +1841,16 @@ function resolveAccess(userId,userRole,navId,userPerms,featureUserCfg,plan='Grow
   return perms.has(navId);
 }
 
+// ── Capability resolver — action-level check (companion to resolveAccess) ────
+// Checks user's capability Set (analogous to userPerms for nav access)
+// owner and superadmin always return true; disabled users (role=null) always false
+function resolveCapability(userRole,capId,userCaps){
+  if(!userRole)return false; // Level 0 — disabled
+  if(userRole==="superadmin"||userRole==="owner")return true;
+  const caps=userCaps instanceof Set?userCaps:new Set(userCaps||[]);
+  return caps.has(capId);
+}
+
 // ── Permission Audit Log helpers ─────────────────────────────────────────────
 let _permAuditRef=null; // set by App, used by ManagerPortal
 const PERM_AUDIT_INIT=[
@@ -1781,46 +1867,46 @@ const PERM_AUDIT_INIT=[
 
 const ALL_NAV_ITEMS=[
   // ─── FRONT DESK ───────────────────────────────────────────────────────────
-  {id:"dashboard",    l:"Dashboard",       Icon:Home,         g:"Front Desk",    roles:["reception","dentist","hygienist","manager"]},
-  {id:"nba",          l:"Daily Priorities",Icon:Sparkles,     g:"Front Desk",    roles:["reception","dentist","hygienist","manager"],badge:"nba"},
-  {id:"huddle",       l:"Morning Huddle",  Icon:Sparkles,     g:"Front Desk",    roles:["reception","manager"]},
-  {id:"calendar",     l:"Calendar",        Icon:Calendar,     g:"Front Desk",    roles:["reception","dentist","hygienist","manager"]},
+  {id:"dashboard",    l:"Dashboard",       Icon:Home,         g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"]},
+  {id:"nba",          l:"Daily Priorities",Icon:Sparkles,     g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"],badge:"nba"},
+  {id:"huddle",       l:"Morning Huddle",  Icon:Sparkles,     g:"Front Desk",    roles:["reception","manager","owner"]},
+  {id:"calendar",     l:"Calendar",        Icon:Calendar,     g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"]},
   {id:"waiting",      l:"Waiting Room",    Icon:Clock,        g:"Front Desk",    roles:["reception","manager","dentist","hygienist"],badge:"waiting"},
-  {id:"patients",     l:"Patients",        Icon:Users,        g:"Front Desk",    roles:["reception","dentist","hygienist","manager"]},
-  {id:"online_booking",l:"Online Booking", Icon:Globe,        g:"Front Desk",    roles:["reception","manager"]},
+  {id:"patients",     l:"Patients",        Icon:Users,        g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"]},
+  {id:"online_booking",l:"Online Booking", Icon:Globe,        g:"Front Desk",    roles:["reception","manager","owner"]},
   // ─── CLINICAL ─────────────────────────────────────────────────────────────
-  {id:"notes",        l:"Clinical Notes",  Icon:Stethoscope,  g:"Clinical",      roles:["dentist","hygienist","manager"]},
-  {id:"xray",         l:"X-Ray Imaging",   Icon:Activity,     g:"Clinical",      roles:["dentist","manager"]},
+  {id:"notes",        l:"Clinical Notes",  Icon:Stethoscope,  g:"Clinical",      roles:["dentist","hygienist","manager","owner"]},
+  {id:"xray",         l:"X-Ray Imaging",   Icon:Activity,     g:"Clinical",      roles:["dentist","manager","owner"]},
   // ─── NHS ──────────────────────────────────────────────────────────────────
-  {id:"fp17",         l:"FP17 Claims",     Icon:FileText,     g:"NHS",           roles:["dentist","reception","manager"],badge:"pending"},
-  {id:"uda",          l:"UDA Tracker",     Icon:BarChart2,    g:"NHS",           roles:["dentist","manager"]},
+  {id:"fp17",         l:"FP17 Claims",     Icon:FileText,     g:"NHS",           roles:["dentist","reception","manager","owner"],badge:"pending"},
+  {id:"uda",          l:"UDA Tracker",     Icon:BarChart2,    g:"NHS",           roles:["dentist","manager","owner"]},
   // ─── COMMUNICATION ────────────────────────────────────────────────────────
-  {id:"teamchat",     l:"Team Chat",       Icon:MessageSquare,g:"Communication", roles:["reception","dentist","hygienist","manager"],badge:"chat"},
-  {id:"whatsapp",     l:"WhatsApp",        Icon:MessageSquare,g:"Communication", roles:["reception","manager"],badge:"unread"},
-  {id:"receptionai",  l:"Reception AI",    Icon:Phone,        g:"Communication", roles:["reception","manager"],badge:"rxai"},
-  {id:"comms",        l:"Inbox",           Icon:Inbox,        g:"Communication", roles:["reception","manager"],badge:"unread_email"},
+  {id:"teamchat",     l:"Team Chat",       Icon:MessageSquare,g:"Communication", roles:["reception","dentist","hygienist","manager","owner"],badge:"chat"},
+  {id:"whatsapp",     l:"WhatsApp",        Icon:MessageSquare,g:"Communication", roles:["reception","manager","owner"],badge:"unread"},
+  {id:"receptionai",  l:"Reception AI",    Icon:Phone,        g:"Communication", roles:["reception","manager","owner"],badge:"rxai"},
+  {id:"comms",        l:"Inbox",           Icon:Inbox,        g:"Communication", roles:["reception","manager","owner"],badge:"unread_email"},
   // ─── GROWTH ───────────────────────────────────────────────────────────────
-  {id:"recovery",     l:"Revenue Recovery",Icon:TrendingUp,   g:"Growth",        roles:["reception","manager"],badge:"recovery"},
-  {id:"shortnotice",  l:"Short Notice",    Icon:Zap,          g:"Growth",        roles:["reception","manager"]},
+  {id:"recovery",     l:"Revenue Recovery",Icon:TrendingUp,   g:"Growth",        roles:["reception","manager","owner"],badge:"recovery"},
+  {id:"shortnotice",  l:"Short Notice",    Icon:Zap,          g:"Growth",        roles:["reception","manager","owner"]},
   // ─── LAB & FINANCE ────────────────────────────────────────────────────────
-  {id:"lab",          l:"Lab Manager",     Icon:Package,      g:"Lab & Finance", roles:["dentist","reception","manager"]},
-  {id:"accounts",     l:"Accounts",        Icon:PoundSterling,g:"Lab & Finance", roles:["reception","manager"]},
-  {id:"finance",      l:"Patient Finance", Icon:CreditCard,   g:"Lab & Finance", roles:["reception","manager"]},
-  {id:"payments",     l:"Payments",        Icon:CreditCard,   g:"Lab & Finance", roles:["manager"]},
-  {id:"reports",      l:"Reports",         Icon:BarChart2,    g:"Lab & Finance", roles:["manager"]},
+  {id:"lab",          l:"Lab Manager",     Icon:Package,      g:"Lab & Finance", roles:["dentist","reception","manager","owner"]},
+  {id:"accounts",     l:"Accounts",        Icon:PoundSterling,g:"Lab & Finance", roles:["reception","manager","owner"]},
+  {id:"finance",      l:"Patient Finance", Icon:CreditCard,   g:"Lab & Finance", roles:["reception","manager","owner"]},
+  {id:"payments",     l:"Payments",        Icon:CreditCard,   g:"Lab & Finance", roles:["manager","owner"]},
+  {id:"reports",      l:"Reports",         Icon:BarChart2,    g:"Lab & Finance", roles:["manager","owner"]},
   // ─── MY SPACE ─────────────────────────────────────────────────────────────
-  {id:"myreports",    l:"My Performance",  Icon:PieChart,     g:"My Space",      roles:["dentist","hygienist","manager"]},
-  {id:"tasks",        l:"Daily Tasks",     Icon:Clipboard,    g:"My Space",      roles:["reception","dentist","hygienist","manager"],badge:"tasks"},
-  {id:"rota",         l:"Staff Rota",      Icon:Calendar,     g:"My Space",      roles:["reception","dentist","hygienist","manager"]},
+  {id:"myreports",    l:"My Performance",  Icon:PieChart,     g:"My Space",      roles:["dentist","hygienist","manager","owner"]},
+  {id:"tasks",        l:"Daily Tasks",     Icon:Clipboard,    g:"My Space",      roles:["reception","dentist","hygienist","manager","owner"],badge:"tasks"},
+  {id:"rota",         l:"Staff Rota",      Icon:Calendar,     g:"My Space",      roles:["reception","dentist","hygienist","manager","owner"]},
   // ─── PRACTICE (manager only) ──────────────────────────────────────────────
-  {id:"manager",      l:"Practice Portal", Icon:Shield,       g:"Practice",      roles:["manager"]},
-  {id:"usermgmt",     l:"Users",           Icon:Users2,       g:"Practice",      roles:["manager"]},
-  {id:"subscription", l:"Features & Plans",Icon:Sparkles,     g:"Practice",      roles:["manager"]},
-  {id:"templates",    l:"Templates",       Icon:Archive,      g:"Practice",      roles:["manager"]},
-  {id:"audit",        l:"Audit Log",       Icon:Shield,       g:"Practice",      roles:["manager"]},
-  {id:"settings",     l:"Settings",        Icon:Settings,     g:"Practice",      roles:["manager"]},
+  {id:"manager",      l:"Practice Portal", Icon:Shield,       g:"Practice",      roles:["manager","owner"]},
+  {id:"usermgmt",     l:"Users",           Icon:Users2,       g:"Practice",      roles:["manager","owner"]},
+  {id:"subscription", l:"Features & Plans",Icon:Sparkles,     g:"Practice",      roles:["manager","owner"]},
+  {id:"templates",    l:"Templates",       Icon:Archive,      g:"Practice",      roles:["manager","owner"]},
+  {id:"audit",        l:"Audit Log",       Icon:Shield,       g:"Practice",      roles:["manager","owner"]},
+  {id:"settings",     l:"Settings",        Icon:Settings,     g:"Practice",      roles:["manager","owner"]},
   // ─── SUPPORT ──────────────────────────────────────────────────────────────
-  {id:"helpsupport",  l:"Help & Support",  Icon:HelpCircle,   g:"Support",       roles:["reception","dentist","hygienist","manager"]},
+  {id:"helpsupport",  l:"Help & Support",  Icon:HelpCircle,   g:"Support",       roles:["reception","dentist","hygienist","manager","owner"]},
 ];
 
 const ROLE_META={
@@ -1834,6 +1920,8 @@ const ROLE_META={
   manager:   {label:"Manager",       color:"#8B5CF6", bg:"#ede9fe", accent:"#7c3aed"},
 
   superadmin:{label:"Super Admin",   color:"#f97316", bg:"#fff7ed", accent:"#f97316"},
+
+  owner:     {label:"Practice Owner",color:"#F59E0B", bg:"rgba(245,158,11,0.12)", accent:"#D97706"},
 
 };
 
@@ -2527,6 +2615,8 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
     {id:"txplans",       l:"💰 Prices"},
     {id:"credits",       l:"📊 Message Credits"},
     {id:"roles",         l:"⚙ Login Settings"},
+    {id:"capabilities",  l:"🛡 Capabilities"},
+    {id:"role_templates",l:"📋 Role Templates"},
   ];
 
   const [teamUsers,setTeamUsers]=useState([
@@ -2635,7 +2725,36 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
 
   // ── Feature rows for access panel ──
   const MANAGED_FEATURES=GLOBAL_FEATURE_CONFIG.filter(f=>f.id!=="mandatory_alert_ack");
-  const ROLES_MGMT=["reception","dentist","hygienist","manager"];
+  const ROLES_MGMT=["reception","dentist","hygienist","manager","owner"];
+  const CAP_GROUPS=["Patients","Clinical","Finance","NHS","Admin","Security"];
+
+  // ── Capability matrix state (mirrors rolePermsLocal pattern for nav) ──────────
+  const [roleCaps,setRoleCaps]=useState(()=>{
+    const out={};
+    Object.keys(CAPABILITY_DEFAULTS).forEach(role=>{out[role]=new Set(CAPABILITY_DEFAULTS[role]);});
+    return out;
+  });
+  const toggleRoleCap=(role,capId)=>{
+    setRoleCaps(p=>{
+      const s=new Set(p[role]);
+      const wasOn=s.has(capId);
+      wasOn?s.delete(capId):s.add(capId);
+      const cap=CAPABILITIES.find(c=>c.id===capId);
+      if(addPermAudit)addPermAudit("cap_perm",`${ROLE_META[role]?.label||role} role`,`${wasOn?"Removed":"Added"} capability: ${cap?.l||capId}`,wasOn?`-${capId}`:`+${capId}`);
+      doToast(`✓ ${ROLE_META[role]?.label||role} — ${cap?.l||capId} ${wasOn?"removed":"granted"}`);
+      return{...p,[role]:s};
+    });
+  };
+
+  // ── Role template state ──────────────────────────────────────────────────────
+  const [customTemplates,setCustomTemplates]=useState([]);
+  const cloneTemplate=(tpl)=>{
+    const nu={id:"tpl_custom_"+Date.now(),name:tpl.name+" (Custom)",baseRole:tpl.baseRole,level:tpl.level,builtIn:false,capExtras:[...tpl.capExtras],desc:"Cloned from: "+tpl.name,created:new Date().toLocaleDateString("en-GB")};
+    setCustomTemplates(p=>[...p,nu]);
+    if(addPermAudit)addPermAudit("role_template","Custom Template","Created custom role template: "+nu.name,"+template");
+    doToast("✓ Role template cloned — customise it below");
+  };
+
   const NAV_GROUPS=["Front Desk","Clinical","NHS","Communication","Growth","Lab & Finance","My Space","Practice","Support"];
 
   // ── Subscription features panel ──
@@ -2678,8 +2797,8 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
     );
   };
 
-  const auditActionColor={feature_toggle:"#60A5FA",feature_role:"#34D399",user_override:"#A78BFA",user_nav:"#F59E0B",role_perm:"#F87171",feature_enabled:"#60A5FA",user_reset:"#CBD5E1"};
-  const auditActionLabel={feature_toggle:"Feature toggle",feature_role:"Feature role",user_override:"User override",user_nav:"Nav access",role_perm:"Role perm",feature_enabled:"Feature",user_reset:"Reset"};
+  const auditActionColor={feature_toggle:"#60A5FA",feature_role:"#34D399",user_override:"#A78BFA",user_nav:"#F59E0B",role_perm:"#F87171",feature_enabled:"#60A5FA",user_reset:"#CBD5E1",cap_perm:"#A78BFA",role_template:"#38BDF8"};
+  const auditActionLabel={feature_toggle:"Feature toggle",feature_role:"Feature role",user_override:"User override",user_nav:"Nav access",role_perm:"Role perm",feature_enabled:"Feature",user_reset:"Reset",cap_perm:"Capability",role_template:"Template"};
 
   return(
     <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",background:"#0F1C34"}}>
@@ -3123,6 +3242,171 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
                         <SecurityAndSsoPanel doToast={doToast}/>
           </div>
         )}
+
+        {/* ══ CAPABILITIES ════════════════════════════════════════════════════ */}
+        {tab==="capabilities"&&(
+          <div>
+            {/* Level hierarchy strip */}
+            <div style={{marginBottom:18}}>
+              <div style={{...style.sectionHead,marginBottom:10}}><Shield size={13} color="#60A5FA"/>Permission Level Hierarchy</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
+                {Object.values(PERMISSION_LEVELS).map(lv=>(
+                  <div key={lv.id} style={{background:"#132238",border:`1px solid ${lv.border}`,borderTop:`3px solid ${lv.color}`,borderRadius:10,padding:"10px 12px"}}>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:5}}>
+                      <span style={{width:20,height:20,borderRadius:6,background:lv.bg,border:`1px solid ${lv.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:lv.color,flexShrink:0}}>{lv.id}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:lv.color}}>{lv.name}</span>
+                    </div>
+                    <div style={{fontSize:9,color:"#94A3B8",lineHeight:1.4}}>{lv.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Inheritance note */}
+            <div style={{background:"rgba(37,99,255,0.06)",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",gap:8,alignItems:"flex-start",fontSize:11,color:"#CBD5E1"}}>
+              <span style={{flexShrink:0,fontSize:14}}>ℹ</span>
+              <span><strong style={{color:"#F8FAFC"}}>Capability inheritance:</strong> Each level inherits all capabilities from levels below it. Changes here update role defaults — individual users can receive further overrides in the User Overrides tab. All changes are logged to the permission audit trail.</span>
+            </div>
+
+            {/* Capability matrix */}
+            <div style={{background:"#0F1C34",borderRadius:14,overflow:"hidden",border:"1px solid rgba(80,140,255,0.2)"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead>
+                  <tr>
+                    <th style={{...style.th,width:240}}>Capability</th>
+                    <th style={{...style.th,fontSize:8}}>Min<br/>Level</th>
+                    {ROLES_MGMT.map(r=>(
+                      <th key={r} style={{...style.th,textAlign:"center",minWidth:80}}>
+                        <div style={{color:ROLE_META[r]?.color||"#CBD5E1",fontSize:9}}>{ROLE_META[r]?.label||r}</div>
+                        <div style={{fontSize:8,color:"#64748B",marginTop:1}}>L{ROLE_LEVEL_MAP[r]||"?"}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {CAP_GROUPS.map(grp=>{
+                    const caps=CAPABILITIES.filter(c=>c.g===grp);
+                    if(!caps.length)return null;
+                    return[
+                      <tr key={grp+"_hdr"}>
+                        <td colSpan={2+ROLES_MGMT.length} style={{padding:"7px 12px",background:"rgba(7,20,40,0.8)",fontSize:9,fontWeight:800,color:"rgba(80,140,255,0.9)",letterSpacing:".08em",textTransform:"uppercase"}}>{grp}</td>
+                      </tr>,
+                      ...caps.map(cap=>(
+                        <tr key={cap.id} style={{borderBottom:"1px solid rgba(80,140,255,0.08)"}}>
+                          <td style={{...style.td}}>
+                            <div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{cap.l}</div>
+                            <div style={{fontSize:10,color:"#64748B",marginTop:1}}>{cap.desc}</div>
+                          </td>
+                          <td style={{...style.td,textAlign:"center"}}>
+                            <span style={{fontSize:10,fontWeight:700,padding:"2px 6px",borderRadius:6,background:PERMISSION_LEVELS[cap.minLevel]?.bg||"rgba(80,140,255,0.1)",color:PERMISSION_LEVELS[cap.minLevel]?.color||"#60A5FA",border:`1px solid ${PERMISSION_LEVELS[cap.minLevel]?.border||"rgba(80,140,255,0.2)"}`}}>L{cap.minLevel}</span>
+                          </td>
+                          {ROLES_MGMT.map(role=>{
+                            const roleLevel=ROLE_LEVEL_MAP[role]||0;
+                            const defaultOn=cap.minLevel<=roleLevel;
+                            const hasCap=(roleCaps[role]||new Set()).has(cap.id);
+                            const isCustom=hasCap!==defaultOn;
+                            return(
+                              <td key={role} style={{...style.td,textAlign:"center"}}>
+                                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                                  <Toggle on={hasCap} onToggle={()=>toggleRoleCap(role,cap.id)}/>
+                                  {isCustom&&<span style={{fontSize:8,color:hasCap?"#22C55E":"#EF4444",fontWeight:700}}>{hasCap?"+":" –"} custom</span>}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    ];
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+
+        {/* ══ ROLE TEMPLATES ══════════════════════════════════════════════════ */}
+        {tab==="role_templates"&&(
+          <div>
+            <div style={{background:"rgba(37,99,255,0.06)",border:"1px solid rgba(80,140,255,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",gap:8,alignItems:"flex-start",fontSize:11,color:"#CBD5E1"}}>
+              <span style={{flexShrink:0,fontSize:14}}>📋</span>
+              <span><strong style={{color:"#F8FAFC"}}>Role templates</strong> are predefined permission bundles. Clone a built-in template to create a custom role with extra capabilities — e.g. a Senior Receptionist who can also process refunds. Custom templates are applied per-user in the Users tab.</span>
+            </div>
+
+            {/* Built-in templates */}
+            <div style={{...style.sectionHead,marginBottom:12}}><Shield size={13} color="#60A5FA"/>Built-in Templates</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:22}}>
+              {ROLE_TEMPLATES.map(tpl=>{
+                const lv=PERMISSION_LEVELS[tpl.level];
+                const rm=ROLE_META[tpl.baseRole];
+                return(
+                  <div key={tpl.id} style={{background:"#132238",border:`1px solid ${lv?.border||"rgba(80,140,255,0.18)"}`,borderRadius:14,overflow:"hidden"}}>
+                    <div style={{padding:"12px 14px",background:lv?.bg||"transparent",borderBottom:`1px solid ${lv?.border||"rgba(80,140,255,0.1)"}`}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                        <span style={{fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20,background:lv?.bg||"rgba(80,140,255,0.1)",color:lv?.color||"#60A5FA",border:`1px solid ${lv?.border||"rgba(80,140,255,0.2)"}`}}>L{tpl.level}</span>
+                        <span style={{fontSize:13,fontWeight:700}}>{tpl.name}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#CBD5E1"}}>{tpl.desc}</div>
+                    </div>
+                    <div style={{padding:"10px 14px"}}>
+                      <div style={{fontSize:10,color:"#64748B",marginBottom:6}}>Base role: <span style={{color:rm?.color||"#CBD5E1",fontWeight:700}}>{rm?.label||tpl.baseRole}</span></div>
+                      {tpl.capExtras.length>0&&(
+                        <div style={{marginBottom:8}}>
+                          <div style={{fontSize:9,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Extra capabilities</div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                            {tpl.capExtras.map(cid=>{
+                              const cap=CAPABILITIES.find(c=>c.id===cid);
+                              return cap?<span key={cid} style={{fontSize:9,padding:"2px 7px",borderRadius:12,background:"rgba(34,197,94,0.1)",color:"#22C55E",border:"1px solid rgba(34,197,94,0.2)"}}>{cap.l}</span>:null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      <div style={{display:"flex",gap:6,marginTop:8}}>
+                        <div style={{fontSize:10,color:"#64748B",flex:1}}>{CAPABILITY_DEFAULTS[tpl.baseRole]?.size||0} capabilities</div>
+                        <button onClick={()=>cloneTemplate(tpl)} style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.25)",borderRadius:8,background:"rgba(80,140,255,0.08)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#60A5FA"}}>Clone</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Custom templates */}
+            {customTemplates.length>0&&(
+              <div>
+                <div style={{...style.sectionHead,marginBottom:12}}>✨ Custom Templates</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {customTemplates.map((tpl,i)=>{
+                    const lv=PERMISSION_LEVELS[tpl.level];
+                    return(
+                      <div key={tpl.id} style={{background:"#132238",border:`1px solid ${lv?.border||"rgba(80,140,255,0.18)"}`,borderRadius:12,padding:"12px 16px",display:"flex",gap:12,alignItems:"flex-start"}}>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                            <span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:20,background:lv?.bg,color:lv?.color,border:`1px solid ${lv?.border}`}}>L{tpl.level}</span>
+                            <span style={{fontSize:13,fontWeight:700}}>{tpl.name}</span>
+                            <span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:"rgba(56,189,248,0.1)",color:"#38BDF8"}}>Custom</span>
+                          </div>
+                          <div style={{fontSize:11,color:"#CBD5E1"}}>{tpl.desc}</div>
+                          {tpl.created&&<div style={{fontSize:9,color:"#64748B",marginTop:4}}>Created {tpl.created}</div>}
+                        </div>
+                        <button onClick={()=>setCustomTemplates(p=>p.filter((_,j)=>j!==i))} style={{padding:"5px 10px",border:"1px solid rgba(239,68,68,0.25)",borderRadius:8,background:"rgba(239,68,68,0.07)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#EF4444",flexShrink:0}}>Remove</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {customTemplates.length===0&&(
+              <div style={{padding:"28px",textAlign:"center",background:"rgba(7,20,40,0.4)",borderRadius:12,border:"1px dashed rgba(80,140,255,0.2)"}}>
+                <div style={{fontSize:22,marginBottom:8}}>📋</div>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>No custom templates yet</div>
+                <div style={{fontSize:11,color:"#94A3B8"}}>Click Clone on any built-in template above to create a customised role.</div>
+              </div>
+            )}
+          </div>
+        )}
+
 
       </div>
     </div>
@@ -22820,6 +23104,7 @@ const ROLE_DEFAULT_PERMS={
   dentist:  new Set(["dashboard","nba","calendar","patients","charting","notes","xray","fp17","uda","teamchat","lab","tasks","helpsupport","myreports"]),
   hygienist:new Set(["dashboard","nba","calendar","patients","charting","notes","recovery","teamchat","tasks","helpsupport","myreports"]),
   manager:  new Set(["dashboard","nba","calendar","waiting","patients","charting","notes","xray","fp17","uda","teamchat","whatsapp","receptionai","comms","recovery","shortnotice","lab","accounts","payments","reports","tasks","rota","usermgmt","manager","subscription","helpsupport","templates","audit","integrations","settings","myreports"]),
+  owner:    new Set(["dashboard","nba","calendar","waiting","patients","charting","notes","xray","fp17","uda","teamchat","whatsapp","receptionai","comms","recovery","shortnotice","lab","accounts","payments","reports","tasks","rota","usermgmt","manager","subscription","helpsupport","templates","audit","integrations","settings","myreports"]),
 };
 const PERM_LABEL_MAP={dashboard:"Dashboard",nba:"Today's Priorities",calendar:"Calendar",waiting:"Waiting Room",patients:"Patient Records",charting:"Clinical Charting",notes:"Clinical Notes",xray:"X-Ray Imaging",fp17:"FP17 Claims",uda:"UDA Tracker",teamchat:"Team Chat",whatsapp:"WhatsApp Inbox",receptionai:"Reception AI",comms:"Comms Hub",recovery:"Revenue Recovery",shortnotice:"Short Notice List",lab:"Lab Manager",accounts:"Patient Accounts",payments:"Payments",reports:"Practice Reports",tasks:"Daily Tasks",myreports:"My Performance",templates:"Templates",helpsupport:"Help & Support",rota:"Staff Rota",usermgmt:"User Management",manager:"Manager Portal",subscription:"Features & Plans",audit:"Audit Log",integrations:"Integrations",settings:"Settings"};
 const SEAT_MAP={Starter:5,Growth:15,Enterprise:999};
@@ -22995,9 +23280,15 @@ function UserManagementPage({plan="Growth"}){
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#F8FAFC"}}>{u.name}</div>
-                <div style={{display:"flex",gap:5,marginTop:2,alignItems:"center"}}>
-                  <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,background:rm?.bg,color:rm?.color}}>{rm?.label}</span>
-                  {!u.active&&<span style={{fontSize:8,color:"#CBD5E1"}}>Inactive</span>}
+                <div style={{display:"flex",gap:5,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
+                  {u.active?(
+                    <>
+                      <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,background:rm?.bg,color:rm?.color}}>{rm?.label}</span>
+                      <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,background:PERMISSION_LEVELS[ROLE_LEVEL_MAP[u.role]||0]?.bg||"rgba(80,140,255,0.1)",color:PERMISSION_LEVELS[ROLE_LEVEL_MAP[u.role]||0]?.color||"#64748B"}}>L{ROLE_LEVEL_MAP[u.role]||"?"}</span>
+                    </>
+                  ):(
+                    <span style={{fontSize:8,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(71,85,105,0.2)",color:"#94A3B8",border:"1px solid rgba(71,85,105,0.3)"}}>⊘ Level 0 — Suspended</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -23013,7 +23304,7 @@ function UserManagementPage({plan="Growth"}){
               <div style={{fontSize:11,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{sel.email}</div>
               <div style={{display:"flex",gap:8,marginTop:5,alignItems:"center"}}>
                 <select value={sel.role} onChange={e=>changeRole(sel.id,e.target.value)} style={{fontSize:11,padding:"4px 8px",border:`1.5px solid ${ROLE_META[sel.role]?.color||C.border}`,borderRadius:7,background:ROLE_META[sel.role]?.bg||"#132238",color:ROLE_META[sel.role]?.color||C.text,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-                  {["reception","dentist","hygienist","manager"].map(r=><option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
+                  {["reception","dentist","hygienist","manager","owner"].map(r=><option key={r} value={r}>{ROLE_META[r]?.label||r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
                 </select>
                 <span style={{fontSize:10,color:"#CBD5E1"}}>Last login: {sel.lastLogin}</span>
               </div>
