@@ -2236,6 +2236,301 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// OPERATIONAL WELLBEING & WORKFLOW INTELLIGENCE
+// Extends: Dashboard, NBAPage, MyReportsPage, ManagerPortal, CalendarPage, RotaPage
+// Single source of truth — no duplicate systems
+// ══════════════════════════════════════════════════════════════════════════════
+const AI_PRODUCTIVITY_STATS={
+  hoursSaved:        {v:14.2, label:"Hours saved by AI",     unit:"hrs/wk", delta:"+1.3h",  c:"#4ADE80"},
+  callsAutomated:    {v:187,  label:"Calls automated",        unit:"this mo", delta:"+23",   c:"#38BDF8"},
+  recallsAutomated:  {v:47,   label:"Recalls automated",      unit:"this mo", delta:"+8",    c:"#A78BFA"},
+  formsAutomated:    {v:34,   label:"Forms sent online",      unit:"this mo", delta:"+11",   c:"#F59E0B"},
+  adminReduction:    {v:38,   label:"Admin reduction",        unit:"%",       delta:"+4%",   c:"#2563FF"},
+  missedCallRecovery:{v:81,   label:"Missed-call recovery",   unit:"% rate",  delta:"+12%",  c:"#22C55E"},
+};
+
+const WORKLOAD_METRICS=[
+  {id:"U1",name:"Dr. S. Patel", role:"Dentist",   chairMins:372,targetMins:360,pressure:3,overtime:0.2,missedBreaks:0,status:"balanced",inboxLoad:12,taskBacklog:2},
+  {id:"U3",name:"Dr. M. Chen",  role:"Dentist",   chairMins:468,targetMins:360,pressure:5,overtime:1.8,missedBreaks:2,status:"high",    inboxLoad:8, taskBacklog:3},
+  {id:"U4",name:"Amy Grant",    role:"Hygienist", chairMins:306,targetMins:300,pressure:2,overtime:0.1,missedBreaks:0,status:"balanced",inboxLoad:5, taskBacklog:1},
+  {id:"U2",name:"Emma Wilson",  role:"Reception", chairMins:0,  targetMins:0,  pressure:4,overtime:0.5,missedBreaks:1,status:"elevated",inboxLoad:87,taskBacklog:12},
+  {id:"U5",name:"Tom Baker",    role:"Reception", chairMins:0,  targetMins:0,  pressure:2,overtime:0,  missedBreaks:0,status:"balanced",inboxLoad:23,taskBacklog:4},
+];
+
+const OPERATIONAL_ALERTS=[
+  {id:"WA1",level:"high",  icon:"🔴",label:"Dr. Mike Chen",     msg:"Chair time 30% above daily target — 7.8h vs 6h target",         cat:"workload",    actionLabel:"Review schedule"},
+  {id:"WA2",level:"medium",icon:"🟡",label:"Emma Wilson",       msg:"Inbox overload — 87 unread messages today (3× normal volume)",   cat:"inbox",       actionLabel:"Redistribute tasks"},
+  {id:"WA3",level:"medium",icon:"🟡",label:"Cancellation spike", msg:"12 cancellations handled today — 4× normal rate for a Tuesday", cat:"pressure",    actionLabel:"Check diary"},
+  {id:"WA4",level:"low",   icon:"🟢",label:"AI coverage active", msg:"Reception AI handled 23 calls today — Emma freed for 2.1hrs",   cat:"ai_benefit",  actionLabel:null},
+  {id:"WA5",level:"medium",icon:"🟡",label:"After-hours detected",msg:"3 staff active after 18:00 yesterday — possible overtime risk", cat:"overtime",    actionLabel:"Review rota"},
+];
+
+const PRACTICE_HEALTH_DATA={
+  score:74, trend:"+3", trendDir:"up",
+  breakdown:[
+    {id:"efficiency",    l:"Operational Efficiency",v:81,c:"#4ADE80",icon:"⚡"},
+    {id:"workload",      l:"Workload Balance",       v:62,c:"#F59E0B",icon:"⚖"},
+    {id:"cancellations", l:"Cancellation Stress",    v:70,c:"#F59E0B",icon:"📅"},
+    {id:"ai_adoption",   l:"AI Adoption",            v:88,c:"#4ADE80",icon:"🤖"},
+    {id:"staffing",      l:"Staffing Load",          v:69,c:"#F59E0B",icon:"👥"},
+    {id:"finance",       l:"Financial Health",       v:83,c:"#4ADE80",icon:"💰"},
+  ],
+};
+
+const SCHEDULING_INSIGHTS=[
+  {id:"SI1",priority:"high",  title:"Protect lunch — Dr. Chen Tue & Thu",   detail:"No break scheduled. Overload risk +40% in afternoon sessions.",         action:"Add 13:00–13:45 hold"},
+  {id:"SI2",priority:"medium",title:"Rebalance tomorrow's emergency slots",  detail:"Dr. Patel has 3 emergency slots, Dr. Chen has 0. Redistribute for cover.",action:"Adjust slots"},
+  {id:"SI3",priority:"medium",title:"Reception peak 08:30–10:30 daily",      detail:"Inbox + calls spike every morning. AI call handling can reduce load 40%.",action:"Review AI coverage"},
+  {id:"SI4",priority:"low",   title:"Hygiene utilisation at 80%",            detail:"Amy Grant consistently fully booked. Consider one late session/week.",    action:"Extend schedule"},
+];
+
+// ── Practice Health Gauge ─────────────────────────────────────────────────────
+function PracticeHealthGauge({compact}){
+  const {score,trend,trendDir,breakdown}=PRACTICE_HEALTH_DATA;
+  const sc=score>=80?"#22C55E":score>=65?"#F59E0B":"#EF4444";
+  const scoreLabel=score>=80?"Healthy":score>=65?"Good":"Needs attention";
+  return(
+    <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,overflow:"hidden"}}>
+      <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:12,fontWeight:800}}>🏥 Practice Health Score</span>
+        <span style={{fontSize:10,color:trendDir==="up"?"#4ADE80":"#EF4444"}}>{trendDir==="up"?"▲":"▼"} {trend} this week</span>
+      </div>
+      <div style={{padding:"14px"}}>
+        <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:compact?0:12}}>
+          <div style={{textAlign:"center",flexShrink:0}}>
+            <div style={{fontSize:48,fontWeight:900,color:sc,fontFamily:"ui-monospace,monospace",lineHeight:1}}>{score}</div>
+            <div style={{fontSize:9,fontWeight:700,color:sc,textTransform:"uppercase",letterSpacing:".05em"}}>{scoreLabel}</div>
+          </div>
+          <div style={{flex:1}}>
+            {breakdown.map(b=>(
+              <div key={b.id} style={{display:"flex",gap:7,alignItems:"center",marginBottom:5}}>
+                <span style={{fontSize:11,flexShrink:0}}>{b.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                    <span style={{fontSize:9,color:"#CBD5E1"}}>{b.l}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:b.c}}>{b.v}</span>
+                  </div>
+                  <div style={{height:4,borderRadius:2,background:"rgba(80,140,255,0.1)",overflow:"hidden"}}>
+                    <div style={{height:"100%",width:b.v+"%",background:b.c,borderRadius:2,transition:"width .4s"}}/>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {!compact&&<div style={{padding:"8px 10px",background:"rgba(0,109,255,0.06)",borderRadius:10,border:"1px solid rgba(80,140,255,0.15)",fontSize:10,color:"#CBD5E1"}}>
+          💡 Workload balance and staffing load scores can be improved — {OPERATIONAL_ALERTS.filter(a=>a.level==="high"||a.level==="medium").length} active operational alerts
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Operational Intelligence Card ─────────────────────────────────────────────
+// Extends Dashboard — rendered for manager role only
+function OperationalIntelligenceCard({doToast}){
+  const [open,setOpen]=useState(true);
+  const [dismissedAlerts,setDismissedAlerts]=useState(new Set());
+  const [pulseScore,setPulseScore]=useState(null);
+  const visAlerts=OPERATIONAL_ALERTS.filter(a=>!dismissedAlerts.has(a.id));
+  const highCount=visAlerts.filter(a=>a.level==="high").length;
+  const aiStats=Object.values(AI_PRODUCTIVITY_STATS);
+
+  return(
+    <div style={{background:"#0A1628",border:`1px solid ${highCount>0?"rgba(239,68,68,0.3)":"rgba(80,140,255,0.2)"}`,boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden",marginBottom:14}}>
+      {/* Header */}
+      <div onClick={()=>setOpen(o=>!o)} style={{padding:"11px 16px",background:"linear-gradient(90deg,#1e1b4b,#1a3a6e)",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+        <span style={{fontSize:16}}>🧠</span>
+        <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",flex:1}}>Operational Intelligence</span>
+        {highCount>0&&<span style={{fontSize:10,fontWeight:800,padding:"2px 9px",borderRadius:20,background:"rgba(239,68,68,0.25)",color:"#FCA5A5",border:"1px solid rgba(239,68,68,0.3)"}}>{highCount} urgent</span>}
+        <span style={{fontSize:10,color:"rgba(255,255,255,.4)",marginLeft:4}}>{open?"▲":"▼"}</span>
+      </div>
+
+      {open&&<div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
+
+        {/* AI Productivity strip */}
+        <div>
+          <div style={{fontSize:9,fontWeight:800,color:"#38BDF8",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>AI Productivity — This Month</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
+            {aiStats.map(s=>(
+              <div key={s.label} style={{padding:"9px 10px",background:"rgba(7,20,40,0.8)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:10,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:900,color:s.c,fontFamily:"ui-monospace,monospace",lineHeight:1,marginBottom:2}}>{s.v}{s.unit==="%"?"%":""}</div>
+                <div style={{fontSize:8,fontWeight:600,color:"#F8FAFC",lineHeight:1.3,marginBottom:2}}>{s.label}</div>
+                <div style={{fontSize:8,color:s.c}}>{s.delta}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {/* Operational Alerts */}
+          <div>
+            <div style={{fontSize:9,fontWeight:800,color:"#F59E0B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:7}}>Operational Alerts</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {visAlerts.slice(0,4).map(a=>(
+                <div key={a.id} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 10px",borderRadius:9,background:a.level==="high"?"rgba(239,68,68,0.08)":a.level==="medium"?"rgba(245,158,11,0.06)":"rgba(74,222,128,0.05)",border:`1px solid ${a.level==="high"?"rgba(239,68,68,0.15)":a.level==="medium"?"rgba(245,158,11,0.12)":"rgba(74,222,128,0.1)"}`}}>
+                  <span style={{fontSize:11,flexShrink:0}}>{a.icon}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#F8FAFC",marginBottom:1}}>{a.label}</div>
+                    <div style={{fontSize:9,color:"#CBD5E1",lineHeight:1.4}}>{a.msg}</div>
+                  </div>
+                  <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    {a.actionLabel&&<button onClick={()=>doToast("✓ "+a.actionLabel)} style={{fontSize:8,padding:"2px 7px",borderRadius:5,border:"1px solid rgba(80,140,255,0.2)",background:"transparent",cursor:"pointer",color:"#38BDF8",fontFamily:"inherit",whiteSpace:"nowrap"}}>{a.actionLabel}</button>}
+                    <button onClick={()=>setDismissedAlerts(p=>new Set([...p,a.id]))} style={{border:"none",background:"none",cursor:"pointer",color:"#475569",fontSize:12,lineHeight:1,padding:"1px 3px"}}>✕</button>
+                  </div>
+                </div>
+              ))}
+              {visAlerts.length===0&&<div style={{padding:"12px",textAlign:"center",fontSize:10,color:"#4ADE80"}}>✓ No active operational alerts</div>}
+            </div>
+          </div>
+
+          {/* Scheduling Intelligence */}
+          <div>
+            <div style={{fontSize:9,fontWeight:800,color:"#A78BFA",textTransform:"uppercase",letterSpacing:".08em",marginBottom:7}}>AI Scheduling Insights</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {SCHEDULING_INSIGHTS.slice(0,3).map(si=>(
+                <div key={si.id} style={{padding:"7px 10px",borderRadius:9,background:"rgba(167,139,250,0.05)",border:"1px solid rgba(167,139,250,0.12)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#F8FAFC",flex:1,paddingRight:6}}>{si.title}</div>
+                    <span style={{fontSize:8,padding:"1px 6px",borderRadius:4,background:si.priority==="high"?"rgba(239,68,68,0.15)":si.priority==="medium"?"rgba(245,158,11,0.12)":"rgba(80,140,255,0.1)",color:si.priority==="high"?"#FCA5A5":si.priority==="medium"?"#FDE68A":"#94A3B8",flexShrink:0,fontWeight:700}}>{si.priority}</span>
+                  </div>
+                  <div style={{fontSize:9,color:"#94A3B8",lineHeight:1.4,marginBottom:4}}>{si.detail}</div>
+                  <button onClick={()=>doToast("✓ "+si.action)} style={{fontSize:8,padding:"2px 8px",borderRadius:5,border:"1px solid rgba(167,139,250,0.2)",background:"transparent",cursor:"pointer",color:"#A78BFA",fontFamily:"inherit"}}>→ {si.action}</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Practice Health Score — compact bar */}
+        <div style={{padding:"8px 12px",background:"rgba(7,20,40,0.7)",borderRadius:10,border:"1px solid rgba(56,189,248,0.1)",display:"flex",gap:12,alignItems:"center"}}>
+          <div style={{flexShrink:0}}>
+            <div style={{fontSize:8,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:2}}>Practice Health</div>
+            <div style={{fontSize:24,fontWeight:900,color:PRACTICE_HEALTH_DATA.score>=80?"#22C55E":PRACTICE_HEALTH_DATA.score>=65?"#F59E0B":"#EF4444",fontFamily:"ui-monospace,monospace",lineHeight:1}}>{PRACTICE_HEALTH_DATA.score}<span style={{fontSize:12,color:"#64748b"}}>/100</span></div>
+          </div>
+          <div style={{flex:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+            {PRACTICE_HEALTH_DATA.breakdown.map(b=>(
+              <div key={b.id} style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={{width:28,height:4,borderRadius:2,background:"rgba(80,140,255,0.1)",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:(b.v)+"%",background:b.c,borderRadius:2}}/>
+                </div>
+                <span style={{fontSize:8,color:"#64748b"}}>{b.icon}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{flexShrink:0,textAlign:"right"}}>
+            <div style={{fontSize:9,color:"#4ADE80",fontWeight:700}}>▲ {PRACTICE_HEALTH_DATA.trend} this week</div>
+            <div style={{fontSize:8,color:"#64748b"}}>Updated today</div>
+          </div>
+        </div>
+
+      </div>}
+    </div>
+  );
+}
+
+// ── Diary Pressure Strip ──────────────────────────────────────────────────────
+// Extends CalendarPage — compact clinician load indicator above the calendar grid
+function DiaryPressureStrip({doToast}){
+  const clinicians=[
+    {name:"Dr. S. Patel", load:72,  appts:13, slots:18, status:"balanced"},
+    {name:"Dr. M. Chen",  load:94,  appts:17, slots:18, status:"high"},
+    {name:"Amy Grant",    load:56,  appts:6,  slots:10, status:"low"},
+  ];
+  const statusMeta={
+    low:      {color:"#4ADE80",bg:"rgba(74,222,128,0.1)",  label:"Light"},
+    balanced: {color:"#38BDF8",bg:"rgba(56,189,248,0.08)", label:"Balanced"},
+    high:     {color:"#EF4444",bg:"rgba(239,68,68,0.12)",  label:"Overloaded"},
+  };
+  return(
+    <div style={{display:"flex",gap:8,padding:"6px 12px",background:"rgba(7,20,40,0.8)",borderBottom:"1px solid rgba(56,189,248,0.08)",alignItems:"center",flexShrink:0}}>
+      <span style={{fontSize:9,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".07em",flexShrink:0}}>Diary Load</span>
+      {clinicians.map(c=>{
+        const sm=statusMeta[c.status];
+        return(
+          <div key={c.name} style={{display:"flex",gap:6,alignItems:"center",padding:"3px 10px",borderRadius:20,background:sm.bg,border:`1px solid ${sm.color}25`}}>
+            <div style={{width:40,height:4,borderRadius:2,background:"rgba(80,140,255,0.15)",overflow:"hidden"}}>
+              <div style={{height:"100%",width:c.load+"%",background:sm.color,borderRadius:2}}/>
+            </div>
+            <span style={{fontSize:9,fontWeight:700,color:sm.color}}>{c.load}%</span>
+            <span style={{fontSize:9,color:"#94A3B8"}}>{c.name.split(" ")[0]} {c.name.split(" ")[1]}</span>
+            {c.status==="high"&&<span style={{fontSize:9,color:"#FCA5A5",fontWeight:700}}>⚠</span>}
+          </div>
+        );
+      })}
+      <div style={{flex:1}}/>
+      <button onClick={()=>doToast&&doToast("✓ Schedule rebalance suggestion sent to Dr. Kim")} style={{fontSize:9,padding:"2px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,0.2)",background:"transparent",cursor:"pointer",color:"#A78BFA",fontFamily:"inherit",flexShrink:0}}>AI Rebalance</button>
+    </div>
+  );
+}
+
+// ── Weekly Pulse Check Widget ─────────────────────────────────────────────────
+// Extends NBAPage — optional, anonymous team wellbeing pulse for managers
+function WeeklyPulseWidget({doToast}){
+  const [submitted,setSubmitted]=useState(false);
+  const [score,setScore]=useState(null);
+  const [dismissed,setDismissed]=useState(false);
+  if(dismissed)return null;
+  const history=[{wk:"W20",s:3},{wk:"W21",s:4},{wk:"W22",s:3},{wk:"W23",s:null}];
+  const opts=[{s:1,e:"😫",l:"Very hard"},{s:2,e:"😔",l:"Tough"},{s:3,e:"😐",l:"Manageable"},{s:4,e:"🙂",l:"Good"},{s:5,e:"😊",l:"Great"}];
+  const barH=(s)=>s?((s/5)*32)+"px":"2px";
+  const barC=(s)=>s>=4?"#4ADE80":s>=3?"#38BDF8":s>=2?"#F59E0B":"#EF4444";
+  return(
+    <div style={{background:"#0F1C34",border:"1px solid rgba(56,189,248,0.1)",borderRadius:14,overflow:"hidden",marginTop:14}}>
+      <div style={{padding:"9px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.08)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",gap:7,alignItems:"center"}}>
+          <span style={{fontSize:13}}>💬</span>
+          <div>
+            <div style={{fontSize:11,fontWeight:800}}>Team Wellbeing Pulse</div>
+            <div style={{fontSize:9,color:"#64748b"}}>Optional · Anonymous · Takes 5 seconds</div>
+          </div>
+        </div>
+        <button onClick={()=>setDismissed(true)} style={{border:"none",background:"none",cursor:"pointer",fontSize:14,color:"#475569",lineHeight:1,padding:2}}>✕</button>
+      </div>
+      <div style={{padding:"12px 14px"}}>
+        {submitted?(
+          <div style={{textAlign:"center",padding:"8px 0"}}>
+            <div style={{fontSize:24,marginBottom:4}}>{opts.find(o=>o.s===score)?.e}</div>
+            <div style={{fontSize:11,fontWeight:700,color:"#4ADE80",marginBottom:2}}>Thank you — response logged anonymously</div>
+            <div style={{fontSize:9,color:"#64748b"}}>Helps track team wellbeing trends over time</div>
+          </div>
+        ):(
+          <>
+            <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>How manageable was the team's workload this week?</div>
+            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:10}}>
+              {opts.map(o=>(
+                <button key={o.s} onClick={()=>setScore(o.s)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"7px 10px",borderRadius:10,border:`1.5px solid ${score===o.s?"#2563FF":"rgba(80,140,255,0.15)"}`,background:score===o.s?"rgba(37,99,255,0.1)":"transparent",cursor:"pointer",fontFamily:"inherit",transition:"all .1s"}}>
+                  <span style={{fontSize:20}}>{o.e}</span>
+                  <span style={{fontSize:8,color:score===o.s?"#60A5FA":"#64748b"}}>{o.l}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",gap:5,alignItems:"flex-end",height:36}}>
+                {history.map(h=>(
+                  <div key={h.wk} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                    <div style={{width:18,borderRadius:3,background:h.s?barC(h.s):"rgba(80,140,255,0.1)",height:barH(h.s),transition:"height .3s"}}/>
+                    <span style={{fontSize:7,color:"#475569"}}>{h.wk}</span>
+                  </div>
+                ))}
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                  <div style={{width:18,borderRadius:3,background:score?barC(score):"rgba(80,140,255,0.15)",height:score?barH(score):"4px",border:score?"none":"1px dashed rgba(80,140,255,0.2)",transition:"height .3s"}}/>
+                  <span style={{fontSize:7,color:"#475569"}}>Now</span>
+                </div>
+              </div>
+              <button onClick={()=>{if(!score){doToast&&doToast("⚠ Select a score first");return;}setSubmitted(true);doToast&&doToast("✓ Pulse check submitted anonymously");}}
+                style={{padding:"6px 16px",background:score?"linear-gradient(135deg,#2563FF,#1D4ED8)":"rgba(80,140,255,0.1)",color:score?"#fff":"#64748b",border:"none",borderRadius:8,cursor:score?"pointer":"default",fontSize:10,fontWeight:700,fontFamily:"inherit",transition:"all .2s"}}>
+                Submit →
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MyReportsPage({user}){
   const mrvw=useWindowWidth();const isMob=mrvw<768;
 
@@ -2296,6 +2591,8 @@ function MyReportsPage({user}){
         {title:"Staff Performance",rows:[["Dr. Sarah Patel","£8,420","94% UDA"],["Dr. Mike Chen","£6,840","67% UDA"],["Amy Grant","£3,192","91% utilisation"],["Emma Wilson","214 check-ins","43 bookings"]]},
 
         {title:"AI Feature Impact",rows:[["Smart Receptionist","187 calls handled","81 appointments"],["Revenue Recovery","£5,841 pipeline","34% recovery"],["Smart Recall","47 recalls booked","£2,100 value"],["Daily Priorities","89 actions completed","61% rate"]]},
+
+        {title:"Operational Wellbeing",rows:[["AI hours saved this week","14.2 hrs","+1.3h vs last week"],["Calls automated","187","81% recovery rate"],["Overloaded clinicians","1","Dr. M. Chen — 30% over target"],["Inbox overload flags","1","Emma Wilson — 87 unread"],["Practice Health Score","74 / 100","↑ +3 this week"],["Staff at risk of burnout","0","All clear"]]},
 
       ],
 
@@ -2891,6 +3188,8 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
 
         {/* ══ OVERVIEW ══════════════════════════════════════════════════════ */}
         {tab==="overview"&&(
+          <div>
+          <div style={{marginBottom:14}}><PracticeHealthGauge compact/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <div style={style.card}>
               <div style={style.sectionHead}><Building2 size={15} color="#60A5FA"/>Practice Details</div>
@@ -2922,6 +3221,7 @@ function ManagerPortal({userPerms,setUserPerms,featureUserCfg,setFeatureUserCfg,
                 ))}
               </div>
             </div>
+          </div>
           </div>
         )}
 
@@ -4466,6 +4766,8 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
       <Btn v="primary" onClick={()=>doToast("Double-click a time slot to book")}><Plus size={12}/>{!isMob&&"New Appointment"}</Btn>
 
     </div>
+
+    <DiaryPressureStrip doToast={doToast}/>
 
     <div style={{flex:1,overflowY:"auto",overflowX:"auto",background:"#0A1628"}}>
 
@@ -12585,6 +12887,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
       </div>)}
     </div>
 
+    {isManagerUser&&<OperationalIntelligenceCard doToast={doToast}/>}
+
     {/* ── Morning Briefing (collapsible) ── */}
     <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden",marginBottom:14}}>
       <div onClick={()=>setBrief(o=>!o)} style={{padding:"12px 18px",background:"linear-gradient(90deg,#006DFF,#38BDF8)",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
@@ -19147,6 +19451,9 @@ const NBA_DATA={
     {id:"M4",title:"Review team access — 2 new staff added",reason:"Emma Wilson added Tom Baker and Priya Nair last week. Their feature access hasn't been reviewed.",value:null,urgency:"medium",cat:"team",icon:"👥",action:"manager"},
     {id:"M5",title:"Reception AI generated 31 bookings this month",reason:"£2,728 recovered via AI reception. Consider expanding to after-hours answering for weekend coverage.",value:2728,urgency:"low",cat:"growth",icon:"🚀",action:"receptionai"},
     {id:"M6",title:"5 patients with membership plans expiring this month",reason:"Capitation/plan patients at renewal point. Contact to renew before they lapse.",value:495,urgency:"medium",cat:"revenue",icon:"🔄",action:"recovery"},
+    {id:"W1",title:"Dr. Mike Chen diary pressure — 30% above target",reason:"Dr. Chen has 7.8h chair time today vs 6h target. 2 missed breaks recorded. Review schedule to prevent burnout.",value:null,urgency:"high",cat:"team",icon:"⚠️",action:"rota"},
+    {id:"W2",title:"Emma Wilson inbox overload — 87 unread messages",reason:"Emma has 3× normal message volume today. Consider redistributing to Tom Baker or enabling AI triage for routine queries.",value:null,urgency:"medium",cat:"team",icon:"📬",action:"manager"},
+    {id:"W3",title:"After-hours activity — 3 staff beyond 18:00 yesterday",reason:"Tom Baker, Emma Wilson, Priya Nair all active after 6pm. Potential overtime liability. Review rota coverage.",value:null,urgency:"medium",cat:"team",icon:"🕕",action:"rota"},
   ],
   hygienist:[
     {id:"H1",title:"Robert Hall — last perio chart 14 months ago",reason:"High BPE score (3) recorded Jan 2024. No follow-up charting done. Clinically overdue.",value:null,urgency:"high",cat:"clinical",icon:"📊",action:"charting",patient:"P3"},
@@ -19342,6 +19649,7 @@ function NBAPage({role,setPage,openPatient}){
             {n.value&&<span style={{fontSize:11,fontFamily:"ui-monospace,monospace",color:C.green,fontWeight:700}}>£{n.value.toLocaleString()}</span>}
           </div>)}
         </div>}
+        {roleKey==="manager"&&<WeeklyPulseWidget doToast={doToast}/>}
       </div>
     </div>
   );
