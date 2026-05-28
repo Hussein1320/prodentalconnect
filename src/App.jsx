@@ -13162,62 +13162,6 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
 
     <SmartInsightBanner doToast={doToast} setPage={setPage}/>
 
-    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:14,...(isMob&&{gridTemplateColumns:"1fr",gap:10})}}>
-
-      {/* Today's Appointments */}
-
-      <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden"}}>
-
-        <div style={{padding:"13px 18px",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-
-          <span style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em"}}>Today's Appointments</span><Chip color={C.teal}>14 May 2025</Chip>
-
-        </div>
-
-        <div style={{maxHeight:300,overflowY:"auto"}}>
-
-          {INIT_APPTS.map(a=>{const sc={completed:{c:C.green,l:"Completed"},in_surgery:{c:C.blue,l:"In Surgery"},waiting:{c:C.amber,l:"Waiting"},booked:{c:"#64748b",l:"Booked"}}[a.status];
-
-          return <div key={a.id} onClick={()=>a.pid&&openPatient(a.pid)} style={{display:"flex",gap:10,padding:"9px 16px",borderTop:"1px solid rgba(80,140,255,0.08)",cursor:a.pid?"pointer":"default",alignItems:"center",transition:"background .1s"}}
-
-            onMouseOver={e=>{if(a.pid)e.currentTarget.style.background="rgba(80,140,255,0.04)";}} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-
-            <span style={{width:38,textAlign:"right",fontSize:11,fontFamily:"ui-monospace,monospace",color:"#CBD5E1",flexShrink:0}}>{a.time}</span>
-
-            <div style={{width:4,height:38,borderRadius:2,background:sc.c,flexShrink:0}}/>
-
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.patient}</div><div style={{fontSize:11,color:"#CBD5E1"}}>{a.type}</div></div>
-
-            <Chip color={sc.c}>{sc.l}</Chip>
-
-          </div>;})}
-
-        </div>
-
-      </div>
-
-      {/* Urgent Tasks */}
-
-      <div style={{background:"rgba(7,20,40,0.95)",border:"1px solid rgba(56,189,248,0.1)",boxShadow:"0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(80,140,255,0.1)",borderRadius:16,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
-
-        <div style={{fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"center"}}><AlertTriangle size={13} color={C.red}/>Urgent Tasks <span style={{fontSize:11,fontWeight:800,padding:"1px 7px",borderRadius:14,background:"rgba(239,68,68,0.12)",color:C.red}}>3</span></div>
-
-        {[{t:"Submit FP17 — Amy Torres",d:"2 days overdue",c:C.red},{t:"Chase lab — Sarah Chen",d:"Crown due today",c:C.amber},{t:"Confirm 8 appointments",d:"Tomorrow unconfirmed",c:C.amber},{t:"Complete note — Tom Bright",d:"Appointment 13 May",c:C.blue}].map((t,i)=><div key={i} style={{display:"flex",gap:7,padding:"7px 9px",borderRadius:12,background:t.c+"0d",border:`1px solid ${t.c}20`}}>
-
-          <div style={{width:7,height:7,borderRadius:"50%",background:t.c,flexShrink:0,marginTop:4}}/>
-
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#F8FAFC"}}>{t.t}</div><div style={{fontSize:10,color:"#CBD5E1"}}>{t.d}</div></div>
-
-        </div>)}
-
-        <button onClick={()=>{if(typeof setPage==="function")setPage("tasks");else doToast("Opening Tasks…");}} style={{marginTop:"auto",padding:"7px 9px",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(80,140,255,0.16)",borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.2)",fontSize:11,color:"#38BDF8",fontWeight:600,cursor:"pointer",textAlign:"center",width:"100%"}}>View all tasks →</button>
-
-      </div>
-
-    </div>
-
-    {/* ── Practice Insights (matching screenshot) ───────────────────── */}
-
     <PracticeInsights/>
 
   </div>;
