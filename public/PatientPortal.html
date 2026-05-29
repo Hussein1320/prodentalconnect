@@ -1,104 +1,1143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ProDentalConnect — Patient Portal</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#071428">
+<title>ProDentalConnect · Patient Portal</title>
 <style>
-* {margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-body {min-height:100vh;background:linear-gradient(135deg,#071428,#132238);color:#F8FAFC;display:flex;align-items:center;justify-content:center;padding:20px}
-.card {background:#132238;border:1.5px solid rgba(80,140,255,0.25);border-radius:24px;padding:40px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,0.5)}
-.header {text-align:center;margin-bottom:28px}
-.logo {font-size:28px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#3B82F6,#38BDF8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.subtitle {font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700}
-h1 {font-size:20px;font-weight:800;margin-bottom:6px;text-align:center}
-.welcome {font-size:13px;color:#94A3B8;margin-bottom:24px;text-align:center;line-height:1.6}
-label {display:block;font-size:11px;font-weight:700;color:#CBD5E1;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em}
-input {width:100%;padding:12px 14px;background:#0F1C34;border:1.5px solid rgba(80,140,255,0.25);border-radius:12px;color:#F8FAFC;font-size:14px;outline:none;margin-bottom:14px;font-family:inherit}
-input:focus {border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
-button {width:100%;padding:12px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border:none;border-radius:12px;color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
-button:hover {opacity:0.92}
-.row {display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.link {color:#38BDF8;font-size:12px;text-decoration:none;cursor:pointer;border:none;background:none;font-family:inherit}
-.link:hover {text-decoration:underline}
-.divider {height:1px;background:rgba(80,140,255,0.15);margin:24px 0}
-.alt {text-align:center;font-size:12px;color:#94A3B8}
-.alt button {width:auto;display:inline;padding:0;background:none;color:#38BDF8;font-weight:600;margin-left:4px;box-shadow:none}
-.dashboard {display:none}
-.dashboard.show {display:block}
-.login.hide {display:none}
-.tile {background:rgba(80,140,255,0.06);border:1px solid rgba(80,140,255,0.2);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
-.tile:hover {background:rgba(80,140,255,0.12)}
-.tile-title {font-size:13px;font-weight:700;margin-bottom:4px}
-.tile-sub {font-size:11px;color:#94A3B8}
-.status {display:none;padding:10px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:9px;font-size:12px;color:#EF4444;margin-top:6px}
-.status.show {display:block}
-.foot {text-align:center;font-size:10px;color:#64748B;margin-top:24px}
+/* === DESIGN TOKENS (mirrors App.jsx C object) === */
+:root{--bg:#071428;--bg2:#0F1C34;--card:#132238;--card2:#1a2d48;
+--b:rgba(80,140,255,.18);--b2:rgba(80,140,255,.28);
+--blue:#3B82F6;--teal:#38BDF8;--green:#22C55E;--amber:#F59E0B;--red:#EF4444;--purple:#8B5CF6;
+--t:#F8FAFC;--t2:#CBD5E1;--t3:#94A3B8;--t4:#64748B}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--t);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;min-height:100vh;overscroll-behavior:none}
+
+/* HEADER */
+.hd{position:sticky;top:0;z-index:100;background:rgba(7,20,40,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--b);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.hd-logo{font-weight:900;font-size:15px;color:var(--teal);letter-spacing:-.3px}
+.hd-logo em{color:var(--t3);font-style:normal;font-weight:400}
+.hd-pt{flex:1;font-size:12px;color:var(--t3);padding-left:2px}
+.hd-pt strong{color:var(--t2);font-size:13px;display:block}
+.hd-nb{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;position:relative;flex-shrink:0;-webkit-appearance:none}
+.hd-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--amber);border:2px solid var(--bg)}
+.av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--teal));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;cursor:pointer;flex-shrink:0}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(7,20,40,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--b);display:flex;padding:5px 0 max(5px,env(safe-area-inset-bottom))}
+.nt{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 2px;cursor:pointer;color:var(--t4);font-size:9px;font-weight:700;border:none;background:none;-webkit-appearance:none;transition:color .15s;font-family:inherit;text-transform:uppercase;letter-spacing:.3px}
+.nt.on{color:var(--teal)}
+.nt-i{font-size:22px;line-height:1.1}
+
+/* MAIN */
+.main{overflow-y:auto;padding-bottom:max(76px,calc(60px + env(safe-area-inset-bottom)))}
+.view{display:none}.view.show{display:block}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--b);border-radius:16px;margin:10px 16px;overflow:hidden}
+.chd{padding:13px 16px 10px;display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid rgba(80,140,255,.09)}
+.ci-ic{font-size:18px;flex-shrink:0}
+.ct{font-size:13px;font-weight:700;color:var(--t)}
+.cs{font-size:11px;color:var(--t3);margin-top:1px}
+.cbody{padding:14px 16px}
+.cfoot{padding:10px 16px;border-top:1px solid rgba(80,140,255,.09);display:flex;gap:8px;flex-wrap:wrap}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#0F1C34,#132238 55%,#0d2240);border-bottom:1px solid var(--b);padding:18px 16px 16px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.07),transparent 70%)}
+.h-greet{font-size:11px;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.h-name{font-size:22px;font-weight:900;color:var(--t);margin-bottom:4px;letter-spacing:-.3px}
+.h-line{font-size:12px;color:var(--t3)}
+.ai-pill{margin-top:13px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(56,189,248,.07));border:1px solid rgba(56,189,248,.27);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;width:100%;-webkit-appearance:none;transition:all .15s;font-family:inherit}
+.ai-pill:active{transform:scale(.98)}
+.ap-txt{flex:1;font-size:13px;color:var(--t3);text-align:left}
+.ap-arr{font-size:14px;color:var(--teal)}
+
+/* JOURNEY CARD */
+.jcard{background:linear-gradient(135deg,rgba(59,130,246,.09),rgba(56,189,248,.04));border:1px solid rgba(56,189,248,.2);border-radius:16px;margin:10px 16px;overflow:hidden}
+.jhd{padding:12px 14px 9px;display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid rgba(56,189,248,.1)}
+.jt{font-size:12px;font-weight:700;color:var(--teal)}
+.jss{font-size:11px;color:var(--t3)}
+.jstep{padding:9px 14px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(80,140,255,.07);cursor:pointer;transition:background .12s}
+.jstep:last-child{border-bottom:none}
+.jstep:active{background:rgba(56,189,248,.04)}
+.jdot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.jd-ok{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.27)}
+.jd-warn{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.jd-todo{background:rgba(80,140,255,.08);color:var(--t4);border:1px solid var(--b)}
+.jlabel{font-size:12px;font-weight:600;color:var(--t)}
+.jdesc{font-size:11px;color:var(--t3);margin-top:1px}
+.jtap{font-size:11px;color:var(--teal);font-weight:700;margin-top:3px;display:inline-block}
+
+/* QUICK ACTIONS */
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 6px}
+.qab{background:var(--card2);border:1px solid var(--b);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all .15s;-webkit-appearance:none;font-family:inherit}
+.qab:active{transform:scale(.93);background:rgba(56,189,248,.07);border-color:rgba(56,189,248,.28)}
+.qa-i{font-size:22px}
+.qa-l{font-size:10px;color:var(--t3);font-weight:600;text-align:center;line-height:1.2}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .15s;outline:none;-webkit-appearance:none;font-family:inherit}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:default;transform:none}
+.b-primary{background:var(--blue);color:#fff}
+.b-teal{background:rgba(56,189,248,.12);color:var(--teal);border:1px solid rgba(56,189,248,.28)}
+.b-ghost{background:rgba(80,140,255,.07);color:var(--t2);border:1px solid var(--b)}
+.b-green{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.27)}
+.b-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.22)}
+.b-amber{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.22)}
+.b-full{width:100%}.b-sm{padding:7px 12px;font-size:12px;border-radius:8px}.b-lg{padding:13px 20px;font-size:14px;border-radius:12px}
+
+/* BANNERS */
+.ban{border-radius:12px;padding:13px 14px;display:flex;gap:11px;align-items:flex-start;margin:10px 0}
+.ban-ok{background:rgba(34,197,94,.09);border:1px solid rgba(34,197,94,.27)}
+.ban-info{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.22)}
+.ban-warn{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.24)}
+.bani{font-size:18px;flex-shrink:0}.bant{font-size:13px;font-weight:700;color:var(--t);margin-bottom:2px}.band{font-size:12px;color:var(--t3)}
+
+/* INFO ROWS */
+.ir{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(80,140,255,.07)}
+.ir:last-child{border-bottom:none}
+.iri{font-size:15px;flex-shrink:0;margin-top:1px;opacity:.7}
+.irl{font-size:11px;color:var(--t4);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.irv{font-size:13px;color:var(--t);font-weight:500}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.bg-g{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.bg-a{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.bg-r{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.bg-b{background:rgba(59,130,246,.12);color:#60A5FA;border:1px solid rgba(59,130,246,.25)}
+.bg-t{background:rgba(56,189,248,.1);color:var(--teal);border:1px solid rgba(56,189,248,.25)}
+
+/* PAGE HEADER */
+.phd{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 6px}
+.back-btn{width:32px;height:32px;border-radius:50%;background:var(--card2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;-webkit-appearance:none}
+.pht{font-size:17px;font-weight:900;color:var(--t);letter-spacing:-.3px}
+.phs{font-size:12px;color:var(--t3);margin-top:2px}
+
+/* SECTION HEADERS */
+.shd{padding:14px 16px 5px;display:flex;align-items:center;justify-content:space-between}
+.stl{font-size:11px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.5px}
+.slnk{font-size:12px;color:var(--teal);font-weight:700;cursor:pointer}
+
+/* FORMS */
+.fg{margin-bottom:14px}
+.fl{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px;display:block}
+.fi,.fta,.fsel{width:100%;padding:11px 14px;background:var(--bg2);border:1.5px solid var(--b2);border-radius:10px;color:var(--t);font-size:13px;outline:none;transition:border-color .15s;font-family:inherit}
+.fi:focus,.fta:focus,.fsel:focus{border-color:rgba(56,189,248,.5)}
+.fta{resize:none;min-height:75px;line-height:1.5}
+.fsel{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394A3B8' d='M5 7L1 2h8z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
+.chk-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(80,140,255,.07);cursor:pointer}
+.chk-row:last-child{border-bottom:none}
+.chk-box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--b2);background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+.chk-box.on{background:var(--blue);border-color:var(--blue)}
+.chk-label{font-size:13px;color:var(--t2);flex:1;padding-top:1px}
+
+/* AI CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 110px)}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.msg{max-width:84%;display:flex;flex-direction:column;gap:3px}
+.msg-u{align-self:flex-end}.msg-a{align-self:flex-start}
+.mbub{padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6;white-space:pre-wrap}
+.msg-u .mbub{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-a .mbub{background:var(--card2);border:1px solid var(--b);color:var(--t);border-bottom-left-radius:4px}
+.mtime{font-size:10px;color:var(--t4);padding:0 4px}
+.msg-u .mtime{text-align:right}
+.ai-row{display:flex;align-items:flex-end;gap:8px}
+.ai-av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--teal));display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.qrs{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.qr{background:var(--card2);border:1px solid var(--b);border-radius:16px;padding:6px 12px;font-size:12px;color:var(--t3);cursor:pointer;-webkit-appearance:none;white-space:nowrap;font-family:inherit;transition:all .12s}
+.qr:active{background:rgba(56,189,248,.1);color:var(--teal);border-color:rgba(56,189,248,.3)}
+.chat-inp-area{padding:8px 16px 10px;border-top:1px solid var(--b);background:rgba(7,20,40,.95);display:flex;gap:8px;align-items:flex-end}
+.cinput{flex:1;background:var(--card2);border:1.5px solid var(--b2);border-radius:20px;padding:10px 16px;color:var(--t);font-size:13px;outline:none;resize:none;max-height:100px;line-height:1.4;font-family:inherit}
+.cinput:focus{border-color:rgba(56,189,248,.5)}
+.csend{width:38px;height:38px;border-radius:50%;background:var(--blue);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:16px;color:#fff;-webkit-appearance:none;transition:background .15s}
+.csend:active{background:#2563eb}
+.tdots{display:flex;gap:4px;align-items:center;padding:2px 0}
+.td{width:6px;height:6px;border-radius:50%;background:var(--t4);animation:tb 1.2s infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px);opacity:.6}}
+
+/* SEGMENT */
+.seg{display:flex;background:var(--bg2);border:1px solid var(--b);border-radius:10px;padding:3px;gap:2px;margin:0 16px 12px}
+.sbtn{flex:1;padding:7px 6px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--t4);transition:all .15s;-webkit-appearance:none;font-family:inherit}
+.sbtn.on{background:var(--card2);color:var(--t);border:1px solid var(--b)}
+
+/* PILLS */
+.pills{display:flex;gap:6px;padding:8px 16px;overflow-x:auto;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b);background:var(--card2);color:var(--t3);-webkit-appearance:none;font-family:inherit;transition:all .12s}
+.pill.on{background:rgba(56,189,248,.1);color:var(--teal);border-color:rgba(56,189,248,.3)}
+
+/* OVERLAY SHEETS */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(7,20,40,.85);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.sheet{width:100%;max-width:480px;background:var(--card);border:1px solid var(--b);border-radius:20px 20px 0 0;padding:16px 20px calc(24px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+.shand{width:36px;height:4px;border-radius:2px;background:rgba(80,140,255,.2);margin:0 auto 14px}
+.sh-t{font-size:16px;font-weight:900;color:var(--t);margin-bottom:3px}
+.sh-s{font-size:12px;color:var(--t3);margin-bottom:14px}
+
+/* SLOT GRID */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{padding:10px 4px;border-radius:10px;background:var(--card2);border:1px solid var(--b);text-align:center;cursor:pointer;font-size:13px;font-weight:600;color:var(--t3);-webkit-appearance:none;font-family:inherit;transition:all .12s}
+.slot:active,.slot.on{background:rgba(56,189,248,.11);border-color:rgba(56,189,248,.38);color:var(--teal)}
+.slot.off{opacity:.3;cursor:default;text-decoration:line-through}
+
+/* DOCUMENT ITEMS */
+.docitem{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--card2);border:1px solid var(--b);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+.docitem:active{border-color:rgba(56,189,248,.3)}
+.di-ic{font-size:22px;flex-shrink:0}
+.di-nm{font-size:13px;font-weight:600;color:var(--t)}
+.di-mt{font-size:11px;color:var(--t4);margin-top:1px}
+.di-ar{font-size:14px;color:var(--t4);margin-left:auto}
+
+/* COMMS */
+.ci{background:var(--card2);border:1px solid var(--b);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+.ci:active{border-color:rgba(56,189,248,.28)}
+.ci-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.ci-from{font-size:13px;font-weight:700;color:var(--t);flex:1}
+.ci-time{font-size:11px;color:var(--t4)}
+.ci-prev{font-size:12px;color:var(--t3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.unread-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0}
+
+/* TIMELINE */
+.tli{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid rgba(80,140,255,.07)}
+.tli:last-child{border-bottom:none}
+.tld{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+
+/* STEPS */
+.steps{display:flex;gap:3px;padding:0 16px;margin-bottom:14px}
+.step-bar{flex:1;height:4px;border-radius:2px;background:rgba(80,140,255,.1);transition:background .3s}
+.step-bar.done{background:var(--teal)}.step-bar.active{background:var(--blue)}
+
+/* TX ITEMS */
+.txi{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(80,140,255,.07)}
+.txi:last-child{border-bottom:none}
+.txd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.txn{flex:1;font-size:13px;color:var(--t)}
+.txp{font-size:13px;font-weight:700;color:var(--t)}
+
+/* MISC */
+.divider{height:1px;background:rgba(80,140,255,.08);margin:8px 0}
+.checkin-hero{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(56,189,248,.05));border:1px solid rgba(34,197,94,.22);border-radius:16px;margin:12px 16px;padding:22px;text-align:center}
+
+/* LOGIN */
+.login-pg{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px 60px}
+.l-logo{font-size:28px;font-weight:900;color:var(--teal);margin-bottom:2px;letter-spacing:-1px}
+.l-tag{font-size:13px;color:var(--t3);margin-bottom:32px;text-align:center;line-height:1.6}
+.l-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--b);border-radius:20px;padding:24px}
+.l-title{font-size:18px;font-weight:900;color:var(--t);margin-bottom:3px}
+.l-sub{font-size:12px;color:var(--t3);margin-bottom:20px;line-height:1.6}
+.l-hint{font-size:11px;color:var(--t4);text-align:center;margin-top:14px;line-height:1.7}
+.l-lnk{color:var(--teal);cursor:pointer;font-weight:700}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .25s ease forwards}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(80,140,255,.18);border-radius:4px}
 </style>
 </head>
 <body>
-<div class="card">
-<div class="header">
-<div class="logo">🦷 ProDentalConnect</div>
-<div class="subtitle">Patient Portal</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="vLogin" class="login-pg">
+  <div class="l-logo">ProDental<span style="color:var(--t3);font-weight:400">Connect</span></div>
+  <div class="l-tag">Your personal dental experience platform<br>Riverside Dentistry</div>
+  <div class="l-card">
+    <div class="l-title">Welcome back 👋</div>
+    <div class="l-sub">Sign in with your email address and date of birth to access your health portal.</div>
+    <div class="fg"><label class="fl">Email address</label><input id="l-email" class="fi" type="email" placeholder="john.mills@email.com" autocomplete="email"></div>
+    <div class="fg"><label class="fl">Date of birth</label><input id="l-dob" class="fi" type="text" placeholder="12 Mar 1985"></div>
+    <div id="l-err" style="display:none;color:var(--red);font-size:12px;margin-bottom:10px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px"></div>
+    <button class="btn b-primary b-full b-lg" onclick="login()">Sign in securely →</button>
+    <p class="l-hint">
+      Problems signing in? <span class="l-lnk" onclick="showInfo('Access help','Call reception on 023 8049 1234 or email info@riverside-dentistry.co.uk and we\'ll restore your access within 24 hours.')">Get help</span><br>
+      New patient? <span class="l-lnk" onclick="showInfo('Register as a new patient','To register with Riverside Dentistry, call 023 8049 1234 or book a New Patient Examination via our website. We\'ll create your portal account after your first visit.')">Register here</span>
+    </p>
+  </div>
 </div>
 
-<div class="login" id="loginView">
-<h1>Sign in to your account</h1>
-<div class="welcome">View appointments, treatment plans, invoices and more — all in one place.</div>
-<label>Email or NHS number</label>
-<input id="email" placeholder="you@example.com" autofocus/>
-<label>Date of birth (DDMMYYYY)</label>
-<input id="dob" type="password" placeholder="••••••••"/>
-<div class="row"><label style="margin:0"><input type="checkbox" style="width:auto;margin-right:6px"/>Remember me</label><button class="link">Forgot details?</button></div>
-<button onclick="login()">Sign In →</button>
-<div class="status" id="msg"></div>
-<div class="divider"></div>
-<div class="alt">New patient? <button class="link" onclick="alert('Patient registration is currently handled by reception. Please call your practice on 01234 567890.')">Register here</button></div>
+<!-- ═══ APP SHELL ═══ -->
+<div id="appShell" style="display:none;flex-direction:column;min-height:100vh">
+
+  <header class="hd">
+    <div class="hd-logo">ProDental<em>Connect</em></div>
+    <div class="hd-pt"><strong id="hd-name">John Mills</strong>Riverside Dentistry</div>
+    <button class="hd-nb" onclick="showNotifs()">🔔<span class="hd-dot"></span></button>
+    <div class="av" onclick="tabTo('tProfile')">JM</div>
+  </header>
+
+  <main class="main" id="mainArea">
+
+    <!-- ══ HOME ══ -->
+    <div id="vDash" class="view show">
+      <div class="hero">
+        <div class="h-greet">Good morning</div>
+        <div class="h-name">John Mills</div>
+        <div class="h-line">Next: <strong style="color:var(--t2)">Tue 3 Jun · 09:30</strong> · Dr. S. Patel</div>
+        <button class="ai-pill" onclick="tabTo('tAI')">
+          <span style="font-size:18px">🤖</span>
+          <span class="ap-txt">Ask your AI dental assistant anything…</span>
+          <span class="ap-arr">›</span>
+        </button>
+      </div>
+
+      <div class="jcard anim">
+        <div class="jhd"><span style="font-size:18px">🗓️</span><div><div class="jt">Pre-visit checklist · Tue 3 Jun</div><div class="jss">2 actions needed before your appointment</div></div></div>
+        <div class="jstep" onclick="navTo('vApptDetail')"><div class="jdot jd-ok">✓</div><div><div class="jlabel">Appointment confirmed</div><div class="jdesc">09:30 · Dr. S. Patel · Surgery 1 · 60 min</div></div></div>
+        <div class="jstep" onclick="navTo('vMedHx')"><div class="jdot jd-warn">!</div><div><div class="jlabel">Update medical history</div><div class="jdesc">Last confirmed 10 Feb 2025 — please review before your visit</div><span class="jtap">Update now →</span></div></div>
+        <div class="jstep" onclick="navTo('vPayments')"><div class="jdot jd-warn">£</div><div><div class="jlabel">Outstanding balance · <span style="color:var(--red)">£73.50 overdue</span></div><div class="jdesc">Band 2 NHS treatment — please pay before your appointment</div><span class="jtap">Pay now →</span></div></div>
+        <div class="jstep" onclick="navTo('vPostOp')"><div class="jdot jd-todo">📋</div><div><div class="jlabel">Pre-visit preparation tips</div><div class="jdesc">Brush & floss · bring medications list · arrive 5 min early</div><span class="jtap">View tips →</span></div></div>
+      </div>
+
+      <div class="shd"><span class="stl">Quick Actions</span></div>
+      <div class="qa anim">
+        <button class="qab" onclick="navTo('vBook')"><span class="qa-i">📅</span><span class="qa-l">Book Appt</span></button>
+        <button class="qab" onclick="navTo('vPayments')"><span class="qa-i">💳</span><span class="qa-l">Pay £73.50</span></button>
+        <button class="qab" onclick="navTo('vMedHx')"><span class="qa-i">📋</span><span class="qa-l">Med History</span></button>
+        <button class="qab" onclick="navTo('vComms')"><span class="qa-i">💬</span><span class="qa-l">Messages</span></button>
+      </div>
+
+      <div class="shd"><span class="stl">Next Appointment</span><span class="slnk" onclick="tabTo('tAppts')">All →</span></div>
+      <div class="card anim" style="border-color:rgba(56,189,248,.25)">
+        <div style="background:linear-gradient(135deg,rgba(56,189,248,.09),rgba(59,130,246,.05));padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:26px;font-weight:900;color:var(--teal);line-height:1">09:30</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:3px">Tuesday 3 June 2025</div>
+            <div style="font-size:13px;font-weight:600;color:var(--t2);margin-top:6px">Check-up & Composite Filling</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:2px">Dr. S. Patel · Surgery 1 · 60 min</div>
+          </div>
+          <span class="badge bg-g">✓ Confirmed</span>
+        </div>
+        <div class="cfoot">
+          <button class="btn b-teal b-sm" onclick="navTo('vCheckin')">📍 Check In</button>
+          <button class="btn b-ghost b-sm" onclick="navTo('vApptDetail')">Details</button>
+          <button class="btn b-ghost b-sm" onclick="navTo('vPostOp')" style="margin-left:auto">Prep tips</button>
+        </div>
+      </div>
+
+      <div class="shd"><span class="stl">Recent Activity</span></div>
+      <div class="card anim">
+        <div class="cbody">
+          <div class="tli"><div class="tld" style="background:var(--teal)"></div><div><div style="font-size:12px;font-weight:600;color:var(--t)">Appointment confirmed</div><div style="font-size:11px;color:var(--t3)">Tue 3 Jun 09:30 · Dr. S. Patel</div><div style="font-size:10px;color:var(--t4);margin-top:2px">2 days ago</div></div></div>
+          <div class="tli"><div class="tld" style="background:var(--blue)"></div><div><div style="font-size:12px;font-weight:600;color:var(--t)">Treatment plan sent for review</div><div style="font-size:11px;color:var(--t3)">Band 2 · £73.50 · awaiting acceptance</div><div style="font-size:10px;color:var(--t4);margin-top:2px">1 week ago</div></div></div>
+          <div class="tli"><div class="tld" style="background:var(--green)"></div><div><div style="font-size:12px;font-weight:600;color:var(--t)">Scale & polish completed</div><div style="font-size:11px;color:var(--t3)">Dr. S. Patel · 14 Jan 2025</div><div style="font-size:10px;color:var(--t4);margin-top:2px">4 months ago</div></div></div>
+          <div class="tli"><div class="tld" style="background:var(--amber)"></div><div><div style="font-size:12px;font-weight:600;color:var(--t)">6-month recall reminder sent</div><div style="font-size:11px;color:var(--t3)">Routine check-up due</div><div style="font-size:10px;color:var(--t4);margin-top:2px">5 months ago</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ APPOINTMENTS ══ -->
+    <div id="vAppts" class="view">
+      <div class="phd" style="padding-bottom:10px"><div><div class="pht">Appointments</div><div class="phs">Your appointment history</div></div><button class="btn b-teal b-sm" onclick="navTo('vBook')" style="margin-left:auto;flex-shrink:0">+ Book</button></div>
+      <div class="seg">
+        <button class="sbtn on" id="seg-up" onclick="apptSeg('up')">Upcoming</button>
+        <button class="sbtn" id="seg-past" onclick="apptSeg('past')">Past visits</button>
+      </div>
+      <div id="appts-up">
+        <div class="card" style="border-color:rgba(56,189,248,.25)">
+          <div class="cbody">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:800;color:var(--t)">Tue 3 Jun 2025</div><div style="font-size:13px;color:var(--t3)">09:30 · 60 min</div></div><span class="badge bg-g">✓ Confirmed</span></div>
+            <div class="ir"><span class="iri">🦷</span><div><div class="irl">Treatment</div><div class="irv">Check-up & Composite Filling</div></div></div>
+            <div class="ir"><span class="iri">👩‍⚕️</span><div><div class="irl">Clinician</div><div class="irv">Dr. S. Patel</div></div></div>
+            <div class="ir"><span class="iri">📍</span><div><div class="irl">Location</div><div class="irv">Surgery 1 · Riverside Dentistry</div></div></div>
+          </div>
+          <div class="cfoot">
+            <button class="btn b-teal b-sm" onclick="navTo('vCheckin')">📍 Check In</button>
+            <button class="btn b-ghost b-sm" onclick="navTo('vApptDetail')">Details & Actions</button>
+          </div>
+        </div>
+      </div>
+      <div id="appts-past" style="display:none">
+        <div class="card"><div class="cbody">
+          <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn"><div style="font-weight:600">Scale & Polish</div><div style="font-size:11px;color:var(--t3)">14 Jan 2025 · Dr. S. Patel · 45 min</div></div><span class="badge bg-g">Done</span></div>
+          <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn"><div style="font-weight:600">Routine Check-up</div><div style="font-size:11px;color:var(--t3)">5 Aug 2024 · Dr. S. Patel · 30 min</div></div><span class="badge bg-g">Done</span></div>
+          <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn"><div style="font-weight:600">Emergency — Toothache</div><div style="font-size:11px;color:var(--t3)">12 Mar 2024 · Dr. J. Avery · 30 min</div></div><span class="badge bg-g">Done</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ══ AI ASSISTANT ══ -->
+    <div id="vAI" class="view">
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="qrs" id="quickReplies"></div>
+        <div class="chat-inp-area">
+          <textarea class="cinput" id="chatInput" placeholder="Ask anything about your dental care…" rows="1" onkeydown="chatKey(event)"></textarea>
+          <button class="csend" onclick="sendChat()">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MY CARE ══ -->
+    <div id="vCare" class="view">
+      <div class="phd" style="padding-bottom:10px"><div class="pht">My Care</div></div>
+      <div class="seg">
+        <button class="sbtn on" id="cs1" onclick="careSeg(1)">Plans</button>
+        <button class="sbtn" id="cs2" onclick="careSeg(2)">Forms</button>
+        <button class="sbtn" id="cs3" onclick="careSeg(3)">Documents</button>
+      </div>
+      <div id="care-plans">
+        <div class="card" style="border-color:rgba(245,158,11,.25)">
+          <div class="chd"><span class="ci-ic">📋</span><div><div class="ct">Treatment Plan — Band 2</div><div class="cs">Dr. S. Patel · Recommended within 6 weeks</div></div><span class="badge bg-a" id="plan-badge" style="margin-left:auto">Awaiting</span></div>
+          <div class="cbody" id="plan-body">
+            <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn">Routine Examination<div style="font-size:11px;color:var(--t3)">Completed · Band 1 included</div></div><div class="txp" style="color:var(--green)">✓</div></div>
+            <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Composite Filling — LL5<div style="font-size:11px;color:var(--t3)">Cold sensitivity · NHS Band 2</div></div><div class="txp">£73.50</div></div>
+            <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Scale & Polish<div style="font-size:11px;color:var(--t3)">Included in Band 2</div></div><div class="txp" style="color:var(--t4)">—</div></div>
+            <div class="divider"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><div style="font-size:12px;color:var(--t3)">Total NHS Band 2</div><div style="font-size:20px;font-weight:900;color:var(--t)">£73.50</div></div>
+            <div class="ban ban-warn" style="margin-top:12px"><span class="bani">📝</span><div><div class="bant">Review & accept your plan</div><div class="band">Two fillings required. Dr. Patel recommends treatment within 6 weeks to prevent worsening cold sensitivity.</div></div></div>
+          </div>
+          <div class="cfoot" id="plan-actions">
+            <button class="btn b-green b-full" onclick="acceptPlan()">✓ Accept treatment plan</button>
+            <button class="btn b-ghost b-sm" onclick="declinePlan()">Decline</button>
+          </div>
+        </div>
+        <div class="card"><div class="cbody">
+          <div style="font-size:12px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Finance options</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn b-ghost b-sm" onclick="showInfo('Chrysalis Finance — 0% APR','Interest-free credit for dental treatment. 0% APR up to 12 months, £250–£30,000. Apply in-practice. Ask Dr. Patel\'s team at your appointment.')">Chrysalis 0% Finance</button>
+            <button class="btn b-ghost b-sm" onclick="showInfo('Payment Plan','We can spread your payments interest-free over 3–12 months. Call reception on 023 8049 1234 to arrange before your appointment.')">Payment Plan</button>
+          </div>
+        </div></div>
+      </div>
+      <div id="care-forms" style="display:none">
+        <div class="card" style="cursor:pointer" onclick="navTo('vMedHx')"><div class="chd"><span class="ci-ic">🏥</span><div><div class="ct">Medical History</div><div class="cs">Last updated 10 Feb 2025 · Review needed</div></div><span class="badge bg-a" style="margin-left:auto">Review</span></div><div class="cfoot"><button class="btn b-teal b-sm" onclick="event.stopPropagation();navTo('vMedHx')">Update medical history →</button></div></div>
+        <div class="card"><div class="chd"><span class="ci-ic">✍️</span><div><div class="ct">General Treatment Consent</div><div class="cs">Signed 10 Feb 2025</div></div><span class="badge bg-g" style="margin-left:auto">✓ Signed</span></div></div>
+        <div class="card"><div class="chd"><span class="ci-ic">📄</span><div><div class="ct">Composite Filling Consent</div><div class="cs">Needed before your appointment</div></div><span id="consent-badge" class="badge bg-a" style="margin-left:auto">Pending</span></div><div class="cfoot"><button class="btn b-amber b-sm" onclick="showConsentSheet()">Review & sign →</button></div></div>
+      </div>
+      <div id="care-docs" style="display:none">
+        <div style="padding:0 16px">
+          <div class="docitem"><span class="di-ic">📋</span><div><div class="di-nm">Treatment Plan — Band 2</div><div class="di-mt">PDF · 142 KB · 14 Jan 2025</div></div><span class="di-ar">↓</span></div>
+          <div class="docitem"><span class="di-ic">📄</span><div><div class="di-nm">Invoice #INV-0847</div><div class="di-mt">PDF · 89 KB · 14 Jan 2025 · Overdue</div></div><span class="di-ar">↓</span></div>
+          <div class="docitem"><span class="di-ic">📝</span><div><div class="di-nm">Aftercare — Scale & Polish</div><div class="di-mt">PDF · 67 KB · 14 Jan 2025</div></div><span class="di-ar">↓</span></div>
+          <div class="docitem"><span class="di-ic">✍️</span><div><div class="di-nm">General Consent Form</div><div class="di-mt">Signed · 203 KB · 10 Feb 2025</div></div><span class="di-ar">↓</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROFILE ══ -->
+    <div id="vProfile" class="view">
+      <div class="phd" style="padding-bottom:10px"><div><div class="pht">My Profile</div><div class="phs">John Mills · NHS Patient</div></div></div>
+      <div class="card"><div class="cbody">
+        <div class="ir"><span class="iri">👤</span><div><div class="irl">Full name</div><div class="irv">John Mills</div></div></div>
+        <div class="ir"><span class="iri">🎂</span><div><div class="irl">Date of birth</div><div class="irv">12 March 1985</div></div></div>
+        <div class="ir"><span class="iri">🏥</span><div><div class="irl">NHS number</div><div class="irv">485 777 3456</div></div></div>
+        <div class="ir"><span class="iri">📱</span><div><div class="irl">Phone</div><div class="irv">07700 900111</div></div></div>
+        <div class="ir"><span class="iri">✉️</span><div><div class="irl">Email</div><div class="irv">john.mills@email.com</div></div></div>
+        <div class="ir"><span class="iri">🏠</span><div><div class="irl">Address</div><div class="irv">42 Maple Road, Southampton SO16 7AB</div></div></div>
+      </div></div>
+      <div class="card"><div class="chd"><span class="ci-ic">💬</span><div class="ct">Communication preferences</div></div><div class="cbody">
+        <div class="ir"><span class="iri">📱</span><div><div class="irl">Preferred contact</div><div class="irv">SMS (primary)</div></div></div>
+        <div class="ir"><span class="iri">🔔</span><div><div class="irl">Appointment reminders</div><div class="irv">SMS · 24 hrs & 1 hr before</div></div></div>
+        <div class="ir"><span class="iri">📅</span><div><div class="irl">Recall reminders</div><div class="irv">SMS + Email · 6-month cycle</div></div></div>
+      </div></div>
+      <div class="card"><div class="cbody">
+        <div class="ir"><span class="iri">👩‍⚕️</span><div><div class="irl">My dentist</div><div class="irv">Dr. S. Patel</div></div></div>
+        <div class="ir"><span class="iri">🏢</span><div><div class="irl">Practice</div><div class="irv">Riverside Dentistry</div></div></div>
+        <div class="ir"><span class="iri">📞</span><div><div class="irl">Reception</div><div class="irv">023 8049 1234</div></div></div>
+      </div></div>
+      <div style="padding:0 16px 20px"><button class="btn b-danger b-full b-lg" style="margin-top:8px" onclick="logout()">Sign out</button></div>
+    </div>
+
+    <!-- ══ SUB-VIEWS ══ -->
+
+    <!-- Appointment Detail -->
+    <div id="vApptDetail" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Appointment Details</div><div class="phs">Tue 3 Jun 2025 · 09:30</div></div></div>
+      <div class="card" style="border-color:rgba(56,189,248,.22)">
+        <div class="cbody">
+          <div class="ir"><span class="iri">🗓️</span><div><div class="irl">Date & time</div><div class="irv">Tuesday 3 June 2025 at 09:30</div></div></div>
+          <div class="ir"><span class="iri">🦷</span><div><div class="irl">Treatment</div><div class="irv">Check-up & Composite Filling</div></div></div>
+          <div class="ir"><span class="iri">👩‍⚕️</span><div><div class="irl">Clinician</div><div class="irv">Dr. Sonia Patel</div></div></div>
+          <div class="ir"><span class="iri">⏱️</span><div><div class="irl">Duration</div><div class="irv">60 minutes</div></div></div>
+          <div class="ir"><span class="iri">📍</span><div><div class="irl">Location</div><div class="irv">Surgery 1 · Riverside Dentistry<br><span style="font-size:11px;color:var(--t3)">12 Waterside Way, Southampton SO17 2NT</span></div></div></div>
+          <div class="ir"><span class="iri">📋</span><div><div class="irl">Reason</div><div class="irv">Routine 6-month check-up + cold sensitivity in LL5</div></div></div>
+        </div>
+        <div class="cbody" style="padding-top:0">
+          <div class="ban ban-info"><span class="bani">💡</span><div><div class="bant">Preparation tips</div><div class="band">Brush & floss before attending · bring current medications list (INR result for Warfarin) · arrive 5 min early · avoid eating 30 min before</div></div></div>
+        </div>
+      </div>
+      <div id="appt-actions" style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+        <button class="btn b-teal b-full b-lg" onclick="navTo('vCheckin')">📍 Self check-in</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="btn b-amber" onclick="requestReschedule()">↩ Reschedule</button>
+          <button class="btn b-danger" onclick="cancelAppt()">✕ Cancel</button>
+        </div>
+      </div>
+      <div id="appt-feedback" style="padding:0 16px;display:none"></div>
+    </div>
+
+    <!-- Self Check-In -->
+    <div id="vCheckin" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Check In</div><div class="phs">Let us know you've arrived</div></div></div>
+      <div class="checkin-hero" id="checkin-body">
+        <div style="font-size:48px;margin-bottom:10px">📍</div>
+        <div style="font-size:18px;font-weight:900;color:var(--t);margin-bottom:6px">Ready to check in?</div>
+        <div style="font-size:13px;color:var(--t3);margin-bottom:20px;line-height:1.7">09:30 · Dr. S. Patel · Surgery 1<br>Only check in when you have arrived at the practice.</div>
+        <button class="btn b-green b-full b-lg" onclick="doCheckin()">✓ I have arrived — check me in</button>
+      </div>
+    </div>
+
+    <!-- Book Appointment -->
+    <div id="vBook" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Book Appointment</div><div class="phs" id="book-lbl">Step 1 of 3 — Select type</div></div></div>
+      <div class="steps" id="book-steps"><div class="step-bar active" id="bs1"></div><div class="step-bar" id="bs2"></div><div class="step-bar" id="bs3"></div></div>
+      <div id="book-s1">
+        <div style="padding:0 16px">
+          <div class="fg"><label class="fl">Appointment type</label>
+            <select class="fsel" id="book-type" onchange="bookTypeChange()">
+              <option value="">— Select type —</option>
+              <option value="checkup">Routine Check-up · 30 min · NHS £23.80</option>
+              <option value="emergency">Emergency Appointment · 30 min · £26.80</option>
+              <option value="hygiene">Scale & Polish · 45 min · NHS £26.80</option>
+              <option value="newpt">New Patient Examination · 60 min · £95</option>
+              <option value="whitening">Whitening Consultation · 30 min · £50</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Preferred clinician</label>
+            <select class="fsel" id="book-dentist">
+              <option value="patel">Dr. S. Patel (my dentist)</option>
+              <option value="avery">Dr. J. Avery</option>
+              <option value="any">No preference</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Notes for the team (optional)</label><textarea class="fta" id="book-notes" rows="3" placeholder="Any concerns or specific requests for the team…"></textarea></div>
+          <button class="btn b-primary b-full b-lg" id="book-n1" onclick="bookNext(1)" disabled>Next — Choose date →</button>
+        </div>
+      </div>
+      <div id="book-s2" style="display:none">
+        <div style="padding:0 16px">
+          <div class="fg"><label class="fl">Available dates — June 2025</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="date-grid"></div></div>
+          <div id="slot-sec" style="display:none" class="fg"><label class="fl">Available times</label><div class="slots" id="slot-grid"></div></div>
+          <button class="btn b-primary b-full b-lg" id="book-n2" onclick="bookNext(2)" disabled style="margin-top:4px">Next — Review →</button>
+        </div>
+      </div>
+      <div id="book-s3" style="display:none">
+        <div class="card"><div class="cbody" id="book-review"></div></div>
+        <div style="padding:0 16px">
+          <div class="ban ban-info" style="margin-bottom:12px"><span class="bani">ℹ️</span><div><div class="bant">Booking request</div><div class="band">This sends a booking request to Riverside Dentistry. You'll receive an SMS confirmation within 2 hours.</div></div></div>
+          <button class="btn b-green b-full b-lg" onclick="confirmBooking()">✓ Confirm booking request</button>
+          <button class="btn b-ghost b-full" style="margin-top:8px" onclick="bookNext(-1)">← Back</button>
+        </div>
+      </div>
+      <div id="book-ok" style="display:none">
+        <div class="card" style="margin-top:8px"><div class="cbody">
+          <div class="ban ban-ok"><span class="bani">🎉</span><div><div class="bant">Booking request sent!</div><div class="band">Riverside Dentistry will confirm your appointment by SMS within 2 hours. You'll see it appear here in your upcoming appointments.</div></div></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- Medical History -->
+    <div id="vMedHx" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Medical History</div><div class="phs">Last confirmed 10 Feb 2025</div></div></div>
+      <div class="card"><div class="chd"><span class="ci-ic">💊</span><div><div class="ct">Current medications</div><div class="cs">Include all medications, supplements and over-the-counter drugs</div></div></div>
+        <div class="cbody">
+          <div class="fg"><label class="fl">Medications</label><textarea class="fta" id="mhx-meds" rows="3">Warfarin 5mg OD (anticoagulant)
+Salbutamol inhaler PRN (asthma)</textarea></div>
+          <div class="ban ban-warn"><span class="bani">⚠️</span><div><div class="bant">Warfarin — important</div><div class="band">Please bring your most recent INR result. Dr. Patel must check this before any invasive treatment.</div></div></div>
+        </div>
+      </div>
+      <div class="card"><div class="chd"><span class="ci-ic">🚨</span><div><div class="ct">Allergies</div><div class="cs">Include drug, food, material and latex allergies</div></div></div>
+        <div class="cbody"><div class="fg"><label class="fl">Known allergies</label><textarea class="fta" id="mhx-allerg" rows="2">Penicillin — severe reaction (anaphylaxis)</textarea></div></div>
+      </div>
+      <div class="card"><div class="chd"><span class="ci-ic">🏥</span><div><div class="ct">Medical conditions</div><div class="cs">Select all that currently apply</div></div></div>
+        <div class="cbody">
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box on">✓</div><div class="chk-label">Asthma / respiratory condition</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box on">✓</div><div class="chk-label">Heart condition / blood pressure</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box"></div><div class="chk-label">Diabetes</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box"></div><div class="chk-label">Bleeding disorder / anticoagulant therapy</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box"></div><div class="chk-label">Joint replacement / implant</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box"></div><div class="chk-label">Epilepsy</div></div>
+          <div class="chk-row" onclick="toggleChk(this)"><div class="chk-box"></div><div class="chk-label">Pregnancy or trying to conceive</div></div>
+          <div class="fg" style="margin-top:14px"><label class="fl">Other information for your dentist</label><textarea class="fta" id="mhx-other" rows="2" placeholder="Any other relevant medical information…"></textarea></div>
+        </div>
+      </div>
+      <div id="mhx-fb" style="padding:0 16px;display:none"></div>
+      <div style="padding:0 16px 20px" id="mhx-act">
+        <button class="btn b-green b-full b-lg" onclick="saveMedHx()">✓ Save & confirm medical history</button>
+        <p style="font-size:11px;color:var(--t4);text-align:center;margin-top:10px;line-height:1.7">By saving you confirm this information is accurate. Shared securely with your dental team only.</p>
+      </div>
+    </div>
+
+    <!-- Payments -->
+    <div id="vPayments" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Payments</div><div class="phs">Manage your dental payments</div></div></div>
+      <div id="pay-body">
+        <div class="card" style="border-color:rgba(239,68,68,.27)">
+          <div class="chd"><span class="ci-ic">⚠️</span><div><div class="ct">Outstanding balance</div><div class="cs">Please settle before your next appointment</div></div><span class="badge bg-r" style="margin-left:auto">Overdue</span></div>
+          <div class="cbody">
+            <div style="text-align:center;padding:12px 0">
+              <div style="font-size:40px;font-weight:900;color:var(--red);line-height:1">£73.50</div>
+              <div style="font-size:13px;color:var(--t3);margin-top:6px">Band 2 NHS Treatment · Invoice #INV-0847</div>
+              <div style="font-size:12px;color:var(--t4);margin-top:3px">Due: 14 Feb 2025 · Now overdue</div>
+            </div>
+            <div class="divider"></div>
+            <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn">Routine Examination<div style="font-size:11px;color:var(--t3)">Band 1 — completed</div></div><div class="txp" style="color:var(--t4);text-decoration:line-through;font-size:12px">£26.80</div></div>
+            <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Composite Filling — LL5<div style="font-size:11px;color:var(--t3)">NHS Band 2</div></div><div class="txp">£73.50</div></div>
+          </div>
+          <div class="cfoot" id="pay-actions" style="flex-direction:column">
+            <button class="btn b-green b-full b-lg" onclick="payOnline()">💳 Pay £73.50 online now</button>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="btn b-ghost b-sm" onclick="showInfo('Payment Plan','Spread your payments interest-free over 3–12 months. Call reception on 023 8049 1234 to set up a plan before your appointment.')">Set up plan</button>
+              <button class="btn b-ghost b-sm" onclick="emailInvoice()">Email invoice</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="pay-ok" style="display:none">
+        <div class="card"><div class="cbody"><div class="ban ban-ok"><span class="bani">✅</span><div><div class="bant">Payment successful!</div><div class="band">£73.50 received. A receipt has been sent to your email. Your balance is now £0.00.</div></div></div></div></div>
+      </div>
+      <div class="shd"><span class="stl">Payment history</span></div>
+      <div class="card"><div class="cbody">
+        <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn">Band 1 · Examination<div style="font-size:11px;color:var(--t3)">Paid 20 Jan 2025</div></div><div class="txp">£26.80</div></div>
+        <div class="txi"><div class="txd" style="background:var(--green)"></div><div class="txn">Band 2 · Fillings & Scale<div style="font-size:11px;color:var(--t3)">Paid 10 Sep 2024</div></div><div class="txp">£73.50</div></div>
+      </div></div>
+    </div>
+
+    <!-- Communications (mirrors CommsPage message structure from App.jsx) -->
+    <div id="vComms" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Messages</div><div class="phs">Unified communication history</div></div></div>
+      <div class="pills">
+        <button class="pill on">All</button>
+        <button class="pill">📱 SMS</button>
+        <button class="pill">💬 WhatsApp</button>
+        <button class="pill">✉️ Email</button>
+      </div>
+      <div style="padding:0 16px">
+        <div class="ci"><div class="ci-h"><span>📱</span><span class="ci-from">Riverside Dentistry</span><span class="ci-time">2 days ago</span><span class="unread-dot"></span></div><div class="ci-prev">Appointment reminder: You have an appointment on Tue 3 Jun at 09:30 with Dr. S. Patel. Please confirm attendance by replying YES or log in to your patient portal.</div></div>
+        <div class="ci"><div class="ci-h"><span>💬</span><span class="ci-from">Dr. S. Patel</span><span class="ci-time">1 week ago</span><span class="unread-dot"></span></div><div class="ci-prev">Hello John, following your last visit I wanted to check how the sensitivity in your lower left tooth is. Have you noticed any improvement since your scale and polish?</div></div>
+        <div class="ci"><div class="ci-h"><span>✉️</span><span class="ci-from">Riverside Dentistry</span><span class="ci-time">2 weeks ago</span></div><div class="ci-prev">Your treatment plan has been updated. Please log in to review and accept your Band 2 treatment plan worth £73.50.</div></div>
+        <div class="ci"><div class="ci-h"><span>📱</span><span class="ci-from">Riverside Dentistry</span><span class="ci-time">3 weeks ago</span></div><div class="ci-prev">Your invoice for Band 2 treatment (£73.50) is now overdue. Please log in to settle your balance or call 023 8049 1234.</div></div>
+        <div class="ci"><div class="ci-h"><span>📱</span><span class="ci-from">Riverside Dentistry</span><span class="ci-time">5 months ago</span></div><div class="ci-prev">Your 6-month dental recall is now due. Book your routine check-up online or call us on 023 8049 1234.</div></div>
+      </div>
+    </div>
+
+    <!-- Pre-visit / Post-op care -->
+    <div id="vPostOp" class="view">
+      <div class="phd"><button class="back-btn" onclick="goBack()">←</button><div><div class="pht">Before Your Visit</div><div class="phs">Check-up & Composite Filling</div></div></div>
+      <div class="card"><div class="cbody">
+        <div class="ban ban-info" style="margin-bottom:14px"><span class="bani">🦷</span><div><div class="bant">What to expect</div><div class="band">Your 60-minute appointment starts with a full examination. Dr. Patel will then place a composite filling on your lower left 5th tooth to address cold sensitivity.</div></div></div>
+        <div style="font-size:12px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Before you arrive</div>
+        <div class="txi"><div class="txd" style="background:var(--teal)"></div><div class="txn">Brush and floss thoroughly before attending</div></div>
+        <div class="txi"><div class="txd" style="background:var(--teal)"></div><div class="txn">Bring your current medications list and most recent INR result (Warfarin)</div></div>
+        <div class="txi"><div class="txd" style="background:var(--teal)"></div><div class="txn">Avoid eating 30 minutes before your appointment</div></div>
+        <div class="txi"><div class="txd" style="background:var(--teal)"></div><div class="txn">Arrive 5 minutes early to complete any paperwork</div></div>
+        <div class="divider"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 10px">After your filling</div>
+        <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Avoid hard, crunchy or sticky foods for 24 hours</div></div>
+        <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Some sensitivity is normal — usually settles within 2 weeks</div></div>
+        <div class="txi"><div class="txd" style="background:var(--amber)"></div><div class="txn">Take ibuprofen or paracetamol as directed if needed</div></div>
+        <div class="txi"><div class="txd" style="background:var(--red)"></div><div class="txn">Call 023 8049 1234 if pain persists beyond 2 weeks or bite feels high</div></div>
+      </div></div>
+    </div>
+
+  </main>
+
+  <nav class="bnav">
+    <button class="nt on" id="tDash" onclick="tabTo('tDash')"><span class="nt-i">🏠</span>Home</button>
+    <button class="nt" id="tAppts" onclick="tabTo('tAppts')"><span class="nt-i">📅</span>Appointments</button>
+    <button class="nt" id="tAI" onclick="tabTo('tAI')"><span class="nt-i">🤖</span>AI Assistant</button>
+    <button class="nt" id="tCare" onclick="tabTo('tCare')"><span class="nt-i">💊</span>My Care</button>
+    <button class="nt" id="tProfile" onclick="tabTo('tProfile')"><span class="nt-i">👤</span>Profile</button>
+  </nav>
 </div>
 
-<div class="dashboard" id="dashboardView">
-<h1>Hi <span id="name">John</span> 👋</h1>
-<div class="welcome">Your patient dashboard</div>
-<div class="tile" onclick="alert('Next appointment: 27 May 2026 · 14:00 with Dr. S. Patel · Routine Check-up')">
-<div class="tile-title">📅 Next Appointment</div>
-<div class="tile-sub">27 May 2026 · 14:00 with Dr. S. Patel</div>
-</div>
-<div class="tile" onclick="alert('Outstanding balance: £73.50. Click Pay Now to settle.')">
-<div class="tile-title">💷 Outstanding Balance</div>
-<div class="tile-sub">£73.50 — due now</div>
-</div>
-<div class="tile" onclick="alert('Treatment Plan: Band 2 (Composite filling UR6) — sent 14 May 2026')">
-<div class="tile-title">📋 Treatment Plan</div>
-<div class="tile-sub">Band 2 · awaiting acceptance</div>
-</div>
-<div class="tile" onclick="alert('Medical history last updated 10 Feb 2026. Please review.')">
-<div class="tile-title">⚕️ Medical History</div>
-<div class="tile-sub">Last updated 10 Feb 2026</div>
-</div>
-<button onclick="logout()" style="background:transparent;border:1px solid rgba(80,140,255,0.25);color:#CBD5E1;margin-top:14px">Sign Out</button>
+<!-- ═══ OVERLAYS ═══ -->
+<div class="overlay" id="notifOverlay" onclick="closeOverlay('notifOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="shand"></div>
+    <div class="sh-t">Notifications</div>
+    <div class="sh-s">3 unread alerts</div>
+    <div style="background:var(--card2);border:1px solid var(--b);border-radius:12px;overflow:hidden">
+      <div style="display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(80,140,255,.07)"><div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;margin-top:5px"></div><div><div style="font-size:13px;font-weight:600;color:var(--t)">Appointment reminder</div><div style="font-size:12px;color:var(--t3);margin-top:1px">Tue 3 Jun · 09:30 · Dr. S. Patel</div><div style="font-size:11px;color:var(--t4);margin-top:3px">2 days ago</div></div></div>
+      <div style="display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(80,140,255,.07)"><div style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px"></div><div><div style="font-size:13px;font-weight:600;color:var(--t)">Medical history review needed</div><div style="font-size:12px;color:var(--t3);margin-top:1px">Please confirm before your next visit</div><div style="font-size:11px;color:var(--t4);margin-top:3px">3 days ago</div></div></div>
+      <div style="display:flex;gap:10px;padding:11px 14px"><div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:5px"></div><div><div style="font-size:13px;font-weight:600;color:var(--t)">Payment overdue — £73.50</div><div style="font-size:12px;color:var(--t3);margin-top:1px">Band 2 NHS treatment invoice overdue</div><div style="font-size:11px;color:var(--t4);margin-top:3px">2 weeks ago</div></div></div>
+    </div>
+    <button class="btn b-ghost b-full" style="margin-top:12px" onclick="closeOverlay('notifOverlay')">Close</button>
+  </div>
 </div>
 
-<div class="foot">Test mode · ProDentalConnect Patient Portal demo</div>
+<div class="overlay" id="infoOverlay" onclick="closeOverlay('infoOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="shand"></div>
+    <div class="sh-t" id="info-t"></div>
+    <div id="info-b" style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:0"></div>
+    <button class="btn b-ghost b-full" style="margin-top:16px" onclick="closeOverlay('infoOverlay')">Close</button>
+  </div>
 </div>
+
+<div class="overlay" id="consentOverlay" onclick="closeOverlay('consentOverlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="shand"></div>
+    <div class="sh-t">Composite Filling Consent</div>
+    <div class="sh-s">Please read carefully and sign before your appointment</div>
+    <div style="background:rgba(80,140,255,.05);border:1px solid rgba(80,140,255,.12);border-radius:10px;padding:12px;margin-bottom:14px"><p style="font-size:12px;color:var(--t3);line-height:1.75">I consent to the proposed composite filling treatment as discussed with Dr. Patel. I understand that local anaesthetic will be used and I may experience temporary numbness after treatment. I accept that some post-operative sensitivity is normal and expected. I understand the risks including possible need for further treatment. I know I can withdraw consent at any time before or during treatment by raising my hand.</p></div>
+    <div class="fg"><label class="fl">Type your full name to sign</label><input class="fi" id="consent-sig" placeholder="John Mills"></div>
+    <button class="btn b-green b-full b-lg" onclick="signConsent()">✍️ Sign & submit consent form</button>
+    <button class="btn b-ghost b-full" style="margin-top:8px" onclick="closeOverlay('consentOverlay')">Cancel</button>
+    <div id="consent-ok" style="display:none;margin-top:12px"><div class="ban ban-ok"><span class="bani">✅</span><div><div class="bant">Consent signed</div><div class="band">Your signed consent has been securely submitted to Riverside Dentistry and added to your patient record.</div></div></div></div>
+  </div>
+</div>
+
 <script>
-function login(){
-  const email=document.getElementById('email').value.trim();
-  const dob=document.getElementById('dob').value.trim();
-  const msg=document.getElementById('msg');
-  if(!email||!dob){msg.textContent='Please enter both your email and date of birth';msg.className='status show';return;}
-  document.getElementById('loginView').className='login hide';
-  document.getElementById('dashboardView').className='dashboard show';
-  document.getElementById('name').textContent=email.split('@')[0].split('.')[0].replace(/^\w/,c=>c.toUpperCase());
+// ═══════════════════════════════════════════════
+// DATA MODEL — mirrors App.jsx PATIENTS & APPT_AUDIT_LOG structures
+// ═══════════════════════════════════════════════
+var BOOK_DATES = [
+  {d:"Mon 9 Jun",  slots:["09:00","10:00","14:30","15:00"]},
+  {d:"Tue 10 Jun", slots:["08:30","11:00","16:00"]},
+  {d:"Thu 12 Jun", slots:["09:30","10:30","13:00","15:30"]},
+  {d:"Mon 16 Jun", slots:["08:00","11:30","14:00"]},
+  {d:"Wed 18 Jun", slots:["09:00","10:00","11:00","15:00"]},
+  {d:"Fri 20 Jun", slots:["08:30","13:30","16:00"]},
+];
+
+var S = {
+  loggedIn: false,
+  activeTab: "tDash",
+  activeView: "vDash",
+  prevView: null,
+  selDate: null,
+  selSlot: null,
+  chatInit: false,
+};
+
+var TAB_VIEW = {tDash:"vDash",tAppts:"vAppts",tAI:"vAI",tCare:"vCare",tProfile:"vProfile"};
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function navTo(id) {
+  document.getElementById(S.activeView).classList.remove("show");
+  document.getElementById(id).classList.add("show");
+  S.prevView = S.activeView;
+  S.activeView = id;
+  document.getElementById("mainArea").scrollTop = 0;
 }
-function logout(){
-  document.getElementById('loginView').className='login';
-  document.getElementById('dashboardView').className='dashboard';
-  document.getElementById('email').value='';
-  document.getElementById('dob').value='';
-  document.getElementById('msg').className='status';
+
+function goBack() {
+  if (S.prevView) { navTo(S.prevView); S.prevView = null; }
 }
-document.getElementById('dob').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+
+function tabTo(tabId) {
+  ["tDash","tAppts","tAI","tCare","tProfile"].forEach(function(t){ document.getElementById(t).classList.remove("on"); });
+  document.getElementById(tabId).classList.add("on");
+  S.activeTab = tabId;
+  var vId = TAB_VIEW[tabId];
+  document.getElementById(S.activeView).classList.remove("show");
+  document.getElementById(vId).classList.add("show");
+  S.activeView = vId;
+  S.prevView = null;
+  document.getElementById("mainArea").scrollTop = 0;
+  if (tabId === "tAI" && !S.chatInit) initChat();
+}
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+function login() {
+  var email = document.getElementById("l-email").value.trim().toLowerCase();
+  var dob   = document.getElementById("l-dob").value.trim();
+  var err   = document.getElementById("l-err");
+  if (!email || !dob) { err.textContent = "Please enter your email and date of birth."; err.style.display = "block"; return; }
+  var ok = (email === "john.mills@email.com" || email === "demo") &&
+           (dob.indexOf("1985") !== -1 || dob === "12 Mar 1985" || dob === "12/03/1985");
+  if (!ok) { err.textContent = "Details not recognised. Demo: john.mills@email.com / 12 Mar 1985"; err.style.display = "block"; return; }
+  err.style.display = "none";
+  document.getElementById("vLogin").style.display = "none";
+  var shell = document.getElementById("appShell");
+  shell.style.display = "flex";
+  S.loggedIn = true;
+}
+
+function logout() {
+  if (!confirm("Sign out of your patient portal?")) return;
+  S.loggedIn = false;
+  S.chatInit = false;
+  S.prevView = null;
+  document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("show"); });
+  document.getElementById("vDash").classList.add("show");
+  S.activeView = "vDash";
+  ["tDash","tAppts","tAI","tCare","tProfile"].forEach(function(t){ document.getElementById(t).classList.remove("on"); });
+  document.getElementById("tDash").classList.add("on");
+  S.activeTab = "tDash";
+  document.getElementById("appShell").style.display = "none";
+  document.getElementById("vLogin").style.display = "flex";
+  document.getElementById("l-email").value = "";
+  document.getElementById("l-dob").value = "";
+}
+
+// ═══════════════════════════════════════════════
+// APPOINTMENT ACTIONS
+// ═══════════════════════════════════════════════
+function requestReschedule() {
+  document.getElementById("appt-actions").style.display = "none";
+  var fb = document.getElementById("appt-feedback");
+  fb.style.display = "block";
+  fb.innerHTML = '<div class="ban ban-info"><span class="bani">↩️</span><div><div class="bant">Reschedule request sent</div><div class="band">Riverside Dentistry will call or SMS you within 2 hours with alternative dates. Or call 023 8049 1234 to reschedule now.</div></div></div><div style="margin-top:10px"><button class="btn b-teal b-full" onclick="navTo(\'vBook\')">Browse available slots →</button></div>';
+}
+
+function cancelAppt() {
+  if (!confirm("Cancel your appointment on Tue 3 Jun at 09:30?\n\nPlease give at least 24 hours notice where possible. Late cancellations may incur a fee.")) return;
+  document.getElementById("appt-actions").style.display = "none";
+  var fb = document.getElementById("appt-feedback");
+  fb.style.display = "block";
+  fb.innerHTML = '<div class="ban ban-info"><span class="bani">❌</span><div><div class="bant">Appointment cancellation requested</div><div class="band">We\'ve received your cancellation request. Our team will process this and you\'ll receive an SMS confirmation. Please rebook when ready.</div></div></div><div style="margin-top:10px"><button class="btn b-teal b-full" onclick="navTo(\'vBook\')">Book a new appointment →</button></div>';
+}
+
+function doCheckin() {
+  document.getElementById("checkin-body").innerHTML = '<div style="font-size:48px;margin-bottom:10px">✅</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-bottom:8px">Checked in!</div><div style="font-size:13px;color:var(--t3);margin-bottom:16px;line-height:1.7">Welcome, John. Dr. Patel has been notified of your arrival.<br>Please take a seat — estimated wait <strong style="color:var(--t2)">8 minutes</strong>.</div><div class="ban ban-ok" style="text-align:left"><span class="bani">💡</span><div><div class="bant">While you wait</div><div class="band">We\'ll notify you when Dr. Patel is ready. You can update your medical history or review your treatment plan in the meantime.</div></div></div>';
+}
+
+// ═══════════════════════════════════════════════
+// BOOKING FLOW (mirrors OnlineBookingPage / ONLINE_BOOKINGS from App.jsx)
+// ═══════════════════════════════════════════════
+function bookTypeChange() {
+  document.getElementById("book-n1").disabled = !document.getElementById("book-type").value;
+}
+
+function bookNext(step) {
+  if (step === 1) {
+    document.getElementById("book-s1").style.display = "none";
+    document.getElementById("book-s2").style.display = "block";
+    document.getElementById("bs1").classList.add("done");
+    document.getElementById("bs2").classList.add("active");
+    document.getElementById("book-lbl").textContent = "Step 2 of 3 — Choose date & time";
+    buildDates();
+  } else if (step === 2) {
+    if (!S.selSlot || !S.selDate) return;
+    document.getElementById("book-s2").style.display = "none";
+    document.getElementById("book-s3").style.display = "block";
+    document.getElementById("bs2").classList.add("done");
+    document.getElementById("bs3").classList.add("active");
+    document.getElementById("book-lbl").textContent = "Step 3 of 3 — Confirm";
+    buildReview();
+  } else if (step === -1) {
+    document.getElementById("book-s3").style.display = "none";
+    document.getElementById("book-s2").style.display = "block";
+    document.getElementById("bs3").classList.remove("active","done");
+    document.getElementById("book-lbl").textContent = "Step 2 of 3 — Choose date & time";
+  }
+}
+
+function buildDates() {
+  var g = document.getElementById("date-grid");
+  g.innerHTML = "";
+  BOOK_DATES.forEach(function(item, i) {
+    var b = document.createElement("button");
+    b.className = "slot";
+    b.textContent = item.d;
+    b.onclick = function(){ selDate(i, b, item); };
+    g.appendChild(b);
+  });
+}
+
+function selDate(idx, btn, item) {
+  document.querySelectorAll("#date-grid .slot").forEach(function(b){ b.classList.remove("on"); });
+  btn.classList.add("on");
+  S.selDate = item.d;
+  S.selSlot = null;
+  document.getElementById("book-n2").disabled = true;
+  var ss = document.getElementById("slot-sec");
+  var sg = document.getElementById("slot-grid");
+  ss.style.display = "block";
+  sg.innerHTML = "";
+  item.slots.forEach(function(t) {
+    var sb = document.createElement("button");
+    sb.className = "slot";
+    sb.textContent = t;
+    sb.onclick = function(){ selSlot(t, sb); };
+    sg.appendChild(sb);
+  });
+  ["11:30","13:00"].forEach(function(t) {
+    var sb = document.createElement("button");
+    sb.className = "slot off";
+    sb.textContent = t;
+    sb.disabled = true;
+    sg.appendChild(sb);
+  });
+}
+
+function selSlot(time, btn) {
+  document.querySelectorAll("#slot-grid .slot").forEach(function(b){ b.classList.remove("on"); });
+  btn.classList.add("on");
+  S.selSlot = time;
+  document.getElementById("book-n2").disabled = false;
+}
+
+function buildReview() {
+  var type = document.getElementById("book-type");
+  var dent = document.getElementById("book-dentist");
+  var notes = document.getElementById("book-notes").value;
+  var label = type.options[type.selectedIndex].text;
+  var dentLabel = dent.options[dent.selectedIndex].text;
+  document.getElementById("book-review").innerHTML =
+    '<div class="ir"><span class="iri">📅</span><div><div class="irl">Date & time</div><div class="irv">' + S.selDate + ' · ' + S.selSlot + '</div></div></div>' +
+    '<div class="ir"><span class="iri">🦷</span><div><div class="irl">Type</div><div class="irv">' + label + '</div></div></div>' +
+    '<div class="ir"><span class="iri">👩‍⚕️</span><div><div class="irl">Clinician</div><div class="irv">' + dentLabel + '</div></div></div>' +
+    '<div class="ir"><span class="iri">📍</span><div><div class="irl">Location</div><div class="irv">Riverside Dentistry · Surgery 1</div></div></div>' +
+    (notes ? '<div class="ir"><span class="iri">📋</span><div><div class="irl">Notes</div><div class="irv">' + notes + '</div></div></div>' : '');
+}
+
+function confirmBooking() {
+  document.getElementById("book-s3").style.display = "none";
+  document.getElementById("book-ok").style.display = "block";
+  document.getElementById("book-lbl").textContent = "Request sent ✓";
+  document.getElementById("book-steps").style.display = "none";
+}
+
+// ═══════════════════════════════════════════════
+// TREATMENT PLAN (mirrors FinancePage/treatment plan data from App.jsx)
+// ═══════════════════════════════════════════════
+function acceptPlan() {
+  document.getElementById("plan-actions").style.display = "none";
+  var badge = document.getElementById("plan-badge");
+  badge.className = "badge bg-g";
+  badge.textContent = "✓ Accepted";
+  var body = document.getElementById("plan-body");
+  var ban = document.createElement("div");
+  ban.className = "ban ban-ok";
+  ban.innerHTML = '<span class="bani">✅</span><div><div class="bant">Treatment plan accepted</div><div class="band">Thank you. Dr. Patel\'s team has been notified. Your treatment will proceed at your appointment on Tue 3 Jun.</div></div>';
+  body.appendChild(ban);
+}
+
+function declinePlan() {
+  document.getElementById("plan-actions").style.display = "none";
+  var badge = document.getElementById("plan-badge");
+  badge.className = "badge bg-r";
+  badge.textContent = "Declined";
+  var body = document.getElementById("plan-body");
+  var ban = document.createElement("div");
+  ban.className = "ban ban-info";
+  ban.innerHTML = '<span class="bani">ℹ️</span><div><div class="bant">Plan declined</div><div class="band">Your response has been noted. Dr. Patel will discuss your options at your appointment. Call 023 8049 1234 if you\'d like to discuss beforehand.</div></div>';
+  body.appendChild(ban);
+}
+
+// ═══════════════════════════════════════════════
+// PAYMENTS (mirrors PaymentsPage/FinancePage from App.jsx)
+// ═══════════════════════════════════════════════
+function payOnline() {
+  document.getElementById("pay-body").style.display = "none";
+  document.getElementById("pay-ok").style.display = "block";
+}
+
+function emailInvoice() {
+  showInfo("Invoice emailed", "Invoice #INV-0847 for £73.50 has been sent to john.mills@email.com. Please check your inbox — allow a few minutes for delivery.");
+}
+
+// ═══════════════════════════════════════════════
+// MEDICAL HISTORY (mirrors PATIENTS.medHistory from App.jsx)
+// ═══════════════════════════════════════════════
+function saveMedHx() {
+  var btn = document.querySelector("#mhx-act button");
+  btn.disabled = true;
+  btn.textContent = "⏳ Saving…";
+  setTimeout(function() {
+    document.getElementById("mhx-act").style.display = "none";
+    var fb = document.getElementById("mhx-fb");
+    fb.style.display = "block";
+    fb.innerHTML = '<div class="ban ban-ok"><span class="bani">✅</span><div><div class="bant">Medical history saved</div><div class="band">Your updated medical history has been securely submitted to Riverside Dentistry. Dr. Patel\'s team will review it before your appointment on Tue 3 Jun.</div></div></div>';
+  }, 900);
+}
+
+function toggleChk(row) {
+  var box = row.querySelector(".chk-box");
+  var isOn = box.classList.contains("on");
+  box.classList.toggle("on");
+  box.textContent = isOn ? "" : "✓";
+}
+
+// ═══════════════════════════════════════════════
+// CONSENT
+// ═══════════════════════════════════════════════
+function showConsentSheet() { document.getElementById("consentOverlay").classList.add("show"); }
+
+function signConsent() {
+  var sig = document.getElementById("consent-sig").value.trim();
+  if (!sig) { alert("Please type your full name to sign."); return; }
+  document.getElementById("consent-ok").style.display = "block";
+  var btn = document.querySelector("#consentOverlay .b-green");
+  btn.disabled = true;
+  btn.textContent = "✓ Signed";
+  var badge = document.getElementById("consent-badge");
+  if (badge) { badge.className = "badge bg-g"; badge.textContent = "✓ Signed"; }
+}
+
+// ═══════════════════════════════════════════════
+// SEGMENT CONTROLS
+// ═══════════════════════════════════════════════
+function apptSeg(seg) {
+  document.getElementById("seg-up").className = "sbtn" + (seg === "up" ? " on" : "");
+  document.getElementById("seg-past").className = "sbtn" + (seg === "past" ? " on" : "");
+  document.getElementById("appts-up").style.display = seg === "up" ? "block" : "none";
+  document.getElementById("appts-past").style.display = seg === "past" ? "block" : "none";
+}
+
+function careSeg(n) {
+  [1,2,3].forEach(function(i) {
+    document.getElementById("cs" + i).className = "sbtn" + (i === n ? " on" : "");
+    var ids = ["care-plans","care-forms","care-docs"];
+    document.getElementById(ids[i-1]).style.display = i === n ? "block" : "none";
+  });
+}
+
+// ═══════════════════════════════════════════════
+// OVERLAYS
+// ═══════════════════════════════════════════════
+function showNotifs() { document.getElementById("notifOverlay").classList.add("show"); }
+function closeOverlay(id) { document.getElementById(id).classList.remove("show"); }
+function showInfo(title, body) {
+  document.getElementById("info-t").textContent = title;
+  document.getElementById("info-b").textContent = body;
+  document.getElementById("infoOverlay").classList.add("show");
+}
+
+// ═══════════════════════════════════════════════
+// AI PATIENT ASSISTANT
+// Extends BusinessCopilot concept (App.jsx) — patient-facing layer
+// Uses same communication engine patterns as ReceptionAI & CommsPage
+// ═══════════════════════════════════════════════
+var AI = {
+  confirm: "Your appointment is confirmed:\n\n📅 Tuesday 3 June at 09:30\n👩‍⚕️ Dr. S. Patel\n🦷 Check-up & Composite Filling\n📍 Surgery 1 · Riverside Dentistry\n⏱️ 60 minutes\n\nPlease arrive 5 minutes early and bring your current medications list (including your INR result for Warfarin).",
+  reschedule: "Of course — before I rearrange, is there a specific reason? Sometimes the team can adjust timing on the day.\n\nTo reschedule:\n• Tap 'Browse available slots' below\n• Or call reception: 023 8049 1234\n• Or I can flag a reschedule request for the team\n\nWhat would you prefer?",
+  cancel: "I understand. Before cancelling, please note:\n\n⚠️ Late cancellations (under 24 hours) may incur a fee.\n\nIf you're anxious about the procedure, Dr. Patel is very experienced with nervous patients. She can explain everything step by step.\n\nShall I flag a cancellation, or would you like to discuss options first?",
+  pain: "I'm sorry to hear you're in pain — let's sort this. 🦷\n\nFor immediate relief:\n• Ibuprofen or paracetamol as directed\n• Avoid hot/cold food on the affected side\n• Rinse gently with warm salt water\n\n🚨 If pain is severe or you have swelling — call now: 023 8049 1234\n\nWe keep emergency slots every morning for urgent cases.",
+  filling: "A composite (tooth-coloured) filling is a common, straightforward procedure:\n\n1️⃣ Local anaesthetic numbs the area\n2️⃣ Dr. Patel gently removes any decay\n3️⃣ Tooth-coloured resin is placed and shaped\n4️⃣ A blue light sets it hard in seconds\n\nMost patients feel pressure but no pain. It takes 30–45 minutes and you can eat normally after a few hours.\n\nAny specific concerns?",
+  warfarin: "Important for your appointment:\n\nBecause you're on Warfarin, Dr. Patel needs your most recent INR result before any treatment involving bleeding.\n\n✅ Bring your INR booklet or a recent test result.\n\nIf it hasn't been checked recently, your GP can arrange this quickly. Your record already has a Warfarin flag — Dr. Patel's team is aware.",
+  payment: "Your current balance is £73.50 for Band 2 NHS treatment (composite filling). This is overdue.\n\nYou can:\n💳 Pay online now — tap 'Pay £73.50' in quick actions\n📞 Pay by phone: 023 8049 1234\n📊 Set up a payment plan (interest-free options available)\n💰 Apply for Chrysalis Finance for larger treatments\n\nWould you like to pay now?",
+  anxious: "Feeling anxious about dental visits is very common — you're not alone. 💙\n\nHere's how Dr. Patel's team can help:\n• They'll explain every step before doing it\n• You can signal for a break at any time\n• Topical gel before any injections\n• Music during treatment if you'd like\n• Extra time built in for nervous patients\n\nIs there a specific part that worries you? I can explain exactly what will happen.",
+  book: "I'd be happy to help you book! 📅\n\nAvailable appointment types:\n• Routine Check-up · 30 min · NHS £23.80\n• Emergency Appointment · 30 min\n• Scale & Polish · 45 min · NHS\n• New Patient Examination · 60 min · £95\n• Whitening Consultation · 30 min · £50\n\nTap 'Book Appt' in quick actions, or tell me which type you need.",
+  checkin: "Welcome to Riverside Dentistry! 👋\n\nI've notified Dr. Patel's team that you've arrived.\n\nEstimated wait: approximately 8 minutes. Please take a seat.\n\nWhile you wait:\n• Review your treatment plan\n• Update your medical history\n• Sign your consent form\n\nYou'll receive an SMS when Dr. Patel is ready for you.",
+  aftercare: "Post-filling care instructions 🦷\n\n✅ In the 24 hours after treatment:\n• Avoid hard, crunchy or sticky food\n• Some sensitivity is normal — settles within 2 weeks\n• Take ibuprofen or paracetamol if needed\n• Avoid very hot/cold drinks on treated side\n\n⚠️ Call us if:\n• Pain persists beyond 2 weeks\n• Bite feels high or uneven\n• Any significant swelling\n\nReception: 023 8049 1234",
+  medhistory: "Your medical history was last confirmed 10 February 2025.\n\nCurrently on record:\n💊 Warfarin 5mg OD\n💊 Salbutamol inhaler (asthma)\n🚨 Penicillin allergy — severe\n🏥 Asthma\n\nIf anything has changed — new medication, allergy or condition — please update it in 'My Care → Forms'. This helps Dr. Patel plan your treatment safely.",
+  escalate: "I'll connect you to the team directly. 📞\n\nReception: 023 8049 1234\nEmail: info@riverside-dentistry.co.uk\nHours: Mon–Fri 8:30am–5:30pm\n\nFor emergencies outside hours:\n• NHS 111 (non-emergency)\n• A&E if significant swelling or difficulty swallowing/breathing",
+  greeting: "Hi John! 👋 I'm your AI dental assistant for Riverside Dentistry.\n\nYour next appointment is Tuesday 3 June at 09:30 with Dr. Patel for your Check-up & Composite Filling.\n\n⚠️ Two things need your attention before the appointment:\n• Outstanding balance: £73.50 (overdue)\n• Medical history review needed\n\nHow can I help you today?",
+  fallback: "I'm your AI dental assistant for Riverside Dentistry. I can help with:\n\n• 📅 Appointment queries and booking\n• 🦷 Understanding your treatment\n• 💳 Paying your balance\n• 📋 Medical history & forms\n• 💊 Post-treatment care advice\n• ❓ General dental questions\n\nWhat can I help you with today?"
+};
+
+var QRS = {
+  init:    ["Confirm my appointment","I have tooth pain","Pay my balance","What should I expect?"],
+  appt:    ["Check in now","Reschedule","Pre-visit tips","What to expect?"],
+  pay:     ["Pay £73.50 now","Set up payment plan","Email invoice"],
+  anxiety: ["What happens during filling?","Can I take breaks?","Speak to reception"],
+  after:   ["Post-op care tips","Book follow-up","General question"],
+  general: ["My appointment","My balance","Book appointment","Dental advice"]
+};
+
+function initChat() {
+  S.chatInit = true;
+  document.getElementById("chatMsgs").innerHTML = "";
+  setTimeout(function() {
+    showTyping();
+    setTimeout(function() {
+      hideTyping();
+      appendAI(AI.greeting);
+      setQRs(QRS.init);
+    }, 1100);
+  }, 200);
+}
+
+function appendAI(text) {
+  var msgs = document.getElementById("chatMsgs");
+  var t = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  var d = document.createElement("div");
+  d.className = "msg msg-a anim";
+  d.innerHTML = '<div class="ai-row"><div class="ai-av">🤖</div><div class="mbub">' + esc(text) + '</div></div><div class="mtime">' + t + '</div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendUser(text) {
+  var msgs = document.getElementById("chatMsgs");
+  var t = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  var d = document.createElement("div");
+  d.className = "msg msg-u anim";
+  d.innerHTML = '<div class="mbub">' + esc(text) + '</div><div class="mtime">' + t + '</div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  var msgs = document.getElementById("chatMsgs");
+  var d = document.createElement("div");
+  d.className = "msg msg-a";
+  d.id = "typ";
+  d.innerHTML = '<div class="ai-row"><div class="ai-av">🤖</div><div class="mbub" style="padding:12px 16px"><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div></div></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideTyping() { var e = document.getElementById("typ"); if (e) e.remove(); }
+
+function setQRs(arr) {
+  document.getElementById("quickReplies").innerHTML = arr.map(function(q){
+    return '<button class="qr" onclick="sendQR(\'' + q.replace(/'/g,"\\'") + '\')">' + q + '</button>';
+  }).join("");
+}
+
+function sendQR(text) { document.getElementById("quickReplies").innerHTML = ""; dispatch(text); }
+
+function sendChat() {
+  var inp = document.getElementById("chatInput");
+  var text = inp.value.trim();
+  if (!text) return;
+  inp.value = "";
+  inp.style.height = "auto";
+  if (!S.chatInit) initChat();
+  dispatch(text);
+}
+
+function chatKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+function dispatch(text) {
+  appendUser(text);
+  document.getElementById("quickReplies").innerHTML = "";
+  var m = text.toLowerCase();
+  var reply = AI.fallback;
+  var qrs = QRS.general;
+
+  if (m.match(/confirm|confirmed|status|attend|booked/)) { reply = AI.confirm; qrs = QRS.appt; }
+  else if (m.match(/reschedule|rearrange|change.*appoint|move.*appoint|different.*time/)) { reply = AI.reschedule; qrs = ["Book new slot","Cancel appointment","Speak to reception"]; }
+  else if (m.match(/cancel/)) { reply = AI.cancel; qrs = ["Reschedule instead","Speak to reception"]; }
+  else if (m.match(/pain|ache|hurt|sore|toothache|emergency|swelling|swollen/)) { reply = AI.pain; qrs = ["Call reception","Pain relief advice","Book emergency slot"]; }
+  else if (m.match(/fill|composite|cavity|decay/)) { reply = AI.filling; qrs = QRS.anxiety; }
+  else if (m.match(/anxious|nervous|scared|afraid|phobia|fear|worried|anxiety/)) { reply = AI.anxious; qrs = QRS.anxiety; }
+  else if (m.match(/warfarin|inr|blood.thin|anticoagul/)) { reply = AI.warfarin; qrs = QRS.general; }
+  else if (m.match(/pay|balance|£|invoice|bill|owe|payment|overdue/)) { reply = AI.payment; qrs = QRS.pay; }
+  else if (m.match(/book|new appoint|make.*appoint|schedule|slot/)) { reply = AI.book; qrs = ["Routine check-up","Emergency slot","All types"]; }
+  else if (m.match(/check.?in|arrived|here|waiting room|at.*practice/)) { reply = AI.checkin; qrs = ["Update medical history","Review treatment plan"]; }
+  else if (m.match(/after|post.?op|care|instructions|recovery|following/)) { reply = AI.aftercare; qrs = QRS.after; }
+  else if (m.match(/medical|history|medication|allerg|condition|health|meds/)) { reply = AI.medhistory; qrs = ["Update history","What's on my record"]; }
+  else if (m.match(/speak|reception|human|someone|call|staff|person|help/)) { reply = AI.escalate; qrs = QRS.general; }
+  else if (m.match(/expect|happen|procedure|process|what.*will|during/)) { reply = AI.filling; qrs = QRS.anxiety; }
+
+  setTimeout(function(){ showTyping(); }, 150);
+  var delay = Math.min(700 + reply.length * 1.8, 2000);
+  setTimeout(function(){ hideTyping(); appendAI(reply); setQRs(qrs); }, delay);
+}
+
+function esc(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", function() {
+  // Pre-fill demo credentials
+  document.getElementById("l-email").value = "john.mills@email.com";
+  document.getElementById("l-dob").value = "12 Mar 1985";
+
+  // Auto-resize chat textarea
+  var inp = document.getElementById("chatInput");
+  if (inp) {
+    inp.addEventListener("input", function() {
+      inp.style.height = "auto";
+      inp.style.height = Math.min(inp.scrollHeight, 100) + "px";
+    });
+  }
+});
 </script>
 </body>
 </html>
