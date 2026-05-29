@@ -23850,7 +23850,7 @@ function CommsPage({user}){
           </button>
         ))}
         <div style={{flex:1}}/>
-        <button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeSubj("");setComposeBody("");}}
+        <button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeCC("");setComposeBCC("");setComposeSubj("");setComposeBody("");}}
           style={{padding:"6px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.3)"}}>
           + Compose
         </button>
