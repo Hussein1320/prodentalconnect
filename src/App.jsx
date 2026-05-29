@@ -22770,6 +22770,7 @@ function SettingsPage({user}){
     {id:"backup",l:"Backup & Data",icon:"☁️"},
     {id:"integrations",l:"Integrations",icon:"🔌"},
     {id:"notifications",l:"Notifications",icon:"🔔"},
+    {id:"comms",l:"Communications",icon:"✉️"},
     {id:"billing",l:"Billing & Payments",icon:"💳"},
     {id:"security",l:"Security",icon:"🔒"},
     {id:"branding",l:"Branding",icon:"🎨"},
@@ -23143,6 +23144,42 @@ function SettingsPage({user}){
             </div>}
           </div>}
 
+          {/* ── COMMUNICATIONS ── */}
+          {activeSection==="comms"&&<div>
+            <div style={{fontSize:14,fontWeight:800,marginBottom:16}}>Communications & Email Signature</div>
+            <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.1)",borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>Practice Email Signature</div>
+              <div style={{fontSize:11,color:C.muted,marginBottom:12}}>This signature is automatically appended to all outgoing emails. Managers and owners can edit it.</div>
+              <textarea defaultValue={`Riverside Dentistry\n123 High Street, London, SW1 1AB\nTel: 01234 567890 | www.riversidedental.co.uk\nRegistered with the CQC. GDC registered clinicians.`} rows={5}
+                style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"'Inter',ui-sans-serif,sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.6,marginBottom:10}}/>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+                {["Practice Name","Address","Phone","Website","CQC Registration","Legal Disclaimer"].map(f=>(
+                  <div key={f} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",background:"rgba(80,140,255,0.06)",border:"1px solid rgba(80,140,255,0.15)",borderRadius:8,fontSize:11,color:"#94A3B8"}}>
+                    <input type="checkbox" defaultChecked style={{accentColor:"#2563FF"}}/>{f}
+                  </div>
+                ))}
+              </div>
+              <button onClick={()=>doToast("✓ Signature saved")} style={{padding:"7px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:9,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>Save Signature</button>
+            </div>
+            <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.1)",borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,marginBottom:8}}>Email Sending Permissions</div>
+              {[["Reception","Can compose and reply to emails","enabled"],["Manager/Owner","Can manage templates and signatures","enabled"],["Dentist","Can reply to clinical emails only","enabled"],["Hygienist","View only","disabled"]].map(([role,desc,status])=>(
+                <div key={role} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderTop:"1px solid rgba(56,189,248,0.06)"}}>
+                  <div><div style={{fontSize:12,fontWeight:600}}>{role}</div><div style={{fontSize:10,color:C.muted}}>{desc}</div></div>
+                  <span style={{fontSize:10,padding:"2px 8px",borderRadius:7,background:status==="enabled"?"rgba(34,197,94,0.12)":"rgba(100,116,139,0.12)",color:status==="enabled"?C.green:"#64748B",fontWeight:700}}>{status}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.1)",borderRadius:14,padding:20}}>
+              <div style={{fontSize:13,fontWeight:700,marginBottom:8}}>Attachment Permissions</div>
+              {[["Patient documents","Reception, Clinicians, Manager"],["Invoices","Reception, Manager"],["Treatment plans","Clinicians, Manager"],["Consent forms","Reception, Clinicians, Manager"],["Aftercare docs","All staff"]].map(([doc,roles])=>(
+                <div key={doc} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:"1px solid rgba(56,189,248,0.06)",fontSize:11}}>
+                  <span style={{color:"#CBD5E1"}}>{doc}</span><span style={{color:C.muted}}>{roles}</span>
+                </div>
+              ))}
+            </div>
+          </div>}
+
           {/* ── BILLING PLAN SELECTOR ── */}
           {activeSection==="billing"&&showPlanPicker&&<div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden",marginBottom:12}}>
             <div style={{padding:"10px 14px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -23170,7 +23207,7 @@ function SettingsPage({user}){
             </div>
           </div>}
 
-          {!["backup","integrations","superadmin","treatments","clinical","dashboards","med_history","staff"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
+          {!["backup","integrations","superadmin","treatments","clinical","dashboards","med_history","staff","comms"].includes(activeSection)&&<button onClick={()=>doToast("✓ Settings saved")} style={{padding:"9px 24px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#132238",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Check size={12}/>Save Changes</button>}
         </div>
       </div>
     </div>
@@ -23733,80 +23770,92 @@ function CommsPage({user}){
   const [composeBCC,setComposeBCC]=useState("");
   const [composeSubj,setComposeSubj]=useState("");
   const [composeBody,setComposeBody]=useState("");
+  const [showCC,setShowCC]=useState(false);
+  const [showBCC,setShowBCC]=useState(false);
+  const [composeAttachments,setComposeAttachments]=useState([]);
+  const [replyAttachments,setReplyAttachments]=useState([]);
+  const [showComposeTpl,setShowComposeTpl]=useState(false);
+  const [showReplyTpl,setShowReplyTpl]=useState(false);
+  const [showQuickActions,setShowQuickActions]=useState(true);
   const [toast,setToast]=useState(null);
   const [readIds,setReadIds]=useState(new Set());
+  const [sigEnabled,setSigEnabled]=useState(true);
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
-  const isManager=user?.role==="manager"||user?.role==="superadmin";
+  const isManager=user?.role==="manager"||user?.role==="superadmin"||user?.role==="owner";
   const ini=n=>n.split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();
+
+  const PRACTICE_SIG=`\n\n--\nRiverside Dentistry\n123 High Street, London, SW1 1AB\nTel: 01234 567890 | www.riversidedental.co.uk\nRegistered with the CQC. GDC registered clinicians.`;
 
   const EMAILS=[
     {id:"E1",from:"James Wilson",email:"j.wilson@email.com",subject:"New Patient — Appointment Enquiry",
      body:"Hello,\n\nI was referred by John Mills and would like to book an initial appointment for a new patient examination. I'm available most weekday mornings or Friday afternoons.\n\nCould you let me know your next available slot?\n\nMany thanks,\nJames Wilson",
-     time:"10:22",date:"Today",unread:true,tag:"enquiry",color:"#2563FF"},
+     time:"10:22",date:"Today",unread:true,tag:"enquiry",color:"#2563FF",pid:null,appt:null,balance:null},
     {id:"E2",from:"Amy Torres",email:"amy.torres@email.com",subject:"Treatment Plan Query — Crown UR6",
      body:"Hi,\n\nI've reviewed the treatment plan you sent over and have a few questions about the crown procedure for UR6.\n\n1. How long does the procedure take?\n2. Will I need two appointments?\n3. Is there a payment plan option?\n\nThanks,\nAmy",
-     time:"09:15",date:"Today",unread:true,tag:"query",color:"#22C55E"},
+     time:"09:15",date:"Today",unread:true,tag:"query",color:"#22C55E",pid:"P4",appt:"7 Jun 09:00 — Dr. Patel",balance:850},
     {id:"E3",from:"David Park",email:"d.park@email.com",subject:"Re: Recall Reminder — Check-up Due",
      body:"Thank you for the reminder.\n\nI'd like to book in for next Tuesday if possible — any time after 2pm works for me.\n\nBest,\nDavid Park",
-     time:"Yesterday",date:"Yesterday",unread:false,tag:"recall",color:"#F59E0B"},
+     time:"Yesterday",date:"Yesterday",unread:false,tag:"recall",color:"#F59E0B",pid:null,appt:null,balance:null},
     {id:"E4",from:"Sophie Clarke",email:"s.clarke@email.com",subject:"Teeth Whitening — Pre-appointment Questions",
      body:"Hi there,\n\nI have my whitening consultation next week and just wanted to ask a few questions:\n\n- Should I avoid any foods beforehand?\n- How long does whitening last?\n- What's included in the £299 package?\n\nLooking forward to it!\nSophie",
-     time:"Yesterday",date:"Yesterday",unread:false,tag:"enquiry",color:"#8B5CF6"},
+     time:"Yesterday",date:"Yesterday",unread:false,tag:"enquiry",color:"#8B5CF6",pid:null,appt:null,balance:null},
     {id:"E5",from:"Lisa White",email:"l.white@email.com",subject:"Outstanding Balance — Payment Query",
      body:"Hello,\n\nI received a notification about an outstanding balance of £150 and wanted to check — is this for my last hygiene appointment?\n\nI thought that was paid on the day. Could you check your records?\n\nThank you,\nLisa White",
-     time:"2 days ago",date:"Mon",unread:false,tag:"billing",color:"#EF4444"},
+     time:"2 days ago",date:"Mon",unread:false,tag:"billing",color:"#EF4444",pid:"P6",appt:null,balance:150},
     {id:"E6",from:"Robert Hall",email:"r.hall@email.com",subject:"Re: Appointment Confirmation — 10 Jun 10:00",
      body:"Confirmed — I'll be there at 10:00.\n\nQuick question: is there a car park nearby or is street parking the best option?\n\nThanks,\nRobert Hall",
-     time:"Mon",date:"Mon",unread:false,tag:"confirmation",color:"#38BDF8"},
+     time:"Mon",date:"Mon",unread:false,tag:"confirmation",color:"#38BDF8",pid:null,appt:"10 Jun 10:00 — Dr. Chen",balance:null},
     {id:"E7",from:"NHS BSA",email:"nhsbsa@nhs.net",subject:"FP17 Claim Batch — Processing Complete",
      body:"Dear Practice,\n\nBatch reference #FP17-2026-MAY-001 has been processed successfully.\n\nTotal value: £8,640.00\nClaims submitted: 47\nClaims approved: 44\nClaims queried: 3 (see attached)\n\nPayment will be processed within 14 working days.\n\nNHS Business Services Authority",
-     time:"Sun",date:"Sun",unread:false,tag:"nhs",color:"#0EA5E9"},
+     time:"Sun",date:"Sun",unread:false,tag:"nhs",color:"#0EA5E9",pid:null,appt:null,balance:null},
     {id:"E8",from:"Chrysalis Finance",email:"noreply@chrysalis.co.uk",subject:"Monthly Finance Summary — May 2026",
      body:"Dear Riverside Dentistry,\n\nYour monthly finance summary for May 2026:\n\nActive finance plans: 3\nTotal exposure: £2,400\nPayments received this month: £800\nPlans in arrears: 0\n\nFull report available in your Chrysalis portal.\n\nChrysalis Finance Team",
-     time:"Sat",date:"Sat",unread:false,tag:"finance",color:"#64748B"},
+     time:"Sat",date:"Sat",unread:false,tag:"finance",color:"#64748B",pid:null,appt:null,balance:null},
   ];
 
   const AI_INTEL={
-    E1:{intent:"Enquiry",urgency:"Medium",sentiment:"Positive",
-      summary:"New patient referral from John Mills. Available weekday mornings or Friday afternoons.",
-      suggestedReply:"Hi James, thank you for getting in touch! We'd love to welcome you as a new patient. We have morning slots available this week — would Tuesday at 09:30 or Thursday at 10:00 suit you? Looking forward to meeting you! 😊",
-      confidence:"High",
-      actions:["Send Booking Link","Confirm New Patient","Add to Patients"]},
-    E2:{intent:"Query",urgency:"Medium",sentiment:"Positive",
-      summary:"Patient asking about crown procedure duration, appointment count, and payment plans.",
-      suggestedReply:"Hi Amy, great questions! The crown procedure typically takes 2 appointments: a prep appointment (approx 60 mins) and a fit appointment (approx 30 mins). We do offer payment plans through Chrysalis Finance — I can send you more details. Let me know if you'd like to proceed!",
-      confidence:"High",
-      actions:["Send Finance Options","Send Treatment Info","Book Crown Prep"]},
-    E3:{intent:"Recall",urgency:"Low",sentiment:"Positive",
-      summary:"Patient wants to book recall appointment after Tuesday 2pm.",
-      suggestedReply:"Hi David, of course! We have Tuesday at 14:30 or 15:00 available — would either of those work for you? Just reply and I'll get it booked in. See you soon! 🦷",
-      confidence:"High",
-      actions:["Confirm Booking","Send Booking Link"]},
-    E4:{intent:"Enquiry",urgency:"Low",sentiment:"Positive",
-      summary:"Pre-appointment questions about teeth whitening: food restrictions, longevity, and package details.",
-      suggestedReply:"Hi Sophie, exciting to have you booked in! For best results, avoid tea, coffee, and red wine the day before. Whitening typically lasts 12–18 months with good home care. The £299 package includes your consultation, take-home trays, and 2 syringes of professional gel. See you soon!",
-      confidence:"High",
-      actions:["Send Whitening Info","Confirm Appointment"]},
-    E5:{intent:"Billing",urgency:"High",sentiment:"Concerned",
-      summary:"Patient disputes outstanding balance of £150, believes it was paid on the day.",
-      suggestedReply:"Hi Lisa, thank you for flagging this. I'll check our payment records and come back to you within the hour. Apologies for any confusion caused — we want to get this sorted for you as quickly as possible.",
-      confidence:"High",
-      actions:["Create Task: Check Lisa White payment","Send Payment Receipt","Escalate To Manager"]},
-    E6:{intent:"Confirmation",urgency:"Low",sentiment:"Positive",
-      summary:"Appointment confirmed for 10 Jun at 10:00. Patient asking about parking.",
-      suggestedReply:"Hi Robert, see you on the 10th at 10:00! There's free street parking on the high street directly opposite the practice, or a pay-and-display car park around the corner on Mill Street. Safe travels! 🦷",
-      confidence:"High",
-      actions:["Confirm Appointment","Mark as Read"]},
-    E7:{intent:"NHS",urgency:"Low",sentiment:"Neutral",
-      summary:"FP17 batch #FP17-2026-MAY-001 processed. 44 approved, 3 queried. Payment within 14 days.",
-      suggestedReply:"",
-      confidence:"Low",
-      actions:["View FP17 Claims","Create Task: Review 3 queried claims"]},
-    E8:{intent:"Finance",urgency:"Low",sentiment:"Neutral",
-      summary:"Monthly Chrysalis Finance summary. 3 active plans, £2,400 exposure, 0 in arrears.",
-      suggestedReply:"",
-      confidence:"Low",
-      actions:["View Finance Report","Create Task: Review monthly finance"]},
+    E1:{intent:"Enquiry",urgency:"Medium",sentiment:"Positive",summary:"New patient referral from John Mills seeking initial examination. Available weekday mornings or Friday afternoons.",suggestedReply:"Hi James, thank you for getting in touch! We'd love to welcome you as a new patient. We have morning slots available this week — would Tuesday at 09:30 or Thursday at 10:00 suit you?\n\nPlease let us know and I'll get you booked in straight away.",confidence:"High",actions:["Send Booking Link","Confirm New Patient","Add to Patients"]},
+    E2:{intent:"Query",urgency:"Medium",sentiment:"Positive",summary:"Patient asking about crown procedure duration, number of appointments, and payment plan availability.",suggestedReply:"Hi Amy, great questions! The crown for UR6 typically takes 2 appointments: a prep session (approx 60 mins) and a fit appointment (approx 30 mins) about 2 weeks later.\n\nWe do offer 0% interest payment plans through Chrysalis Finance — I can send you more details. Just say the word!\n\nWarm regards,",confidence:"High",actions:["Send Finance Options","Send Treatment Plan","Book Crown Prep"]},
+    E3:{intent:"Recall",urgency:"Low",sentiment:"Positive",summary:"Patient wants to book recall check-up on Tuesday after 2pm.",suggestedReply:"Hi David, of course! We have Tuesday at 14:30 or 15:00 available — would either of those work for you?\n\nJust reply and I'll get it confirmed. See you soon!",confidence:"High",actions:["Confirm Booking","Send Booking Link"]},
+    E4:{intent:"Enquiry",urgency:"Low",sentiment:"Positive",summary:"Patient asking pre-whitening questions about diet, longevity, and package contents.",suggestedReply:"Hi Sophie, great to hear from you! A few answers:\n\n- For best results, avoid tea, coffee, red wine and curries for 24hrs before\n- Professional whitening typically lasts 12–18 months with good home care\n- The £299 package includes your consultation, custom whitening trays, and 2 syringes of professional gel\n\nSee you soon!",confidence:"High",actions:["Confirm Appointment","Send Treatment Info"]},
+    E5:{intent:"Billing",urgency:"High",sentiment:"Concerned",summary:"Patient disputing £150 outstanding balance, believes it was paid at point of care.",suggestedReply:"Hi Lisa, thank you for flagging this. I'm going to check our payment records right now and will come back to you within the hour.\n\nApologies for any confusion caused — we want to get this sorted for you as quickly as possible.",confidence:"High",actions:["Create Task: Check Lisa White payment records","Send Payment Receipt","Escalate to Manager"]},
+    E6:{intent:"Confirmation",urgency:"Low",sentiment:"Positive",summary:"Appointment confirmed for 10 Jun. Patient asking about parking.",suggestedReply:"Hi Robert, see you on the 10th at 10:00! There is free street parking on the High Street directly opposite us, or a pay-and-display car park around the corner on Mill Street.\n\nSee you then!",confidence:"High",actions:["Confirm Appointment","Mark as Read"]},
+  };
+
+  const QUICK_ACTIONS=[
+    {l:"Confirm Appointment",cat:"Appointment",color:"#2563FF",fn:e=>`Hi ${e.from.split(" ")[0]}, confirming your appointment at Riverside Dentistry${e.appt?` on ${e.appt}`:""}. We look forward to seeing you! 🦷\n\nIf anything changes, please let us know.`},
+    {l:"Reschedule",cat:"Appointment",color:"#2563FF",fn:e=>`Hi ${e.from.split(" ")[0]}, I'm afraid we need to reschedule your appointment. Please reply with your preferred dates and times, or call us on 01234 567890 and we'll find a suitable slot.`},
+    {l:"Send Booking Link",cat:"Appointment",color:"#2563FF",fn:e=>`Hi ${e.from.split(" ")[0]}, you can book your appointment online at your convenience here:\n\nhttps://book.riversidedental.co.uk\n\nAlternatively, please call us on 01234 567890 and we'll be happy to book over the phone.`},
+    {l:"Send Payment Link",cat:"Payments",color:"#10B981",fn:e=>`Hi ${e.from.split(" ")[0]}, you can pay your outstanding balance${e.balance?` of £${e.balance}`:""} securely online here:\n\nhttps://pay.riversidedental.co.uk\n\nIf you have any questions, please don't hesitate to get in touch.`},
+    {l:"Send Invoice",cat:"Payments",color:"#10B981",fn:e=>`Hi ${e.from.split(" ")[0]}, please find your invoice attached to this email.\n\nIf you have any questions about the charges, please don't hesitate to contact us.`},
+    {l:"Send Treatment Plan",cat:"Treatment",color:"#8B5CF6",fn:e=>`Hi ${e.from.split(" ")[0]}, please find your treatment plan attached. It outlines the proposed treatment, timeline, and costs.\n\nPlease read through it and don't hesitate to get in touch if you have any questions before your appointment.`},
+    {l:"Send Finance Options",cat:"Treatment",color:"#8B5CF6",fn:e=>`Hi ${e.from.split(" ")[0]}, I'm delighted to let you know that we offer 0% interest-free payment plans through Chrysalis Finance, making it easy to spread the cost of your treatment.\n\nApply online here: https://finance.riversidedental.co.uk\n\nOr let us know and we can walk you through the options at your next appointment.`},
+    {l:"Send Consent Form",cat:"Documents",color:"#F59E0B",fn:e=>`Hi ${e.from.split(" ")[0]}, please find your consent form attached. Kindly review, sign, and return it before your appointment.\n\nIf you have any questions about the procedure, please don't hesitate to get in touch.`},
+    {l:"Send Medical History",cat:"Documents",color:"#F59E0B",fn:e=>`Hi ${e.from.split(" ")[0]}, as part of your registration, please complete our medical history form here:\n\nhttps://portal.riversidedental.co.uk/medical-history\n\nThis only takes a few minutes and helps us provide the best possible care.`},
+    {l:"Create Task",cat:"Admin",color:"#64748B",fn:e=>`[Task created for: ${e.from} — regarding: ${e.subject}]`},
+    {l:"Escalate to Clinician",cat:"Admin",color:"#64748B",fn:e=>`Hi ${e.from.split(" ")[0]}, thank you for your message. I've passed this on to your clinician, who will be in touch with you shortly.\n\nWarm regards,`},
+  ];
+
+  const applyTemplate=(tpl,email)=>{
+    const ctx={
+      "[First Name]":email?.from?.split(" ")[0]||"[Patient]",
+      "[Patient Name]":email?.from||"[Patient Name]",
+      "[Date]":email?.appt?.split(" — ")[0]||"[Date]",
+      "[Time]":email?.appt?.split(" ")[1]||"[Time]",
+      "[Clinician]":email?.appt?.split(" — ")[1]||"Dr. Patel",
+      "[Balance]":email?.balance?`£${email.balance}`:"[Balance]",
+      "[Practice Name]":"Riverside Dentistry",
+      "[Practice Phone]":"01234 567890",
+      "[Booking Link]":"https://book.riversidedental.co.uk",
+      "[Payment Link]":"https://pay.riversidedental.co.uk",
+    };
+    let text=tpl.preview||tpl.body||"";
+    Object.entries(ctx).forEach(([k,v])=>{text=text.split(k).join(v);});
+    return text;
+  };
+
+  const addMockAttachment=(type,name)=>{
+    return {id:Date.now(),name,type,size:`${Math.floor(Math.random()*900+100)} KB`};
   };
 
   const SMS_CONVS=[
@@ -23825,277 +23874,338 @@ function CommsPage({user}){
   const unreadEmailCount=EMAILS.filter(e=>isUnread(e)).length;
   const unreadSmsCount=SMS_CONVS.filter(s=>s.unread&&!readIds.has(s.id)).length;
 
-  const openItem=(id)=>{setSelId(id);setReplyBody("");setReadIds(p=>new Set([...p,id]));};
+  const openItem=(id)=>{setSelId(id);setReplyBody("");setReadIds(p=>new Set([...p,id]));setReplyAttachments([]);setShowReplyTpl(false);};
+
+  const openCompose=()=>{
+    setComposeOpen(true);setComposeTo("");setComposeCC("");setComposeBCC("");
+    setComposeSubj("");setComposeAttachments([]);setShowCC(false);setShowBCC(false);
+    setShowComposeTpl(false);
+    setComposeBody(sigEnabled?PRACTICE_SIG:"");
+  };
+
+  const sendReply=()=>{
+    if(!replyBody.trim())return;
+    const selEmail=EMAILS.find(e=>e.id===selId);
+    doToast(`✓ Reply sent to ${selEmail?.from} via email`);
+    setReplyBody("");setReplyAttachments([]);setShowReplyTpl(false);
+  };
+
+  const sendCompose=()=>{
+    if(!composeTo.trim()||!composeBody.trim()){doToast("⚠ To and body are required");return;}
+    doToast(`✓ Email sent to ${composeTo}`);
+    setComposeOpen(false);
+  };
+
+  const QA_CATS=[...new Set(QUICK_ACTIONS.map(a=>a.cat))];
 
   return(
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428"}}>
-      {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:500,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
+      {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:600,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
 
       {/* Tab bar */}
-      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px 0",background:"#0D1E35",borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0,height:46,overflowX:"auto",scrollbarWidth:"none"}}>
+      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px",background:"#0D1E35",borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0,height:46,overflowX:"auto",scrollbarWidth:"none"}}>
         {isMob&&selId&&<button onClick={()=>setSelId(null)} style={{padding:"4px 10px",border:"none",background:"transparent",cursor:"pointer",color:"#CBD5E1",fontSize:18,marginRight:4,flexShrink:0}}>←</button>}
         <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginRight:16,flexShrink:0}}>Inbox</div>
-        {[
-          {id:"email",label:"Email",icon:"✉️",count:unreadEmailCount},
-          {id:"sms",label:"SMS",icon:"📱",count:unreadSmsCount},
-        ].map(t=>(
+        {[{id:"email",label:"Email",icon:"✉️",count:unreadEmailCount},{id:"sms",label:"SMS",icon:"📱",count:unreadSmsCount}].map(t=>(
           <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSearch("");}}
-            style={{height:"100%",padding:"0 14px",border:"none",background:"transparent",
-              color:tab===t.id?"#F8FAFC":"#64748B",fontSize:12,fontWeight:700,cursor:"pointer",
-              borderBottom:tab===t.id?"2px solid #2563FF":"2px solid transparent",
-              display:"flex",alignItems:"center",gap:5,transition:"color .12s"}}>
-            <span>{t.icon}</span>
-            {t.label}
+            style={{height:"100%",padding:"0 14px",border:"none",background:"transparent",color:tab===t.id?"#F8FAFC":"#64748B",fontSize:12,fontWeight:700,cursor:"pointer",borderBottom:tab===t.id?"2px solid #2563FF":"2px solid transparent",display:"flex",alignItems:"center",gap:5,transition:"color .12s"}}>
+            <span>{t.icon}</span>{t.label}
             {t.count>0&&<span style={{background:"#EF4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:9,fontWeight:800,boxShadow:"0 0 6px rgba(239,68,68,0.4)"}}>{t.count}</span>}
           </button>
         ))}
         <div style={{flex:1}}/>
-        <button onClick={()=>{setComposeOpen(true);setComposeTo("");setComposeCC("");setComposeBCC("");setComposeSubj("");setComposeBody("");}}
-          style={{padding:"6px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.3)"}}>
-          + Compose
-        </button>
+        <button onClick={openCompose} style={{padding:"6px 14px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.3)"}}>+ Compose</button>
       </div>
 
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
 
         {/* ── SMS tab ── */}
-        {tab==="sms"&&(
-          <>
-            <div style={{width:isMob?(selId?"0":"100%"):300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
-              <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
-                <input placeholder="Search SMS…" value={search} onChange={e=>setSearch(e.target.value)}
-                  style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-              </div>
-              <div style={{flex:1,overflowY:"auto"}}>
-                {smsList.map(s=>{
-                  const unrd=s.unread&&!readIds.has(s.id);
-                  return(
-                    <div key={s.id} onClick={()=>openItem(s.id)}
-                      style={{padding:"11px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",
-                        background:selId===s.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",
-                        borderLeft:`3px solid ${selId===s.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                        <span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1"}}>{s.name||s.from}</span>
-                        <span style={{fontSize:10,color:"#64748B"}}>{s.time}</span>
-                      </div>
-                      <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.preview}</div>
-                    </div>
-                  );
-                })}
-              </div>
+        {tab==="sms"&&(<>
+          <div style={{width:isMob?(selId?"0":"100%"):300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
+              <input placeholder="Search SMS…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
             </div>
-            <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-              {selSms?(
-                <>
-                  <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0}}>
-                    <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginBottom:2}}>{selSms.name||selSms.from}</div>
-                    <div style={{fontSize:10,color:"#64748B"}}>{selSms.from} · {selSms.date}</div>
-                  </div>
-                  <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
-                    <div style={{display:"inline-block",maxWidth:"70%",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.18)",borderRadius:"12px 12px 12px 4px",padding:"8px 12px",fontSize:13,color:"#CBD5E1",lineHeight:1.6}}>{selSms.preview}</div>
-                  </div>
-                  <div style={{padding:"12px 16px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0F1C34"}}>
-                    <div style={{display:"flex",gap:8}}>
-                      <input value={replyBody} onChange={e=>setReplyBody(e.target.value)} placeholder="Type SMS reply…"
-                        style={{flex:1,background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
-                      <button onClick={()=>{if(!replyBody.trim())return;doToast("✓ SMS sent");setReplyBody("");}}
-                        style={{padding:"8px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Send</button>
-                    </div>
-                  </div>
-                </>
-              ):(
-                <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:"#475569"}}>
-                  <span style={{fontSize:32}}>📱</span>
-                  <div style={{fontSize:13,fontWeight:600,color:"#64748B"}}>Select a message to view</div>
+            <div style={{flex:1,overflowY:"auto"}}>
+              {smsList.map(s=>{const unrd=s.unread&&!readIds.has(s.id);return(
+                <div key={s.id} onClick={()=>openItem(s.id)} style={{padding:"11px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",background:selId===s.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",borderLeft:`3px solid ${selId===s.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1"}}>{s.name||s.from}</span><span style={{fontSize:10,color:"#64748B"}}>{s.time}</span></div>
+                  <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.preview}</div>
                 </div>
-              )}
+              );})}
             </div>
-          </>
-        )}
+          </div>
+          <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {selSms?(<>
+              <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0}}>
+                <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginBottom:2}}>{selSms.name||selSms.from}</div>
+                <div style={{fontSize:10,color:"#64748B"}}>{selSms.from} · {selSms.date}</div>
+              </div>
+              <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+                <div style={{display:"inline-block",maxWidth:"70%",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.18)",borderRadius:"12px 12px 12px 4px",padding:"8px 12px",fontSize:13,color:"#CBD5E1",lineHeight:1.6}}>{selSms.preview}</div>
+              </div>
+              <div style={{padding:"12px 16px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0F1C34"}}>
+                <div style={{display:"flex",gap:8}}>
+                  <input value={replyBody} onChange={e=>setReplyBody(e.target.value)} placeholder="Type SMS reply…" style={{flex:1,background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+                  <button onClick={()=>{if(!replyBody.trim())return;doToast("✓ SMS sent");setReplyBody("");}} style={{padding:"8px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Send</button>
+                </div>
+              </div>
+            </>):(
+              <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:"#475569"}}>
+                <span style={{fontSize:32}}>📱</span><div style={{fontSize:13,fontWeight:600,color:"#64748B"}}>Select a message to view</div>
+              </div>
+            )}
+          </div>
+        </>)}
 
         {/* ── Email tab ── */}
-        {tab==="email"&&(
-          <>
-            {/* Email list */}
-            <div style={{width:isMob?(selId?"0":"100%"):320,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
-              <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
-                <input placeholder="Search email…" value={search} onChange={e=>setSearch(e.target.value)}
-                  style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-              </div>
-              <div style={{flex:1,overflowY:"auto"}}>
-                {emailList.map(e=>{
-                  const unrd=isUnread(e);
-                  return(
-                    <div key={e.id} onClick={()=>openItem(e.id)}
-                      style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",
-                        background:selId===e.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",
-                        borderLeft:`3px solid ${selId===e.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}
-                      onMouseOver={ev=>{if(selId!==e.id)ev.currentTarget.style.background="rgba(80,140,255,0.05)";}}
-                      onMouseOut={ev=>{if(selId!==e.id)ev.currentTarget.style.background=unrd?"rgba(37,99,255,0.04)":"transparent";}}>
-                      <div style={{display:"flex",gap:9,alignItems:"flex-start"}}>
-                        <div style={{width:34,height:34,borderRadius:"50%",background:e.color+"22",border:`1.5px solid ${e.color}44`,
-                          display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:e.color,flexShrink:0}}>
-                          {ini(e.from)}
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                            <span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:145}}>{e.from}</span>
-                            <span style={{fontSize:10,color:"#64748B",flexShrink:0}}>{e.time}</span>
-                          </div>
-                          <div style={{fontSize:11,fontWeight:unrd?700:400,color:unrd?"#E2E8F0":"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:4}}>{e.subject}</div>
-                          <div style={{display:"flex",alignItems:"center",gap:5}}>
-                            <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:(TAG_COLOR[e.tag]||"#64748B")+"22",color:TAG_COLOR[e.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{e.tag}</span>
-                            {unrd&&<span style={{width:6,height:6,borderRadius:"50%",background:"#2563FF",display:"inline-block",boxShadow:"0 0 4px rgba(37,99,255,0.6)"}}/>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {emailList.length===0&&<div style={{padding:20,textAlign:"center",color:"#475569",fontSize:12}}>No emails match your search</div>}
-              </div>
+        {tab==="email"&&(<>
+          {/* Email list */}
+          <div style={{width:isMob?(selId?"0":"100%"):300,flexShrink:0,borderRight:"1px solid rgba(56,189,248,0.1)",display:isMob&&selId?"none":"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(56,189,248,0.06)",flexShrink:0}}>
+              <input placeholder="Search email…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"#F8FAFC",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
             </div>
-
-            {/* Email thread / preview */}
-            <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-              {selEmail?(
-                <>
-                  <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0}}>
-                    <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC",marginBottom:8}}>{selEmail.subject}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:selEmail.color+"22",border:`1.5px solid ${selEmail.color}44`,
-                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:selEmail.color}}>
-                        {ini(selEmail.from)}
+            <div style={{flex:1,overflowY:"auto"}}>
+              {emailList.map(e=>{const unrd=isUnread(e);return(
+                <div key={e.id} onClick={()=>openItem(e.id)} style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.06)",cursor:"pointer",background:selId===e.id?"rgba(0,109,255,0.1)":unrd?"rgba(37,99,255,0.04)":"transparent",borderLeft:`3px solid ${selId===e.id?"#2563FF":unrd?"rgba(37,99,255,0.4)":"transparent"}`}}
+                  onMouseOver={ev=>{if(selId!==e.id)ev.currentTarget.style.background="rgba(80,140,255,0.05)";}} onMouseOut={ev=>{if(selId!==e.id)ev.currentTarget.style.background=unrd?"rgba(37,99,255,0.04)":"transparent";}}>
+                  <div style={{display:"flex",gap:9,alignItems:"flex-start"}}>
+                    <div style={{width:34,height:34,borderRadius:"50%",background:e.color+"22",border:`1.5px solid ${e.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:e.color,flexShrink:0}}>{ini(e.from)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                        <span style={{fontSize:12,fontWeight:unrd?800:600,color:unrd?"#F8FAFC":"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:145}}>{e.from}</span>
+                        <span style={{fontSize:10,color:"#64748B",flexShrink:0}}>{e.time}</span>
                       </div>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{selEmail.from}</div>
-                        <div style={{fontSize:10,color:"#64748B"}}>{selEmail.email} · {selEmail.date} {selEmail.time}</div>
+                      <div style={{fontSize:11,fontWeight:unrd?700:400,color:unrd?"#E2E8F0":"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:4}}>{e.subject}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:5}}>
+                        <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:(TAG_COLOR[e.tag]||"#64748B")+"22",color:TAG_COLOR[e.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{e.tag}</span>
+                        {unrd&&<span style={{width:6,height:6,borderRadius:"50%",background:"#2563FF",display:"inline-block",boxShadow:"0 0 4px rgba(37,99,255,0.6)"}}/>}
+                        {AI_INTEL[e.id]&&<span style={{fontSize:8,padding:"1px 5px",borderRadius:5,background:"rgba(139,92,246,0.15)",color:"#A78BFA",fontWeight:700}}>AI</span>}
                       </div>
-                      <div style={{flex:1}}/>
-                      <span style={{fontSize:9,padding:"2px 8px",borderRadius:6,background:(TAG_COLOR[selEmail.tag]||"#64748B")+"22",color:TAG_COLOR[selEmail.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{selEmail.tag}</span>
-                      {isManager&&<span style={{fontSize:10,color:"#64748B",cursor:"pointer"}} title="View patient record">View patient</span>}
                     </div>
                   </div>
+                </div>
+              );})}
+              {emailList.length===0&&<div style={{padding:20,textAlign:"center",color:"#475569",fontSize:12}}>No emails match your search</div>}
+            </div>
+          </div>
 
-                  <div style={{flex:1,overflowY:"auto",padding:"20px 24px",fontSize:13,color:"#CBD5E1",lineHeight:1.75,whiteSpace:"pre-wrap",fontFamily:"ui-sans-serif,system-ui,sans-serif"}}>
-                    {selEmail.body}
+          {/* Email detail + composer */}
+          <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {selEmail?(<>
+              {/* Header */}
+              <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0A1628"}}>
+                <div style={{fontSize:15,fontWeight:800,color:"#F8FAFC",marginBottom:8}}>{selEmail.subject}</div>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:selEmail.color+"22",border:`1.5px solid ${selEmail.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:selEmail.color}}>{ini(selEmail.from)}</div>
+                  <div><div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{selEmail.from}</div><div style={{fontSize:10,color:"#64748B"}}>{selEmail.email} · {selEmail.date} {selEmail.time}</div></div>
+                  <div style={{flex:1}}/>
+                  <span style={{fontSize:9,padding:"2px 8px",borderRadius:6,background:(TAG_COLOR[selEmail.tag]||"#64748B")+"22",color:TAG_COLOR[selEmail.tag]||"#64748B",fontWeight:700,textTransform:"uppercase"}}>{selEmail.tag}</span>
+                  {selEmail.appt&&<span style={{fontSize:10,color:C.teal}}>📅 {selEmail.appt}</span>}
+                  {selEmail.balance&&<span style={{fontSize:10,color:C.amber}}>💰 £{selEmail.balance} outstanding</span>}
+                  {isManager&&<span style={{fontSize:10,color:"#64748B",cursor:"pointer"}} title="View patient record">View patient</span>}
+                </div>
+              </div>
+
+              {/* Email body */}
+              <div style={{flex:1,overflowY:"auto",padding:"20px 24px",fontSize:13,color:"#CBD5E1",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"ui-sans-serif,system-ui,sans-serif",background:"#071428"}}>
+                {selEmail.body}
+              </div>
+
+              {/* AI Intelligence panel */}
+              {AI_INTEL[selEmail.id]&&<div style={{margin:"0 20px 8px",padding:"12px 14px",background:"rgba(139,92,246,0.07)",borderRadius:12,border:"1px solid rgba(139,92,246,0.18)",flexShrink:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:11,fontWeight:800,color:"#A78BFA"}}>✦ AI Analysis</span>
+                    <span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:AI_INTEL[selEmail.id].confidence==="High"?"rgba(74,222,128,0.15)":"rgba(245,158,11,0.15)",color:AI_INTEL[selEmail.id].confidence==="High"?C.green:C.amber,fontWeight:700}}>{AI_INTEL[selEmail.id].confidence} confidence</span>
+                    <span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:"rgba(37,99,255,0.12)",color:"#60A5FA",fontWeight:700}}>{AI_INTEL[selEmail.id].intent}</span>
+                    <span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:"rgba(239,68,68,0.12)",color:"#EF4444",fontWeight:700}}>{AI_INTEL[selEmail.id].urgency} urgency</span>
                   </div>
+                </div>
+                <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.5,marginBottom:8}}>{AI_INTEL[selEmail.id].summary}</div>
+                <div style={{padding:"8px 10px",background:"rgba(139,92,246,0.1)",borderRadius:8,marginBottom:8,fontSize:11,color:"#E2E8F0",lineHeight:1.6,fontStyle:"italic"}}>
+                  "{AI_INTEL[selEmail.id].suggestedReply.slice(0,120)}…"
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={()=>{setReplyBody(AI_INTEL[selEmail.id].suggestedReply+(sigEnabled?PRACTICE_SIG:""));doToast("✓ AI reply loaded — review before sending");}}
+                    style={{padding:"4px 12px",background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Use AI Reply</button>
+                  <button onClick={()=>doToast("✦ Regenerating AI suggestion…")}
+                    style={{padding:"4px 12px",background:"transparent",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Regenerate</button>
+                  {AI_INTEL[selEmail.id].actions.slice(0,3).map(a=>(
+                    <button key={a} onClick={()=>doToast(`✓ ${a}`)} style={{padding:"4px 11px",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.15)",borderRadius:8,color:"#60A5FA",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.background="rgba(37,99,255,0.15)"} onMouseLeave={ev=>ev.currentTarget.style.background="rgba(37,99,255,0.08)"}>
+                      → {a}
+                    </button>
+                  ))}
+                </div>
+              </div>}
 
-                  {/* Quick Reply Buttons */}
-                  <div style={{padding:"10px 16px 8px",borderTop:"1px solid rgba(56,189,248,0.07)",flexShrink:0,background:"#071428"}}>
-                    <div style={{fontSize:9,fontWeight:700,color:"#475569",letterSpacing:".06em",textTransform:"uppercase",marginBottom:7}}>Quick Reply</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                      {[
-                        {cat:"Appointment",color:"#2563FF",items:[
-                          {l:"Confirm Appt",fn:e=>`Hi ${e.from.split(" ")[0]}, confirming your appointment — see you then! 🦷`},
-                          {l:"Send Booking Link",fn:e=>`Hi ${e.from.split(" ")[0]}, here is our online booking link: https://book.riversidedental.co.uk`},
-                          {l:"Reschedule",fn:e=>`Hi ${e.from.split(" ")[0]}, we need to reschedule your appointment. Please reply with preferred dates or call 01234 567890.`},
-                        ]},
-                        {cat:"Payments",color:"#10B981",items:[
-                          {l:"Send Invoice",fn:e=>`Hi ${e.from.split(" ")[0]}, please find your invoice attached. Thank you!`},
-                          {l:"Send Payment Link",fn:e=>`Hi ${e.from.split(" ")[0]}, you can pay securely here: https://pay.riversidedental.co.uk`},
-                          {l:"Payment Received",fn:e=>`Hi ${e.from.split(" ")[0]}, thank you — payment received and account updated. 😊`},
-                        ]},
-                        {cat:"Treatment",color:"#8B5CF6",items:[
-                          {l:"Send Estimate",fn:e=>`Hi ${e.from.split(" ")[0]}, please find your treatment estimate attached. Any questions just reply!`},
-                          {l:"Send Finance Options",fn:e=>`Hi ${e.from.split(" ")[0]}, we offer 0% payment plans through Chrysalis Finance: https://finance.riversidedental.co.uk`},
-                          {l:"Send Treatment Info",fn:e=>`Hi ${e.from.split(" ")[0]}, I've attached information about your planned treatment. Bring any questions to your appointment!`},
-                        ]},
-                        {cat:"General",color:"#F59E0B",items:[
-                          {l:"Thank You",fn:e=>`Hi ${e.from.split(" ")[0]}, thank you for your message! We'll get back to you shortly.`},
-                          {l:"We Will Call You",fn:e=>`Hi ${e.from.split(" ")[0]}, thank you — one of our team will call you within the next hour.`},
-                          {l:"Escalate To Clinician",fn:e=>`Hi ${e.from.split(" ")[0]}, I've passed your message to your clinician and they will be in touch shortly.`},
-                        ]},
-                      ].map(group=>(
-                        <div key={group.cat}>
-                          <div style={{fontSize:9,fontWeight:700,color:group.color,letterSpacing:".05em",textTransform:"uppercase",marginBottom:3}}>{group.cat}</div>
-                          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                            {group.items.map(act=>(
-                              <button key={act.l} onClick={()=>{setReplyBody(act.fn(selEmail));doToast("✓ Template loaded — review and send");}}
-                                style={{padding:"3px 10px",border:`1px solid ${group.color}44`,borderRadius:12,background:`${group.color}14`,color:group.color,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"background .12s"}}
-                                onMouseEnter={ev=>ev.currentTarget.style.background=`${group.color}26`}
-                                onMouseLeave={ev=>ev.currentTarget.style.background=`${group.color}14`}>
-                                {act.l}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{padding:"10px 16px 12px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0D1E35"}}>
-                    {/* AI Suggested Reply */}
-                    {AI_INTEL[selEmail.id]&&AI_INTEL[selEmail.id].suggestedReply&&(
-                      <div style={{marginBottom:8,padding:"8px 12px",background:"rgba(139,92,246,0.08)",borderRadius:10,border:"1px solid rgba(139,92,246,0.18)"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                          <div style={{fontSize:10,fontWeight:700,color:"#A78BFA"}}>✦ AI Suggested Reply</div>
-                          <span style={{fontSize:9,padding:"1px 6px",borderRadius:5,background:AI_INTEL[selEmail.id].confidence==="High"?"rgba(74,222,128,0.15)":"rgba(245,158,11,0.15)",color:AI_INTEL[selEmail.id].confidence==="High"?"#4ADE80":"#F59E0B",fontWeight:700}}>{AI_INTEL[selEmail.id].confidence} confidence</span>
-                        </div>
-                        <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.55,marginBottom:6}}>{AI_INTEL[selEmail.id].suggestedReply}</div>
+              {/* Quick action buttons */}
+              <div style={{flexShrink:0,borderTop:"1px solid rgba(56,189,248,0.07)",background:"#0A1628"}}>
+                <div style={{padding:"8px 20px 4px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#475569",letterSpacing:".05em",textTransform:"uppercase"}}>Quick Actions</div>
+                  <button onClick={()=>setShowQuickActions(p=>!p)} style={{fontSize:9,color:"#475569",border:"none",background:"transparent",cursor:"pointer"}}>{showQuickActions?"▲ Hide":"▼ Show"}</button>
+                </div>
+                {showQuickActions&&<div style={{padding:"0 20px 10px"}}>
+                  {QA_CATS.map(cat=>{
+                    const catActions=QUICK_ACTIONS.filter(a=>a.cat===cat);
+                    const col=catActions[0]?.color||"#64748B";
+                    return(
+                      <div key={cat} style={{marginBottom:6}}>
+                        <div style={{fontSize:9,fontWeight:700,color:col,letterSpacing:".05em",textTransform:"uppercase",marginBottom:4}}>{cat}</div>
                         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                          <button onClick={()=>{setReplyBody(AI_INTEL[selEmail.id].suggestedReply);doToast("✓ AI reply loaded — review before sending");}}
-                            style={{padding:"3px 10px",background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:7,color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Use Reply</button>
-                          <button onClick={()=>doToast("✦ Regenerating AI suggestion...")}
-                            style={{padding:"3px 10px",background:"transparent",border:"1px solid rgba(80,140,255,0.18)",borderRadius:7,color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Regenerate</button>
-                          {AI_INTEL[selEmail.id].actions.slice(0,2).map(a=>(
-                            <button key={a} onClick={()=>doToast(`✓ ${a}`)}
-                              style={{padding:"3px 10px",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.15)",borderRadius:7,color:"#60A5FA",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                              → {a}
+                          {catActions.map(act=>(
+                            <button key={act.l} onClick={()=>{setReplyBody(act.fn(selEmail)+(sigEnabled?PRACTICE_SIG:""));doToast(`✓ Template loaded: ${act.l}`);}}
+                              style={{padding:"4px 11px",border:`1px solid ${col}44`,borderRadius:14,background:`${col}14`,color:col,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"background .12s"}}
+                              onMouseEnter={ev=>ev.currentTarget.style.background=`${col}26`} onMouseLeave={ev=>ev.currentTarget.style.background=`${col}14`}>
+                              {act.l}
                             </button>
                           ))}
                         </div>
                       </div>
-                    )}
-                    <div style={{fontSize:11,fontWeight:700,color:"#64748B",marginBottom:6}}>Reply to {selEmail.from}</div>
-                    <textarea value={replyBody} onChange={e=>setReplyBody(e.target.value)}
-                      placeholder="Type your reply…" rows={3}
-                      style={{width:"100%",background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
-                    <div style={{display:"flex",gap:8,marginTop:8,justifyContent:"flex-end"}}>
-                      <button onClick={()=>setReplyBody("")}
-                        style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Clear</button>
-                      <button onClick={()=>{if(!replyBody.trim())return;doToast("✓ Reply sent to "+selEmail.from);setReplyBody("");}}
-                        style={{padding:"6px 18px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 10px rgba(0,109,255,0.25)"}}>Send Reply</button>
-                    </div>
+                    );
+                  })}
+                </div>}
+              </div>
+
+              {/* Reply composer */}
+              <div style={{padding:"10px 16px 12px",borderTop:"1px solid rgba(56,189,248,0.1)",flexShrink:0,background:"#0D1E35"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#64748B"}}>Reply to {selEmail.from}</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>setShowReplyTpl(p=>!p)} style={{padding:"3px 9px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:"#60A5FA",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Templates</button>
+                    <button onClick={()=>{const att=addMockAttachment("doc","attachment.pdf");setReplyAttachments(p=>[...p,att]);doToast(`✓ Attached: ${att.name}`);}} style={{padding:"3px 9px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:"#60A5FA",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>📎 Attach</button>
                   </div>
-                </>
-              ):(
-                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,color:"#475569"}}>
-                  <div style={{width:56,height:56,borderRadius:14,background:"rgba(80,140,255,0.08)",border:"1px solid rgba(80,140,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✉️</div>
-                  <div style={{fontSize:14,fontWeight:700,color:"#64748B"}}>Select an email to read</div>
-                  <div style={{fontSize:11,color:"#475569"}}>{emailList.filter(e=>isUnread(e)).length} unread · {emailList.length} total</div>
                 </div>
-              )}
-            </div>
-          </>
-        )}
+
+                {/* Template picker for reply */}
+                {showReplyTpl&&<div style={{marginBottom:8,padding:"8px 10px",background:"rgba(80,140,255,0.05)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)",maxHeight:160,overflowY:"auto"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#64748B",letterSpacing:".05em",textTransform:"uppercase",marginBottom:6}}>Templates</div>
+                  {TEMPLATE_DATA.map(t=>(
+                    <div key={t.id} onClick={()=>{setReplyBody(applyTemplate(t,selEmail)+(sigEnabled?PRACTICE_SIG:""));setShowReplyTpl(false);doToast(`✓ Template "${t.name}" inserted`);}}
+                      style={{padding:"5px 8px",borderRadius:7,cursor:"pointer",marginBottom:3,display:"flex",gap:8,alignItems:"center"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.background="rgba(80,140,255,0.1)"} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+                      <span style={{fontSize:14}}>{t.icon}</span>
+                      <div><div style={{fontSize:11,fontWeight:600,color:"#CBD5E1"}}>{t.name}</div><div style={{fontSize:9,color:"#64748B"}}>{t.cat}</div></div>
+                    </div>
+                  ))}
+                </div>}
+
+                {/* Reply attachments */}
+                {replyAttachments.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+                  {replyAttachments.map(a=>(
+                    <div key={a.id} style={{display:"flex",gap:4,alignItems:"center",padding:"2px 8px",background:"rgba(80,140,255,0.08)",border:"1px solid rgba(80,140,255,0.15)",borderRadius:6,fontSize:10,color:"#60A5FA"}}>
+                      <span>📎</span><span>{a.name}</span><span style={{color:"#475569"}}>({a.size})</span>
+                      <button onClick={()=>setReplyAttachments(p=>p.filter(x=>x.id!==a.id))} style={{border:"none",background:"transparent",cursor:"pointer",color:"#64748B",fontSize:11,lineHeight:1,padding:0}}>✕</button>
+                    </div>
+                  ))}
+                </div>}
+
+                <textarea value={replyBody} onChange={e=>setReplyBody(e.target.value)} placeholder="Type your reply…" rows={4}
+                  style={{width:"100%",background:"#132238",border:"1px solid rgba(80,140,255,0.16)",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"'Inter',ui-sans-serif,system-ui,sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.6}}/>
+                <div style={{display:"flex",gap:8,marginTop:8,justifyContent:"flex-end",alignItems:"center"}}>
+                  <label style={{display:"flex",gap:4,alignItems:"center",fontSize:10,color:"#64748B",cursor:"pointer"}}>
+                    <input type="checkbox" checked={sigEnabled} onChange={e=>setSigEnabled(e.target.checked)} style={{accentColor:"#2563FF"}}/>
+                    Signature
+                  </label>
+                  <button onClick={()=>setReplyBody("")} style={{padding:"6px 14px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Clear</button>
+                  <button onClick={sendReply} disabled={!replyBody.trim()} style={{padding:"6px 18px",background:replyBody.trim()?"linear-gradient(135deg,#006DFF,#0057CC)":"rgba(80,140,255,0.08)",border:"none",borderRadius:8,color:replyBody.trim()?"#fff":"#475569",fontSize:12,fontWeight:700,cursor:replyBody.trim()?"pointer":"not-allowed",boxShadow:replyBody.trim()?"0 0 10px rgba(0,109,255,0.25)":"none"}}>Send Reply</button>
+                </div>
+              </div>
+            </>):(
+              <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,color:"#475569"}}>
+                <div style={{width:56,height:56,borderRadius:14,background:"rgba(80,140,255,0.08)",border:"1px solid rgba(80,140,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✉️</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#64748B"}}>Select an email to read</div>
+                <div style={{fontSize:11,color:"#475569"}}>{emailList.filter(e=>isUnread(e)).length} unread · {emailList.length} total</div>
+              </div>
+            )}
+          </div>
+        </>)}
       </div>
 
-      {/* Compose modal */}
+      {/* ══ COMPOSE MODAL ══ */}
       {composeOpen&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}}
-          onClick={e=>{if(e.target===e.currentTarget)setComposeOpen(false);}}>
-          <div style={{background:"#132238",borderRadius:16,width:560,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(59,130,246,0.2)"}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setComposeOpen(false);}}>
+          <div style={{background:"#132238",borderRadius:16,width:600,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(59,130,246,0.2)"}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(56,189,248,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
               <span style={{fontSize:14,fontWeight:800}}>New Email</span>
-              <button onClick={()=>setComposeOpen(false)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:18,color:"#94A3B8",lineHeight:1}}>✕</button>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <button onClick={()=>setShowComposeTpl(p=>!p)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"rgba(80,140,255,0.06)",color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📋 Templates</button>
+                <button onClick={()=>setComposeOpen(false)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:18,color:"#94A3B8",lineHeight:1}}>✕</button>
+              </div>
             </div>
-            <div style={{padding:20,display:"flex",flexDirection:"column",gap:10,flex:1,overflow:"hidden"}}>
-              {[[composeTo,setComposeTo,"To","patient@email.com"],[composeCC,setComposeCC,"CC","cc@email.com (optional)"],[composeBCC,setComposeBCC,"BCC","bcc@email.com (optional)"],[composeSubj,setComposeSubj,"Subject","e.g. Appointment Confirmation"]].map(([v,set,l,ph])=>(
-                <div key={l} style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54}}>{l}</span>
-                  <input value={v} onChange={e=>set(e.target.value)} placeholder={ph}
-                    style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+
+            <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8,flex:1,overflow:"hidden"}}>
+              {/* Template picker */}
+              {showComposeTpl&&<div style={{padding:"8px 10px",background:"rgba(80,140,255,0.05)",borderRadius:10,border:"1px solid rgba(80,140,255,0.12)",maxHeight:140,overflowY:"auto",flexShrink:0}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#64748B",letterSpacing:".05em",textTransform:"uppercase",marginBottom:6}}>Select Template</div>
+                {TEMPLATE_DATA.map(t=>(
+                  <div key={t.id} onClick={()=>{
+                    const ctx={from:composeTo||"[Patient Name]",appt:null,balance:null};
+                    setComposeSubj(t.name);setComposeBody(applyTemplate(t,ctx)+(sigEnabled?PRACTICE_SIG:""));setShowComposeTpl(false);doToast(`✓ Template "${t.name}" inserted`);
+                  }} style={{padding:"5px 8px",borderRadius:7,cursor:"pointer",marginBottom:3,display:"flex",gap:8,alignItems:"center"}}
+                    onMouseEnter={ev=>ev.currentTarget.style.background="rgba(80,140,255,0.1)"} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+                    <span style={{fontSize:14}}>{t.icon}</span>
+                    <div><div style={{fontSize:11,fontWeight:600,color:"#CBD5E1"}}>{t.name}</div><div style={{fontSize:9,color:"#64748B"}}>{t.cat}</div></div>
+                  </div>
+                ))}
+              </div>}
+
+              {/* To field + CC/BCC toggles */}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54,flexShrink:0}}>To</span>
+                <input value={composeTo} onChange={e=>setComposeTo(e.target.value)} placeholder="patient@email.com" style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+                <button onClick={()=>setShowCC(p=>!p)} style={{padding:"4px 9px",border:`1px solid ${showCC?"#2563FF":"rgba(80,140,255,0.2)"}`,borderRadius:6,background:showCC?"rgba(37,99,255,0.12)":"transparent",color:showCC?"#60A5FA":"#64748B",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>CC</button>
+                <button onClick={()=>setShowBCC(p=>!p)} style={{padding:"4px 9px",border:`1px solid ${showBCC?"#2563FF":"rgba(80,140,255,0.2)"}`,borderRadius:6,background:showBCC?"rgba(37,99,255,0.12)":"transparent",color:showBCC?"#60A5FA":"#64748B",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>BCC</button>
+              </div>
+              {showCC&&<div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54,flexShrink:0}}>CC</span>
+                <input value={composeCC} onChange={e=>setComposeCC(e.target.value)} placeholder="cc@email.com" style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+              </div>}
+              {showBCC&&<div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54,flexShrink:0}}>BCC</span>
+                <input value={composeBCC} onChange={e=>setComposeBCC(e.target.value)} placeholder="bcc@email.com" style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+              </div>}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#64748B",width:54,flexShrink:0}}>Subject</span>
+                <input value={composeSubj} onChange={e=>setComposeSubj(e.target.value)} placeholder="e.g. Appointment Confirmation" style={{flex:1,background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit"}}/>
+              </div>
+
+              {/* Compose attachments */}
+              {composeAttachments.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {composeAttachments.map(a=>(
+                  <div key={a.id} style={{display:"flex",gap:4,alignItems:"center",padding:"2px 8px",background:"rgba(80,140,255,0.08)",border:"1px solid rgba(80,140,255,0.15)",borderRadius:6,fontSize:10,color:"#60A5FA"}}>
+                    <span>📎</span><span>{a.name}</span><span style={{color:"#475569"}}>({a.size})</span>
+                    <button onClick={()=>setComposeAttachments(p=>p.filter(x=>x.id!==a.id))} style={{border:"none",background:"transparent",cursor:"pointer",color:"#64748B",fontSize:11,lineHeight:1,padding:0}}>✕</button>
+                  </div>
+                ))}
+              </div>}
+
+              {/* Attach buttons */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {["📄 From Computer","🦷 Treatment Plan","💳 Invoice","📋 Consent Form","📁 Patient Doc"].map(label=>(
+                  <button key={label} onClick={()=>{
+                    const names={"📄 From Computer":"upload.pdf","🦷 Treatment Plan":"treatment-plan.pdf","💳 Invoice":"invoice.pdf","📋 Consent Form":"consent-form.pdf","📁 Patient Doc":"patient-document.pdf"};
+                    const att=addMockAttachment("doc",names[label]||"file.pdf");
+                    setComposeAttachments(p=>[...p,att]);doToast(`✓ Attached: ${att.name}`);
+                  }} style={{padding:"3px 10px",border:"1px solid rgba(80,140,255,0.15)",borderRadius:7,background:"rgba(80,140,255,0.05)",color:"#94A3B8",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}
+                    onMouseEnter={ev=>ev.currentTarget.style.background="rgba(80,140,255,0.1)"} onMouseLeave={ev=>ev.currentTarget.style.background="rgba(80,140,255,0.05)"}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <textarea value={composeBody} onChange={e=>setComposeBody(e.target.value)} placeholder="Write your message…" rows={8}
+                style={{flex:1,minHeight:160,width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"'Inter',ui-sans-serif,system-ui,sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.6}}/>
+
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <label style={{display:"flex",gap:4,alignItems:"center",fontSize:10,color:"#64748B",cursor:"pointer"}}>
+                  <input type="checkbox" checked={sigEnabled} onChange={e=>{setSigEnabled(e.target.checked);setComposeBody(b=>e.target.checked?b+PRACTICE_SIG:b.replace(PRACTICE_SIG,""));}} style={{accentColor:"#2563FF"}}/>
+                  Append practice signature
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setComposeOpen(false)} style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Discard</button>
+                  <button onClick={sendCompose} style={{padding:"8px 20px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,109,255,0.3)"}}>Send</button>
                 </div>
-              ))}
-              <textarea value={composeBody} onChange={e=>setComposeBody(e.target.value)}
-                placeholder="Write your message…" rows={9}
-                style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#F8FAFC",outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setComposeOpen(false)}
-                  style={{padding:"8px 16px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:8,background:"transparent",color:"#94A3B8",fontSize:11,cursor:"pointer"}}>Discard</button>
-                <button onClick={()=>{if(!composeBody.trim()||!composeTo.trim()){doToast("⚠ To and body are required");return;}doToast("✓ Email sent successfully");setComposeOpen(false);}}
-                  style={{padding:"8px 20px",background:"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 0 12px rgba(0,109,255,0.3)"}}>Send</button>
               </div>
             </div>
           </div>
