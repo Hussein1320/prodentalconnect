@@ -19925,32 +19925,319 @@ function ShortNoticePage(){
 // COMMS HUB — outgoing communications overview
 // ══════════════════════════════════════════════════════════════════════════════
 function CommsPage(){
-  const COMMS=[
-    {type:"WhatsApp",icon:"💬",sent:43,opened:41,replied:28,pending:2,color:"#25d366"},
-    {type:"SMS",icon:"📱",sent:87,opened:null,replied:null,pending:5,color:C.blue},
-    {type:"Email",icon:"✉️",sent:124,opened:89,replied:34,pending:8,color:C.purple},
+  const MSGS=[
+    {id:"E1",channel:"email",from:"Amy Torres",email:"amy.torres@email.com",subject:"Question about my treatment plan",
+     body:"Hi, I received my treatment plan for a crown on UR6. I wanted to ask about the cost and whether you offer payment plans. Also, can I book the appointment online? Thank you.",
+     date:"Today, 09:14",read:false,pid:"P4",appt:"7 Jun 09:00 — Dr. Patel",balance:850},
+    {id:"E2",channel:"email",from:"John Mills",email:"john.mills@email.com",subject:"Re: Appointment Reminder",
+     body:"Thanks for the reminder. I'll be there tomorrow at 09:30. Is parking available nearby?",
+     date:"Today, 08:55",read:true,pid:"P1",appt:"Tomorrow 09:30 — Dr. Patel",balance:73.50},
+    {id:"E3",channel:"email",from:"Helen Rowe",email:"helen.rowe@email.com",subject:"Cancellation — this Friday",
+     body:"Hello, I'm afraid I need to cancel my appointment this Friday 16th May. I have a family emergency. Can I rebook for early June?",
+     date:"Yesterday",read:false,pid:"P2",appt:"Fri 16 May 14:00 — Dr. Chen",balance:0},
+    {id:"E4",channel:"sms",from:"Tom Bright",phone:"07700 900321",subject:"SMS from Tom Bright",
+     body:"Hiya, can I change my appointment to the morning?",
+     date:"Today, 10:02",read:false,pid:"P3",appt:"Thu 15 May 15:30 — Dr. Patel",balance:0},
+    {id:"E5",channel:"email",from:"Sandra Okafor",email:"sandra.okafor@email.com",subject:"Nervous patient — need reassurance",
+     body:"Hello, I have my implant appointment next week and I'm quite nervous. Is there anything I can take to help with anxiety? Will I be awake during the procedure?",
+     date:"Yesterday",read:true,pid:"P_SO",appt:"Wed 21 May 10:00 — Dr. Patel",balance:0},
+    {id:"E6",channel:"portal",from:"Lisa White",email:"lisa.white@email.com",subject:"Portal message: Prescription request",
+     body:"Hi, I was wondering if I could get a prescription for more Duraphat toothpaste? I ran out last month and my teeth are still sensitive.",
+     date:"2 days ago",read:true,pid:"P6",appt:null,balance:150},
   ];
+
+  const AI_INTEL={
+    E1:{intent:"Enquiry",urgency:"Medium",sentiment:"Positive",
+      summary:"Patient enquiring about crown cost, payment plan options, and online booking.",
+      patientCtx:"Private patient · Balance: £850 · Treatment plan presented 35 days ago.",
+      apptCtx:"Crown prep booked: 7 Jun 09:00 with Dr. Patel.",
+      txCtx:"Crown UR6 — £850 private · Finance eligible.",
+      suggestedReply:"Hi Amy, thank you for your message! The crown for UR6 is £850, and yes — we offer payment plans through Chrysalis Finance, spreading costs over 12–36 months. You can also book online at our website, or just reply here and we'll book it for you. Let me know if you have any questions! 😊",
+      confidence:"High",
+      actions:["Send Finance Options","Send Booking Link","Create Task: Follow up crown booking"]},
+    E2:{intent:"Confirmation",urgency:"Low",sentiment:"Positive",
+      summary:"Patient confirming tomorrow's appointment and asking about parking.",
+      patientCtx:"NHS patient · Balance: £73.50 · Regular attender.",
+      apptCtx:"Tomorrow 09:30 — Dr. Patel (Check-up & Composite Filling).",
+      txCtx:"NHS Band 2 treatment.",
+      suggestedReply:"Hi John, great — see you tomorrow at 09:30! There is free parking on the high street right opposite the practice. Safe travels! 🦷",
+      confidence:"High",
+      actions:["Confirm Appointment","Mark as Read"]},
+    E3:{intent:"Cancellation",urgency:"High",sentiment:"Apologetic",
+      summary:"Patient cancelling Friday appointment due to family emergency, requesting early June rebooking.",
+      patientCtx:"NHS patient · No outstanding balance · Regular attender.",
+      apptCtx:"Fri 16 May 14:00 — Dr. Chen (Hygiene). Recall 3 months overdue.",
+      txCtx:"Hygiene recall — scale & polish.",
+      suggestedReply:"Hi Helen, so sorry to hear that — hope everything is OK. No problem at all, I'll cancel Friday now. We have availability in early June — shall I send you a few slots to choose from?",
+      confidence:"High",
+      actions:["Send Booking Link","Add to Short Notice List","Cancel Fri 16 slot"]},
+    E4:{intent:"Reschedule",urgency:"Medium",sentiment:"Casual",
+      summary:"Patient requesting to move afternoon appointment to morning.",
+      patientCtx:"NHS patient · No outstanding balance.",
+      apptCtx:"Thu 15 May 15:30 — Dr. Patel (Check-up).",
+      txCtx:"NHS Band 1 check-up.",
+      suggestedReply:"Hi Tom, of course! We have a morning slot at 09:30 on Thursday with Dr. Patel — does that work for you? Reply YES to confirm.",
+      confidence:"Medium",
+      actions:["Reschedule Appointment","Send Available Slots"]},
+    E5:{intent:"Clinical Concern",urgency:"High",sentiment:"Anxious",
+      summary:"Nervous patient asking about anxiety management and sedation options ahead of implant appointment.",
+      patientCtx:"Private patient · Notes: 'anxious patient — requires reassurance'.",
+      apptCtx:"Wed 21 May 10:00 — Dr. Patel (Implant stage 1).",
+      txCtx:"Implant UR1 — full plan accepted.",
+      suggestedReply:"Hi Sandra, I completely understand — implants can feel daunting! Dr. Patel is brilliant with nervous patients. You'll have a local anaesthetic so no pain during the procedure. We also offer Oral Sedation if you'd like to feel more relaxed. Would you like Dr. Patel to give you a quick call before your appointment?",
+      confidence:"High",
+      actions:["Escalate To Clinician","Create Task: Dr. Patel callback for Sandra","Send Treatment Info"]},
+    E6:{intent:"Prescription Request",urgency:"Low",sentiment:"Neutral",
+      summary:"Patient requesting Duraphat repeat prescription for tooth sensitivity.",
+      patientCtx:"NHS patient · Balance: £150 · Dentine hypersensitivity in record.",
+      apptCtx:"No appointment booked.",
+      txCtx:"Sensitive teeth — Duraphat 5000 previously prescribed.",
+      suggestedReply:"Hi Lisa, of course — I've flagged this with Dr. Patel for a prescription renewal. We'll have it ready by end of week. Would you also like to book a quick check-up to discuss your sensitivity?",
+      confidence:"Medium",
+      actions:["Create Task: Rx renewal for Dr. Patel","Send Booking Link"]},
+  };
+
+  const QUICK_ACTIONS=[
+    {cat:"Appointment",color:"#2563FF",icon:"📅",items:[
+      {l:"Confirm Appt",fn:m=>`Hi ${m.from.split(" ")[0]}, confirming your appointment on ${m.appt||"upcoming date"}. See you then! 🦷`},
+      {l:"Reschedule",fn:m=>`Hi ${m.from.split(" ")[0]}, we need to reschedule your appointment. Please reply with preferred dates or call 01234 567890.`},
+      {l:"Send Booking Link",fn:m=>`Hi ${m.from.split(" ")[0]}, here is our online booking link: https://book.riversidedental.co.uk`},
+      {l:"Join Waiting List",fn:m=>`Hi ${m.from.split(" ")[0]}, I've added you to our waiting list — we'll contact you as soon as a slot is available!`},
+    ]},
+    {cat:"Payments",color:"#10B981",icon:"💳",items:[
+      {l:"Send Invoice",fn:m=>`Hi ${m.from.split(" ")[0]}, please find your invoice attached. Total due: £${m.balance||"TBC"}. Thank you!`},
+      {l:"Send Payment Link",fn:m=>`Hi ${m.from.split(" ")[0]}, you can pay your balance of £${m.balance||"TBC"} securely here: https://pay.riversidedental.co.uk`},
+      {l:"Payment Received",fn:m=>`Hi ${m.from.split(" ")[0]}, thank you — payment received. Your account is now up to date. 😊`},
+    ]},
+    {cat:"Treatment",color:"#8B5CF6",icon:"🦷",items:[
+      {l:"Send Estimate",fn:m=>`Hi ${m.from.split(" ")[0]}, please find your treatment estimate attached. Don't hesitate to ask any questions.`},
+      {l:"Send Finance Options",fn:m=>`Hi ${m.from.split(" ")[0]}, we offer 0% payment plans through Chrysalis Finance: https://finance.riversidedental.co.uk`},
+      {l:"Send Treatment Info",fn:m=>`Hi ${m.from.split(" ")[0]}, I've attached information about your planned treatment. Bring any questions to your appointment!`},
+    ]},
+    {cat:"General",color:"#F59E0B",icon:"💬",items:[
+      {l:"Thank You",fn:m=>`Hi ${m.from.split(" ")[0]}, thank you for your message! We'll get back to you shortly.`},
+      {l:"We Will Call You",fn:m=>`Hi ${m.from.split(" ")[0]}, thank you — one of our team will call you within the next hour.`},
+      {l:"Escalate To Clinician",fn:m=>`Hi ${m.from.split(" ")[0]}, I've passed your message to your clinician and they'll be in touch shortly.`},
+      {l:"Create Task",fn:m=>`[Task created] Follow up required: ${m.from} — ${m.subject}`},
+    ]},
+  ];
+
+  const [msgs,setMsgs]=useState(MSGS);
+  const [selId,setSelId]=useState("E1");
+  const [chanFilter,setChanFilter]=useState("All");
+  const [reply,setReply]=useState("");
+  const [toast,setToast]=useState(null);
+  const [aiSugUsed,setAiSugUsed]=useState(false);
+
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+  const selMsg=msgs.find(m=>m.id===selId)||msgs[0];
+  const intel=AI_INTEL[selMsg?.id];
+  const filtered=chanFilter==="All"?msgs:msgs.filter(m=>m.channel===chanFilter);
+
+  const chanIcon=c=>({email:"✉️",sms:"📱",whatsapp:"💬",portal:"🏥"}[c]||"💬");
+  const chanColor=c=>({email:C.purple,sms:C.blue,whatsapp:"#25d366",portal:C.teal}[c]||C.muted);
+  const urgColor=u=>({High:C.red,Medium:C.amber,Low:C.green}[u]||C.muted);
+  const confColor=c=>({High:C.green,Medium:C.amber,Low:C.red}[c]||C.muted);
+
+  const markRead=id=>setMsgs(p=>p.map(m=>m.id===id?{...m,read:true}:m));
+
+  const sendReply=()=>{
+    if(!reply.trim())return;
+    markRead(selMsg.id);
+    doToast(`✓ Reply sent via ${selMsg.channel}`);
+    setReply("");
+    setAiSugUsed(false);
+  };
+
+  const CHANNELS=["All","email","sms","whatsapp","portal"];
+  const unread=c=>c==="All"?msgs.filter(m=>!m.read).length:msgs.filter(m=>m.channel===c&&!m.read).length;
+
   return(
-    <div style={{padding:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-      <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Communications Hub</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:16}}>
-        {COMMS.map(c=><div key={c.type} onClick={()=>alert(c.type+" channel — sent "+c.sent+" this month\n\nClick on a recent message below to view conversation.")} style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16,cursor:"pointer",transition:"transform .15s"}} onMouseOver={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseOut={e=>e.currentTarget.style.transform="none"}>
-          <div style={{display:"flex",gap:9,alignItems:"center",marginBottom:12}}><span style={{fontSize:22}}>{c.icon}</span><span style={{fontSize:14,fontWeight:700,color:c.color}}>{c.type}</span></div>
-          {[["Sent this month",c.sent],c.opened!=null&&["Opened",`${c.opened} (${Math.round(c.opened/c.sent*100)}%)`],c.replied!=null&&["Replied",c.replied],["Pending",c.pending]].filter(Boolean).map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:"1px solid rgba(80,140,255,0.08)",fontSize:12}}><span style={{color:C.muted}}>{l}</span><span style={{fontWeight:700}}>{v}</span></div>)}
-        </div>)}
-      </div>
-      <div style={{background:"#132238",border:"1px solid rgba(56,189,248,0.12)",borderRadius:16,padding:16}}>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:"-.01em",marginBottom:12}}>Recent Communications</div>
-        {[{type:"WhatsApp",patient:"Sandra Okafor",msg:"Hi Sandra, your appointment tomorrow...",sent:"2h ago",status:"Read"},
-          {type:"SMS",patient:"John Mills",msg:"Reminder: your appointment is tomorrow at 09:30",sent:"3h ago",status:"Sent"},
-          {type:"Email",patient:"Amy Torres",msg:"Treatment plan summary — Crown UR6",sent:"Yesterday",status:"Opened"},
-          {type:"WhatsApp",patient:"Tom Bright",msg:"We missed you today — please call to rebook",sent:"Yesterday",status:"Delivered"}].map((c,i)=>(
-          <div key={i} onClick={()=>alert(c.type+" · "+c.patient+"\n\n"+c.msg+"\n\nSent: "+c.sent+" · Status: "+c.status)} style={{display:"flex",gap:10,padding:"8px 0",borderTop:i>0?`1px solid rgba(56,189,248,0.07)`:"none",alignItems:"center",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="rgba(80,140,255,0.04)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-            <span style={{fontSize:16,flexShrink:0}}>{c.type==="WhatsApp"?"💬":c.type==="SMS"?"📱":"✉️"}</span>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{c.patient}</div><div style={{fontSize:11,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.msg}</div></div>
-            <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:10,color:"#CBD5E1"}}>{c.sent}</div><div style={{fontSize:10,fontWeight:600,color:c.status==="Read"?C.teal:c.status==="Opened"?C.blue:C.muted}}>{c.status}</div></div>
+    <div style={{flex:1,display:"flex",overflow:"hidden",background:"#071428",position:"relative"}}>
+      {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:600,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>✓ {toast}</div>}
+
+      {/* ── LEFT: Inbox list ── */}
+      <div style={{width:290,flexShrink:0,background:"#0D1B2E",borderRight:"1px solid rgba(56,189,248,0.1)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"14px 14px 8px",borderBottom:"1px solid rgba(56,189,248,0.08)"}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:10,color:"#F8FAFC"}}>Comms Inbox</div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {CHANNELS.map(ch=>{
+              const u=unread(ch);
+              return(
+                <button key={ch} onClick={()=>setChanFilter(ch)} style={{padding:"4px 10px",border:`1px solid ${chanFilter===ch?chanColor(ch):"rgba(80,140,255,0.15)"}`,borderRadius:20,background:chanFilter===ch?"rgba(80,140,255,0.12)":"transparent",color:chanFilter===ch?chanColor(ch):"#94A3B8",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",gap:4,alignItems:"center",fontFamily:"inherit"}}>
+                  {ch==="All"?"All":chanIcon(ch)+" "+ch.charAt(0).toUpperCase()+ch.slice(1)}
+                  {u>0&&<span style={{background:C.red,color:"#fff",borderRadius:10,padding:"0 4px",fontSize:9,fontWeight:800}}>{u}</span>}
+                </button>
+              );
+            })}
           </div>
-        ))}
+        </div>
+        <div style={{flex:1,overflowY:"auto"}}>
+          {filtered.map(m=>(
+            <div key={m.id} onClick={()=>{setSelId(m.id);markRead(m.id);setReply("");setAiSugUsed(false);}}
+              style={{padding:"10px 14px",borderBottom:"1px solid rgba(56,189,248,0.06)",cursor:"pointer",background:selId===m.id?"rgba(37,99,255,0.1)":"transparent",borderLeft:`3px solid ${selId===m.id?chanColor(m.channel):"transparent"}`,transition:"background .12s"}}
+              onMouseOver={e=>{if(selId!==m.id)e.currentTarget.style.background="rgba(80,140,255,0.05)";}}
+              onMouseOut={e=>{if(selId!==m.id)e.currentTarget.style.background="transparent";}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:3}}>
+                <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                  {!m.read&&<div style={{width:6,height:6,borderRadius:"50%",background:chanColor(m.channel),flexShrink:0}}/>}
+                  <span style={{fontSize:12,fontWeight:m.read?500:700,color:m.read?"#CBD5E1":"#F8FAFC"}}>{m.from}</span>
+                </div>
+                <span style={{fontSize:9,color:"#64748B",flexShrink:0}}>{m.date}</span>
+              </div>
+              <div style={{fontSize:11,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>{m.subject}</div>
+              <div style={{fontSize:10,color:"#64748B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.body.slice(0,60)}...</div>
+              <div style={{marginTop:4,display:"flex",gap:4,alignItems:"center"}}>
+                <span style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:chanColor(m.channel)+"22",color:chanColor(m.channel),fontWeight:700}}>{chanIcon(m.channel)} {m.channel}</span>
+                {AI_INTEL[m.id]&&<span style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:"rgba(139,92,246,0.15)",color:"#A78BFA",fontWeight:700}}>AI ✦</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CENTRE: Message view + reply ── */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        {selMsg&&<>
+          {/* Header */}
+          <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.1)",background:"#0A1628",flexShrink:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC",marginBottom:2}}>{selMsg.subject}</div>
+                <div style={{fontSize:11,color:"#94A3B8"}}>From: <span style={{color:"#CBD5E1",fontWeight:600}}>{selMsg.from}</span>{selMsg.email&&<> &lt;{selMsg.email}&gt;</>}</div>
+                {selMsg.appt&&<div style={{fontSize:10,color:C.teal,marginTop:2}}>📅 {selMsg.appt}</div>}
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{fontSize:10,padding:"3px 10px",borderRadius:10,background:chanColor(selMsg.channel)+"22",color:chanColor(selMsg.channel),fontWeight:700}}>{chanIcon(selMsg.channel)} {selMsg.channel}</span>
+                <span style={{fontSize:9,color:"#64748B"}}>{selMsg.date}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Message body */}
+          <div style={{flex:1,overflowY:"auto",padding:"16px 18px",background:"#071428"}}>
+            <div style={{background:"#0D1B2E",borderRadius:14,padding:"14px 16px",fontSize:13,color:"#E2E8F0",lineHeight:1.7,marginBottom:16,border:"1px solid rgba(56,189,248,0.08)"}}>
+              {selMsg.body}
+            </div>
+
+            {/* Quick Reply Buttons */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748B",letterSpacing:".06em",textTransform:"uppercase",marginBottom:8}}>Quick Reply</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {QUICK_ACTIONS.map(group=>(
+                  <div key={group.cat}>
+                    <div style={{fontSize:9,fontWeight:700,color:group.color,letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>{group.icon} {group.cat}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {group.items.map(act=>(
+                        <button key={act.l} onClick={()=>{setReply(act.fn(selMsg));doToast(`✓ Template loaded — review and send`);}}
+                          style={{padding:"5px 12px",border:`1px solid ${group.color}44`,borderRadius:16,background:`${group.color}14`,color:group.color,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"background .12s"}}
+                          onMouseEnter={e=>e.currentTarget.style.background=`${group.color}26`}
+                          onMouseLeave={e=>e.currentTarget.style.background=`${group.color}14`}>
+                          {act.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Reply compose area */}
+          <div style={{background:"#0A1628",borderTop:"1px solid rgba(56,189,248,0.1)",padding:"12px 16px",flexShrink:0}}>
+            {aiSugUsed&&<div style={{fontSize:10,color:"#A78BFA",marginBottom:6,display:"flex",gap:4,alignItems:"center"}}>✦ AI suggestion loaded — review before sending</div>}
+            <textarea value={reply} onChange={e=>setReply(e.target.value)} rows={3}
+              placeholder={`Reply to ${selMsg.from} via ${selMsg.channel}...`}
+              style={{width:"100%",background:"#132238",border:"1px solid rgba(80,140,255,0.2)",borderRadius:12,padding:"10px 12px",fontSize:12,color:"#E2E8F0",resize:"vertical",outline:"none",boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.6}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+              <div style={{display:"flex",gap:6}}>
+                {intel&&<button onClick={()=>{setReply(intel.suggestedReply);setAiSugUsed(true);doToast("✓ AI reply loaded — review before sending");}}
+                  style={{padding:"6px 12px",background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:10,color:"#A78BFA",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  ✦ Use AI Reply
+                </button>}
+                {reply&&<button onClick={()=>{setReply("");setAiSugUsed(false);}}
+                  style={{padding:"6px 12px",background:"transparent",border:"1px solid rgba(80,140,255,0.15)",borderRadius:10,color:"#64748B",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>
+                  Clear
+                </button>}
+              </div>
+              <button onClick={sendReply} disabled={!reply.trim()}
+                style={{padding:"7px 20px",background:reply.trim()?"linear-gradient(135deg,#2563FF,#1D4ED8)":"rgba(80,140,255,0.1)",border:"none",borderRadius:10,color:reply.trim()?"#fff":"#475569",fontSize:12,fontWeight:700,cursor:reply.trim()?"pointer":"not-allowed",fontFamily:"inherit"}}>
+                Send Reply
+              </button>
+            </div>
+          </div>
+        </>}
+      </div>
+
+      {/* ── RIGHT: AI Analysis panel ── */}
+      <div style={{width:272,flexShrink:0,background:"#0A1422",borderLeft:"1px solid rgba(139,92,246,0.15)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"12px 14px 8px",borderBottom:"1px solid rgba(139,92,246,0.1)"}}>
+          <div style={{fontSize:12,fontWeight:800,color:"#A78BFA",letterSpacing:".02em"}}>✦ AI Analysis</div>
+        </div>
+        {intel?<div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
+          {/* Intent / Urgency / Sentiment chips */}
+          <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>
+            <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:"rgba(37,99,255,0.15)",color:"#60A5FA",fontWeight:700}}>{intel.intent}</span>
+            <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:urgColor(intel.urgency)+"22",color:urgColor(intel.urgency),fontWeight:700}}>⚡ {intel.urgency}</span>
+            <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:"rgba(16,185,129,0.15)",color:"#34D399",fontWeight:700}}>{intel.sentiment}</span>
+          </div>
+
+          {/* Summary */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:9,fontWeight:700,color:"#64748B",letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>Summary</div>
+            <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.6}}>{intel.summary}</div>
+          </div>
+
+          {/* Context panels */}
+          {[["Patient","#38BDF8",intel.patientCtx],["Appointment","#34D399",intel.apptCtx],["Treatment","#A78BFA",intel.txCtx]].map(([label,col,ctx])=>(
+            <div key={label} style={{marginBottom:8,padding:"8px 10px",background:"rgba(80,140,255,0.05)",borderRadius:10,border:`1px solid ${col}18`}}>
+              <div style={{fontSize:9,fontWeight:700,color:col,letterSpacing:".05em",textTransform:"uppercase",marginBottom:3}}>{label} Context</div>
+              <div style={{fontSize:11,color:"#94A3B8",lineHeight:1.5}}>{ctx}</div>
+            </div>
+          ))}
+
+          {/* AI Suggested Reply */}
+          <div style={{marginBottom:10,padding:"10px 12px",background:"rgba(139,92,246,0.08)",borderRadius:12,border:"1px solid rgba(139,92,246,0.2)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:9,fontWeight:700,color:"#A78BFA",letterSpacing:".05em",textTransform:"uppercase"}}>AI Suggested Reply</div>
+              <span style={{fontSize:9,padding:"1px 7px",borderRadius:6,background:confColor(intel.confidence)+"22",color:confColor(intel.confidence),fontWeight:700}}>{intel.confidence} conf.</span>
+            </div>
+            <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.6,marginBottom:8}}>{intel.suggestedReply}</div>
+            <div style={{display:"flex",gap:5}}>
+              <button onClick={()=>{setReply(intel.suggestedReply);setAiSugUsed(true);doToast("✓ AI reply loaded — review and send");}}
+                style={{flex:1,padding:"5px 0",background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                Use
+              </button>
+              <button onClick={()=>doToast("✦ Regenerating AI suggestion...")}
+                style={{flex:1,padding:"5px 0",background:"transparent",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                Regenerate
+              </button>
+            </div>
+          </div>
+
+          {/* Suggested Actions */}
+          <div>
+            <div style={{fontSize:9,fontWeight:700,color:"#64748B",letterSpacing:".06em",textTransform:"uppercase",marginBottom:6}}>Suggested Actions</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {intel.actions.map(a=>(
+                <button key={a} onClick={()=>doToast(`✓ Action: ${a}`)}
+                  style={{padding:"6px 10px",background:"rgba(37,99,255,0.08)",border:"1px solid rgba(37,99,255,0.18)",borderRadius:9,color:"#60A5FA",fontSize:11,fontWeight:600,cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(37,99,255,0.15)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="rgba(37,99,255,0.08)"}>
+                  → {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* AI Learning note */}
+          <div style={{marginTop:12,padding:"7px 10px",background:"rgba(16,185,129,0.06)",borderRadius:9,border:"1px solid rgba(16,185,129,0.12)"}}>
+            <div style={{fontSize:9,color:"#34D399",lineHeight:1.5}}>✓ AI learns from accepted/edited replies to improve future suggestions for your practice.</div>
+          </div>
+        </div>:
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#334155",fontSize:11,textAlign:"center",padding:20}}>
+          Select a message to see AI analysis
+        </div>}
       </div>
     </div>
   );
@@ -28655,6 +28942,7 @@ export default function App(){
       payments:<PaymentsPage user={user}/>,
       reports:<ReportsPage/>,
       myreports:<MyReportsPage user={user}/>,
+      performance:<MyReportsPage user={user}/>,
       tasks:<TasksPage user={user}/>,
       rota:<RotaPage user={user}/>,
       manager:<ManagerPortal userPerms={userPerms} setUserPerms={setUserPerms} featureUserCfg={featureUserCfg} setFeatureUserCfg={setFeatureUserCfg} permAuditLog={permAuditLog} addPermAudit={addPermAudit} currentUser={user}/>,
