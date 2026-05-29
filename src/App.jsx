@@ -1962,6 +1962,7 @@ const ALL_NAV_ITEMS=[
   {id:"templates",    l:"Templates",       Icon:Archive,      g:"Practice",      roles:["manager","owner"]},
   {id:"audit",        l:"Audit Log",       Icon:Shield,       g:"Practice",      roles:["manager","owner"]},
   {id:"clinicalrisk", l:"Clinical Risk",   Icon:AlertTriangle,g:"Practice",      roles:["manager","owner"]},
+  {id:"automations",  l:"Automations",     Icon:Zap,          g:"Practice",      roles:["manager","owner"]},
   {id:"knowledgehub", l:"Knowledge Hub",   Icon:Archive,      g:"Practice",      roles:["reception","dentist","hygienist","manager","owner"]},
   {id:"settings",     l:"Settings",        Icon:Settings,     g:"Practice",      roles:["manager","owner"]},
   // ─── SUPPORT ──────────────────────────────────────────────────────────────
@@ -16542,7 +16543,7 @@ function PatientCommsTab({patient}){
 
 function computeTxAcceptance(plan){
   const val=plan.total??plan.value??plan.items?.reduce((s,i)=>s+(i.fee||0),0)??0;
-  const ageDays=plan.date?Math.floor((Date.now()-new Date(plan.date))/86400000):null;
+  const ageDays=plan.date?Math.floor((Date.now()-new Date(plan.date.replace(/^(\d{1,2}) (\w{3}) (\d{4})$/,"$2 $1, $3")))/86400000):null;
   const tier=val>2000?"high":val>500?"medium":"low";
   const baseScore={high:72,medium:55,low:38}[tier];
   const ageDiscount=ageDays?Math.min(30,Math.floor(ageDays/2)):0;
@@ -16555,6 +16556,193 @@ function computeTxAcceptance(plan){
   else if(ageDays>30)aiSuggestion="WhatsApp follow-up — quote has been pending 30+ days";
   else aiSuggestion="Standard recall — monitor for 2 more weeks";
   return{acceptScore,ageDays,ageColor,financeEligible,aiSuggestion,val};
+}
+
+function FamilyHouseholdPanel({patient,patientDetails,openPatient,doToast}){
+  const members=(patientDetails?.familyMembers||[]).filter(m=>m.id!==patient?.id);
+  const linkedPats=members.map(m=>({...m,pat:PATIENTS.find(p=>p.id===m.pid)}));
+  const householdBalance=linkedPats.reduce((s,m)=>s+(m.pat?.balance||0),0)+(patient?.balance||0);
+  const householdTx=linkedPats.reduce((s,m)=>s+(m.pat?.outstandingTx||0),0);
+  if(!patientDetails?.familyId&&members.length===0)return null;
+  return(
+    <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.12)",borderRadius:12,overflow:"hidden",marginBottom:12}}>
+      <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(56,189,248,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#F1F5F9",display:"flex",alignItems:"center",gap:6}}>
+          👨‍👩‍👧 Household
+          {patientDetails?.familyId&&<span style={{fontSize:9,padding:"1px 7px",borderRadius:10,background:"rgba(56,189,248,0.1)",color:"#38BDF8",fontWeight:600}}>ID: {patientDetails.familyId}</span>}
+        </div>
+        <button onClick={()=>doToast("Add family member — use Patient Search to link")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>+ Add Member</button>
+      </div>
+      {members.length>0?(
+        <div>
+          {members.map((m,i)=>(
+            <div key={m.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 16px",borderBottom:i<members.length-1?"1px solid rgba(56,189,248,0.06)":"none"}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{(m.name||"?").charAt(0)}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#F1F5F9"}}>{m.name||"Unknown"}</div>
+                <div style={{fontSize:10,color:"#94A3B8"}}>{m.relation||"Family member"}{m.dob?` · ${m.dob}`:""}</div>
+              </div>
+              {m.pid&&openPatient?(
+                <button onClick={()=>openPatient(m.pid)} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>View →</button>
+              ):(
+                <span style={{fontSize:9,color:"#64748B"}}>Not a patient</span>
+              )}
+            </div>
+          ))}
+          <div style={{padding:"10px 16px",borderTop:"1px solid rgba(56,189,248,0.08)",display:"flex",gap:16}}>
+            <div style={{fontSize:11,color:"#94A3B8"}}>Household balance: <span style={{color:householdBalance>0?"#EF4444":"#4ADE80",fontWeight:700}}>£{householdBalance.toFixed(2)}</span></div>
+            {householdTx>0&&<div style={{fontSize:11,color:"#94A3B8"}}>Outstanding Tx: <span style={{color:"#FCD34D",fontWeight:700}}>£{householdTx.toFixed(2)}</span></div>}
+          </div>
+          <div style={{padding:"8px 16px 12px",display:"flex",gap:8}}>
+            <button onClick={()=>doToast("Family recall sent to all household members")} style={{padding:"5px 12px",borderRadius:8,border:"1px solid rgba(56,189,248,0.3)",background:"rgba(56,189,248,0.06)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#38BDF8"}}>Send Family Recall</button>
+            <button onClick={()=>doToast("Family appointment request created")} style={{padding:"5px 12px",borderRadius:8,border:"1px solid rgba(80,140,255,0.2)",background:"rgba(80,140,255,0.05)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#CBD5E1"}}>Book Together</button>
+          </div>
+        </div>
+      ):(
+        <div style={{padding:"16px",fontSize:12,color:"#64748B",textAlign:"center"}}>No family members linked yet.</div>
+      )}
+    </div>
+  );
+}
+
+function TxCoordinatorWorkflow({plan,patient,intel,doToast}){
+  const [open,setOpen]=useState(false);
+  const STAGES=["Consultation","Plan Sent","Reviewing","Finance","Booked"];
+  const ageDays=intel?.ageDays??0;
+  const currentStage=plan.status==="accepted"||plan.status==="completed"?4:plan.status==="open"?ageDays>30?3:ageDays>7?2:1:0;
+  const allDone=plan.status==="completed"||plan.status==="accepted";
+  return(
+    <div style={{marginTop:8,borderTop:"1px solid rgba(56,189,248,0.08)",paddingTop:8}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.12)",borderRadius:8,padding:"6px 10px",cursor:"pointer",color:"#CBD5E1"}}>
+        <span style={{fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:6}}><span>✨</span>AI Coordinator — {intel?.aiSuggestion||"Monitor progress"}</span>
+        <span style={{fontSize:10,color:"#64748B"}}>{open?"▲":"▼"}</span>
+      </button>
+      {open&&(
+        <div style={{marginTop:8,padding:"10px 12px",background:"#071428",borderRadius:8,border:"1px solid rgba(80,140,255,0.1)"}}>
+          {/* Pipeline */}
+          <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:12,overflowX:"auto"}}>
+            {STAGES.map((s,i)=>{
+              const done=i<currentStage;
+              const active=i===currentStage&&!allDone;
+              return(
+                <div key={i} style={{display:"flex",alignItems:"center",flex:1,minWidth:0}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1}}>
+                    <div style={{width:24,height:24,borderRadius:"50%",background:done?"#22C55E":active?"#38BDF8":"rgba(80,140,255,0.15)",border:`2px solid ${done?"#22C55E":active?"#38BDF8":"rgba(80,140,255,0.2)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:done?"#fff":active?"#071428":"#64748B",boxShadow:active?"0 0 8px rgba(56,189,248,0.4)":"none",flexShrink:0}}>
+                      {done?"✓":i+1}
+                    </div>
+                    <div style={{fontSize:9,color:done?"#22C55E":active?"#38BDF8":"#64748B",marginTop:3,textAlign:"center",whiteSpace:"nowrap"}}>{s}</div>
+                  </div>
+                  {i<STAGES.length-1&&<div style={{height:2,flex:1,background:done?"#22C55E":"rgba(80,140,255,0.15)",margin:"0 2px",marginBottom:18,minWidth:8}}/>}
+                </div>
+              );
+            })}
+          </div>
+          {/* Quick actions */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>doToast(`✓ WhatsApp follow-up sent to ${patient?.name||"patient"}`)} style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(37,99,255,0.3)",background:"rgba(37,99,255,0.08)",cursor:"pointer",fontSize:10,fontWeight:600,color:"#60A5FA"}}>💬 Send WhatsApp</button>
+            <button onClick={()=>doToast(`✓ Finance options emailed to ${patient?.name||"patient"}`)} style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(245,158,11,0.3)",background:"rgba(245,158,11,0.06)",cursor:"pointer",fontSize:10,fontWeight:600,color:"#FCD34D"}}>💳 Offer Finance</button>
+            <button onClick={()=>doToast("✓ Booking confirmation sent")} style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.06)",cursor:"pointer",fontSize:10,fontWeight:600,color:"#4ADE80"}}>📅 Book Appointment</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Patient360Tab({patient,txPlans,setTab,doToast,openPatient}){
+  const pts=PATIENTS||[];
+  const nextAppt=patient?.nextAppt;
+  const openPlans=(txPlans||[]).filter(p=>p.status==="open");
+  const openTxVal=openPlans.reduce((s,p)=>s+(p.total||p.value||p.items?.reduce((a,i)=>a+(i.fee||0),0)||0),0);
+  const recallInterval=patient?.recallInterval||6;
+  const lastVisit=patient?.lastVisit;
+  const comms=useMemo(()=>buildPatientComms(patient?.id||"",patient?.name||""),[patient?.id,patient?.name]);
+  const yearsAsPatient=patient?.memberSince?new Date().getFullYear()-parseInt(patient.memberSince):3;
+  const ltv=Math.round((patient?.completedTxCount||8)*(patient?.avgTxValue||145)+(yearsAsPatient*12));
+  const familyMembers=(PATIENTS||[]).filter(p=>p.familyId&&p.familyId===patient?.familyId&&p.id!==patient?.id);
+
+  const CARDS=[
+    {label:"Next Appointment",icon:"📅",value:nextAppt||"Not scheduled",sub:nextAppt?"Confirmed":"Book now",color:"#38BDF8",tab:"appts"},
+    {label:"Outstanding Treatment",icon:"🦷",value:openTxVal>0?`£${openTxVal.toLocaleString()}`:"All clear",sub:`${openPlans.length} open plan${openPlans.length!==1?"s":""}`,color:"#A78BFA",tab:"plans"},
+    {label:"Finance Status",icon:"💷",value:patient?.balance>0?`£${(patient.balance||0).toFixed(2)} owed`:"Up to date",sub:patient?.overdue?"Overdue":"No balance",color:patient?.balance>0?"#EF4444":"#4ADE80",tab:"accounts"},
+    {label:"Recall Status",icon:"🔔",value:lastVisit?`Last: ${lastVisit}`:"No visits recorded",sub:`${recallInterval}m recall interval`,color:"#FCD34D",tab:"appts"},
+    {label:"Consent & Forms",icon:"🖊️",value:"View status",sub:"Check consent tab",color:"#4ADE80",tab:"consent"},
+    {label:"Lifetime Value",icon:"⭐",value:`£${ltv.toLocaleString()}`,sub:`~${yearsAsPatient} year${yearsAsPatient!==1?"s":""}`,color:"#F59E0B",tab:null},
+  ];
+
+  return(
+    <div style={{padding:"16px 0"}}>
+      {/* Patient header strip */}
+      <div style={{background:"linear-gradient(135deg,rgba(37,99,255,0.12),rgba(56,189,248,0.06))",border:"1px solid rgba(56,189,248,0.2)",borderRadius:14,padding:"16px 20px",marginBottom:16,display:"flex",gap:16,alignItems:"center"}}>
+        <div style={{width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,color:"#fff",flexShrink:0}}>{(patient?.name||"?").charAt(0)}</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:17,fontWeight:800,color:"#F1F5F9",marginBottom:2}}>{patient?.name||"Patient"}</div>
+          <div style={{fontSize:11,color:"#94A3B8",display:"flex",gap:12,flexWrap:"wrap"}}>
+            {patient?.dob&&<span>DOB: {patient.dob}</span>}
+            {patient?.nhsNo&&<span>NHS: {patient.nhsNo}</span>}
+            {patient?.type&&<span style={{padding:"1px 7px",borderRadius:10,background:patient.type==="NHS"?"rgba(56,189,248,0.12)":"rgba(139,92,246,0.12)",color:patient.type==="NHS"?"#38BDF8":"#A78BFA",fontWeight:600}}>{patient.type}</span>}
+            {patient?.dentist&&<span>Dentist: {patient.dentist}</span>}
+          </div>
+        </div>
+        {patient?.medAlerts?.length>0&&<div style={{padding:"5px 10px",borderRadius:8,background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.25)",fontSize:10,fontWeight:700,color:"#EF4444"}}>⚠️ {patient.medAlerts.length} Alert{patient.medAlerts.length!==1?"s":""}</div>}
+      </div>
+
+      {/* 6 summary cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginBottom:16}}>
+        {CARDS.map((c,i)=>(
+          <div key={i} onClick={()=>c.tab&&setTab(c.tab)} style={{background:"#0A1628",border:`1px solid ${c.color}25`,borderRadius:12,padding:"12px 14px",cursor:c.tab?"pointer":"default",transition:"border-color .15s"}} onMouseOver={e=>{if(c.tab)e.currentTarget.style.borderColor=c.color+"60"}} onMouseOut={e=>{if(c.tab)e.currentTarget.style.borderColor=c.color+"25"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+              <span style={{fontSize:16}}>{c.icon}</span>
+              <span style={{fontSize:10,fontWeight:700,color:c.color,textTransform:"uppercase",letterSpacing:".05em"}}>{c.label}</span>
+            </div>
+            <div style={{fontSize:15,fontWeight:700,color:"#F1F5F9",marginBottom:2}}>{c.value}</div>
+            <div style={{fontSize:10,color:"#64748B"}}>{c.sub}{c.tab&&<span style={{color:c.color,marginLeft:4}}>→</span>}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Medical alerts */}
+      {patient?.medAlerts?.length>0&&(
+        <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#EF4444",marginBottom:6}}>⚠️ MEDICAL ALERTS</div>
+          {patient.medAlerts.map((a,i)=><div key={i} style={{fontSize:12,color:"#FCA5A5",padding:"2px 0"}}>{a}</div>)}
+        </div>
+      )}
+
+      {/* Recent comms */}
+      <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.1)",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          Recent Communications
+          <button onClick={()=>setTab("comms")} style={{fontSize:10,color:"#38BDF8",background:"none",border:"none",cursor:"pointer"}}>View all →</button>
+        </div>
+        {comms.slice(0,3).map((c,i)=>(
+          <div key={i} style={{display:"flex",gap:8,padding:"5px 0",borderBottom:i<2?"1px solid rgba(56,189,248,0.06)":"none",alignItems:"center"}}>
+            <span style={{fontSize:14}}>{c.icon}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,color:"#CBD5E1",fontWeight:500}}>{c.summary}</div>
+              <div style={{fontSize:10,color:"#64748B"}}>{c.date} · {c.staff}</div>
+            </div>
+            <span style={{fontSize:9,color:c.direction==="inbound"?"#4ADE80":"#60A5FA"}}>{c.direction==="inbound"?"←":"→"}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Family members */}
+      {familyMembers.length>0&&(
+        <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.1)",borderRadius:12,padding:"12px 14px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8}}>👨‍👩‍👧 Household Members</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {familyMembers.map((m,i)=>(
+              <button key={i} onClick={()=>openPatient&&openPatient(m.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",borderRadius:8,border:"1px solid rgba(80,140,255,0.2)",background:"rgba(80,140,255,0.06)",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff"}}>{(m.name||"?").charAt(0)}</div>
+                {m.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
@@ -16713,6 +16901,7 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
   const sendWA=()=>{if(!waMsg.trim())return;setWaMsgs(p=>[...p,{dir:"out",body:waMsg,at:"Now",st:"sent"}]);setWaMsg("");};
 
   const ALL_PATIENT_TABS=[
+    {id:"summary",  l:"360 Summary",     icon:"🧠",roles:["reception","dentist","hygienist","manager","owner"]},
     {id:"details",  l:"Details",         icon:"👤",roles:["reception","dentist","hygienist","manager"]},
     {id:"activity", l:"Activity",        icon:"📊",roles:["reception","dentist","hygienist","manager"]},
     {id:"chart",    l:"Chart",           icon:"🦷",roles:["dentist","hygienist","manager"]},
@@ -16726,8 +16915,8 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
     {id:"consent",  l:"Consent Forms",   icon:"✍️",roles:["dentist","manager","reception","hygienist"]},
     {id:"comms",    l:"Communications",  icon:"💬",roles:["reception","dentist","hygienist","manager","owner"]},
   ];
-  const DENTIST_ORDER=["chart","activity","notes","comms","medical","plans","appts","details","docs","consent","history"];
-  const RECEPTION_ORDER=["details","activity","appts","comms","accounts","plans","medical","docs","consent"];
+  const DENTIST_ORDER=["summary","chart","activity","notes","comms","medical","plans","appts","details","docs","consent","history"];
+  const RECEPTION_ORDER=["summary","details","activity","appts","comms","accounts","plans","medical","docs","consent"];
   const TABS=user?.role==="dentist"||user?.role==="hygienist"
     ? ALL_PATIENT_TABS.filter(t=>t.roles.includes(user.role)).sort((a,b)=>DENTIST_ORDER.indexOf(a.id)-DENTIST_ORDER.indexOf(b.id))
     : user?.role==="reception"
@@ -17279,6 +17468,9 @@ Added by: ${showDocPreview.by}
     {/* ══ TAB CONTENT ══ */}
     <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}>
 
+    {/* ── 360 SUMMARY ── */}
+    {tab==="summary"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:"20px",...(isMob&&{padding:12})}}><Patient360Tab patient={patient} txPlans={txPlans} setTab={setTab} doToast={doToast} openPatient={openPatient}/></div>}
+
     {/* ── DETAILS (landing dashboard) ── */}
     {tab==="details"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20,background:"#0F1C34",...(isMob&&{padding:12})}}>
       <div style={{maxWidth:860,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
@@ -17470,22 +17662,7 @@ Added by: ${showDocPreview.by}
               </Section>
             </div>
 
-            <div style={{background:"#132238",borderRadius:18,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
-              <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#F8FAFC"}}>Household / Family Account</div>
-                <button onClick={()=>setShowAddMember(true)} style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#2563FF",fontWeight:600}}>+ Add Member</button>
-              </div>
-              <div style={{padding:"8px 16px"}}>
-                {[{name:"Michael Chen",rel:"Spouse",dob:"22 Aug 1979",dentist:"Dr. S. Patel",type:"NHS",pid:"P5"},{name:"Lily Chen",rel:"Child",dob:"05 Mar 2015",dentist:"Dr. S. Patel",type:"NHS",pid:"P6"}].filter(m=>m.pid!==patient?.id).map((mem,i)=>(
-                  <div key={mem.name} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:i===0?"1px solid rgba(56,189,248,0.07)":"none"}}>
-                    <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#132238",flexShrink:0}}>{mem.name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
-                    <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{mem.name} <span style={{fontSize:10,color:"#CBD5E1",fontWeight:400}}>({mem.rel})</span></div><div style={{fontSize:10,color:"#CBD5E1"}}>{mem.dob} · {mem.dentist}</div></div>
-                    <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:5,background:"rgba(80,140,255,0.08)",color:"#38BDF8"}}>{mem.type}</span>
-                    <button onClick={()=>{if(mem.pid&&openPatient){openPatient(mem.pid);}else{doToast(mem.name+" is not yet registered — add them as a patient first");}}}  style={{padding:"5px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#2563FF",fontWeight:600}}>View →</button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <FamilyHouseholdPanel patient={patient} patientDetails={patientDetails} openPatient={openPatient} doToast={doToast}/>
 
             <div style={{background:"#132238",borderRadius:18,border:"1px solid rgba(80,140,255,0.16)",overflow:"hidden"}}>
               <div style={{padding:"10px 16px",background:"rgba(3,9,22,0.99)",borderBottom:"1px solid rgba(56,189,248,0.12)",fontSize:12,fontWeight:800,color:"#F8FAFC"}}>Reception Notes & Flags</div>
@@ -17900,6 +18077,7 @@ Added by: ${showDocPreview.by}
                 <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,background:"rgba(139,92,246,0.1)",color:C.purple}}>✨ {intel.aiSuggestion}</span>
               </div>
             );})()}
+            {(plan.status==="open"||plan.status==="accepted")&&<TxCoordinatorWorkflow plan={plan} patient={patient} intel={computeTxAcceptance(plan)} doToast={doToast}/>}
 
             {/* Items */}
             <div style={{background:"#0F1C34",padding:"0 14px",display:"grid",gridTemplateColumns:"1fr 80px 80px 120px 16px",gap:0,borderBottom:"1px solid rgba(56,189,248,0.12)"}}>
@@ -19385,7 +19563,7 @@ const RECOVERY_DATA={
 
 function RevenueRecoveryPage(){
   const rrvw=useWindowWidth();const isMob=rrvw<768;
-  const [tab,setTab]=useState("overview");
+  const [tab,setTab]=useState("leakage");
   const [data,setData]=useState(RECOVERY_DATA);
   const [modal,setModal]=useState(null);// {item,type}
   const [toast,setToast]=useState(null);
@@ -19420,6 +19598,7 @@ function RevenueRecoveryPage(){
     data.cancellations.filter(r=>r.status==="rebooked").reduce((s,r)=>s+(r.value||0),0);
 
   const TABS=[
+    {id:"leakage",      l:"⚡ Leakage Overview"},
     {id:"overview",     l:"Overview"},
     {id:"plans",        l:"Treatment Plans",  n:data.plans.length,      v:data.plans.reduce((s,r)=>s+(r.value||0),0)},
     {id:"recalls",      l:"Overdue Recalls",  n:data.recalls.length,    v:data.recalls.reduce((s,r)=>s+(r.value||0),0)},
@@ -19465,6 +19644,50 @@ function RevenueRecoveryPage(){
           </button>)}
         </div>
       </div>
+
+      {/* ════ LEAKAGE OVERVIEW ════ */}
+      {tab==="leakage"&&(()=>{
+        const plans=data.plans||[];
+        const recalls=data.recalls||[];
+        const cancels=data.cancellations||[];
+        const dnas=data.dnas||[];
+        const missed=data.missed||[];
+        const planVal=plans.reduce((s,r)=>s+(r.value||0),0);
+        const recallVal=recalls.filter(r=>r.status!=="contacted"&&r.status!=="rebooked").length*85;
+        const cancelVal=cancels.reduce((s,r)=>s+(r.value||0),0);
+        const dnaVal=dnas.reduce((s,r)=>s+(r.value||0),0);
+        const missedVal=missed.filter(r=>r.status==="not_contacted").length*95;
+        const total=planVal+recallVal+cancelVal+dnaVal+missedVal;
+        const CARDS=[
+          {label:"Unscheduled Treatment",val:planVal,count:plans.length,color:"#A78BFA",trend:"↑",tab:"plans"},
+          {label:"Overdue Recalls",val:recallVal,count:recalls.filter(r=>r.status!=="rebooked").length,color:"#38BDF8",trend:"↑",tab:"recalls"},
+          {label:"Cancellations",val:cancelVal,count:cancels.length,color:"#FCD34D",trend:"→",tab:"cancellations"},
+          {label:"DNA / No-Shows",val:dnaVal,count:dnas.length,color:"#EF4444",trend:"↑",tab:"dnas"},
+          {label:"Missed Calls",val:missedVal,count:missed.filter(r=>r.status==="not_contacted").length,color:"#94A3B8",trend:"→",tab:"missed"},
+        ];
+        return(
+          <div style={{padding:20,flex:1,overflowY:"auto",background:"#071428"}}>
+            <div style={{textAlign:"center",marginBottom:24,padding:"20px",background:"linear-gradient(135deg,rgba(239,68,68,0.08),rgba(239,68,68,0.03))",border:"1px solid rgba(239,68,68,0.2)",borderRadius:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#EF4444",letterSpacing:".1em",marginBottom:6}}>TOTAL REVENUE AT RISK</div>
+              <div style={{fontSize:42,fontWeight:900,color:"#EF4444",lineHeight:1}}>£{total.toLocaleString()}</div>
+              <div style={{fontSize:12,color:"#94A3B8",marginTop:6}}>Across {CARDS.length} leakage categories</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginBottom:20}}>
+              {CARDS.map((c,i)=>(
+                <div key={i} style={{background:"#0A1628",border:`1px solid ${c.color}25`,borderRadius:12,padding:"14px 16px"}}>
+                  <div style={{fontSize:10,fontWeight:700,color:c.color,textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>{c.label}</div>
+                  <div style={{fontSize:24,fontWeight:800,color:"#F1F5F9",marginBottom:2}}>£{c.val.toLocaleString()}</div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <span style={{fontSize:10,color:"#64748B"}}>{c.count} {c.count===1?"item":"items"}</span>
+                    <span style={{fontSize:10,color:c.trend==="↑"?"#EF4444":"#FCD34D",fontWeight:700}}>{c.trend}</span>
+                  </div>
+                  <button onClick={()=>setTab(c.tab)} style={{marginTop:8,width:"100%",padding:"5px",borderRadius:7,border:`1px solid ${c.color}40`,background:`${c.color}08`,cursor:"pointer",fontSize:10,fontWeight:700,color:c.color}}>View &amp; Action →</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ════ OVERVIEW ════ */}
       {tab==="overview"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#071428",padding:18,...(isMob&&{padding:12})}}>
@@ -21710,6 +21933,92 @@ const CLINICAL_RISK_DATA=[
   {id:"CR011",category:"Missing X-Ray",severity:"medium",patient:"David Park",pid:"P5",clinician:"Dr. L. Chen",daysOverdue:60,action:"No periapical X-ray recorded for RCT treatment episode",tab:"details"},
   {id:"CR012",category:"Missing X-Ray",severity:"low",patient:"Lisa White",pid:"P6",clinician:"Dr. S. Patel",daysOverdue:18,action:"Bitewing X-rays due at routine exam — not yet taken",tab:"details"},
 ];
+
+const AUTOMATION_SEEDS=[
+  {id:"AU1",name:"DNA Follow-Up Sequence",trigger:"Appointment DNA",actions:"Send WhatsApp → Wait 2 days → Send SMS",active:true,icon:"🔔",desc:"Auto-contact patients who missed their appointment"},
+  {id:"AU2",name:"Overdue Recall Reminder",trigger:"Recall overdue 90 days",actions:"Send recall SMS → Create task if no response",active:true,icon:"📅",desc:"Re-engage patients who haven't been seen in 12+ months"},
+  {id:"AU3",name:"High-Value Treatment Chase",trigger:"Treatment plan > £2,000 unbooked 14 days",actions:"Notify coordinator → Send finance options email",active:false,icon:"💊",desc:"Proactive follow-up for high-value unbooked treatment plans"},
+];
+
+function AutomationsPage({user}){
+  const isManager=user?.role==="manager"||user?.role==="owner"||user?.role==="superadmin";
+  const [automations,setAutomations]=useState(AUTOMATION_SEEDS);
+  const [selected,setSelected]=useState(AUTOMATION_SEEDS[0]);
+  const [toast,setToast]=useState(null);
+  const dT=(m)=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+
+  const toggle=(id)=>{
+    setAutomations(a=>a.map(x=>x.id===id?{...x,active:!x.active}:x));
+    dT("Automation updated");
+  };
+
+  return(
+    <div style={{display:"flex",height:"100%",minHeight:500}}>
+      {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:9999,background:"#132238",border:"1px solid rgba(80,140,255,0.3)",borderRadius:10,padding:"10px 18px",fontSize:13,color:"#4ADE80",display:"flex",gap:6,alignItems:"center"}}><span>✓</span>{toast}</div>}
+      {/* Left panel */}
+      <div style={{width:300,borderRight:"1px solid rgba(56,189,248,0.08)",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(56,189,248,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#F1F5F9"}}>Automations</div>
+          {isManager&&<button onClick={()=>dT("Builder coming soon — contact support to configure custom automations")} style={{fontSize:10,padding:"4px 10px",borderRadius:7,border:"1px solid rgba(56,189,248,0.3)",background:"rgba(56,189,248,0.06)",cursor:"pointer",color:"#38BDF8",fontWeight:600}}>+ New</button>}
+        </div>
+        <div style={{flex:1,overflowY:"auto"}}>
+          {automations.map(a=>(
+            <div key={a.id} onClick={()=>setSelected(a)} style={{padding:"12px 16px",borderBottom:"1px solid rgba(56,189,248,0.06)",cursor:"pointer",background:selected?.id===a.id?"rgba(56,189,248,0.06)":"transparent",borderLeft:`3px solid ${selected?.id===a.id?"#38BDF8":"transparent"}`}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#F1F5F9",display:"flex",alignItems:"center",gap:6}}><span>{a.icon}</span>{a.name}</div>
+                {isManager&&(
+                  <button onClick={e=>{e.stopPropagation();toggle(a.id);}} style={{width:32,height:18,borderRadius:9,border:"none",cursor:"pointer",background:a.active?"#22C55E":"rgba(80,140,255,0.2)",position:"relative",flexShrink:0,transition:"background .2s"}}>
+                    <div style={{position:"absolute",top:2,left:a.active?16:2,width:14,height:14,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                  </button>
+                )}
+              </div>
+              <div style={{fontSize:10,color:"#64748B"}}>{a.trigger}</div>
+              <div style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:a.active?"rgba(34,197,94,0.1)":"rgba(80,140,255,0.08)",color:a.active?"#4ADE80":"#64748B",display:"inline-block",marginTop:4,fontWeight:600}}>{a.active?"Active":"Paused"}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Right panel */}
+      <div style={{flex:1,padding:24,overflowY:"auto"}}>
+        {selected?(
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <span style={{fontSize:24}}>{selected.icon}</span>
+              <div>
+                <div style={{fontSize:18,fontWeight:700,color:"#F1F5F9"}}>{selected.name}</div>
+                <div style={{fontSize:12,color:"#64748B"}}>{selected.desc}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{background:"#0A1628",border:"1px solid rgba(56,189,248,0.1)",borderRadius:12,padding:"14px 16px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#38BDF8",letterSpacing:".08em",marginBottom:8}}>IF — TRIGGER</div>
+                <div style={{fontSize:13,color:"#F1F5F9",fontWeight:600}}>{selected.trigger}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>↓</div>
+              <div style={{background:"#0A1628",border:"1px solid rgba(56,189,248,0.1)",borderRadius:12,padding:"14px 16px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#4ADE80",letterSpacing:".08em",marginBottom:8}}>THEN — ACTIONS</div>
+                {selected.actions.split("→").map((action,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<selected.actions.split("→").length-1?"1px solid rgba(56,189,248,0.06)":"none"}}>
+                    <div style={{width:18,height:18,borderRadius:"50%",background:"rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#4ADE80",flexShrink:0}}>{i+1}</div>
+                    <span style={{fontSize:12,color:"#CBD5E1"}}>{action.trim()}</span>
+                  </div>
+                ))}
+              </div>
+              {isManager&&(
+                <div style={{background:"rgba(56,189,248,0.04)",border:"1px dashed rgba(56,189,248,0.2)",borderRadius:12,padding:"16px",textAlign:"center"}}>
+                  <div style={{fontSize:12,color:"#64748B",marginBottom:8}}>Custom automation builder coming soon</div>
+                  <div style={{fontSize:11,color:"#38BDF8"}}>Contact support to configure bespoke workflows</div>
+                </div>
+              )}
+            </div>
+          </div>
+        ):(
+          <div style={{textAlign:"center",padding:40,color:"#64748B"}}>Select an automation to view details</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ClinicalRiskPage({openPatient,doToast}){
   const SEV_WEIGHT={critical:10,high:5,medium:2,low:1};
@@ -32770,6 +33079,7 @@ export default function App(){
       templates:<TemplatesPage/>,
       audit:<AuditPage/>,
       clinicalrisk:<ClinicalRiskPage openPatient={openPatient}/>,
+      automations:<AutomationsPage user={user}/>,
       knowledgehub:<KnowledgeHubPage user={user}/>,
       integrations:<IntegrationsPage/>,
       settings:<SettingsPage user={user}/>,
