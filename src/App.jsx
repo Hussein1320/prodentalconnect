@@ -24550,6 +24550,36 @@ function GenericPage({page}){
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════════
 
+const COPILOT_PREVIEW=[
+  {q:"What's my revenue picture today?",a:"Based on today's schedule: 14 appointments booked, 11 confirmed. Projected revenue £2,340 (NHS £1,120 + Private £1,220). 2 gaps remain — filling both adds ~£280. Outstanding balances: £4,820 across 23 patients."},
+  {q:"How are DNAs trending?",a:"This week: 3 DNAs so far (Mon×1, Wed×2). That's up from last week's 2. Dr Chen's 09:00 slot has had 2 DNAs in 3 weeks — consider a confirmation call the day before. Revenue lost this week: ~£420."},
+  {q:"Which recalls need attention?",a:"34 patients overdue for recall (14+ days). Top priority: Amy Torres (implant review, 6 weeks overdue, £850 value), Robert Hall (crown check, 4 weeks, £380), David Park (Invisalign review, 3 weeks, £620). WhatsApp open rate on recalls: 78%."},
+  {q:"How is the team performing?",a:"Dr Patel: 94% chair utilisation, 8 UDAs today (on track for monthly target). Dr Chen: 81% utilisation, 6 UDAs (slightly behind — needs 9/day to hit target). Hygienist: 88% utilisation, 6 of 8 slots filled."},
+];
+
+const COPILOT_SUGGESTED=[
+  "Why is revenue down this week?",
+  "Which treatment plans should we follow up on?",
+  "Who are the patients most likely to DNA today?",
+  "What's our UDA progress vs target?",
+  "Which patients have outstanding balances over £200?",
+  "Are there any diary gaps I should fill today?",
+  "Which clinician is most under-utilised this week?",
+  "How many recalls are overdue this month?",
+  "What's our cancellation rate trend?",
+  "Which patients viewed online booking but didn't complete?",
+];
+
+const COPILOT_QUICK_QS=[
+  {emoji:"💰",label:"Revenue today",q:"What's my revenue picture today?"},
+  {emoji:"🚫",label:"DNA rate",q:"How are DNAs trending this week?"},
+  {emoji:"📊",label:"UDA progress",q:"What's our UDA progress vs annual target?"},
+  {emoji:"📅",label:"Diary gaps",q:"Are there any diary gaps I should fill today?"},
+  {emoji:"🔔",label:"Recalls due",q:"Which recalls need urgent attention?"},
+  {emoji:"💷",label:"Outstanding balances",q:"Which patients have outstanding balances?"},
+  {emoji:"👥",label:"Who to contact",q:"Which patients should we contact today?"},
+];
+
 function BusinessCopilot({open,onClose,subscribed,onSubscribe}){
   const [msgs,setMsgs]=useState([]);
   const [input,setInput]=useState("");
@@ -24720,6 +24750,20 @@ ${PRACTICE_CONTEXT}`;
           </div>}
           <div ref={bottomRef}/>
         </div>
+
+        {/* Quick Questions — subscribed fresh conversation */}
+        {subscribed && msgs.length<=2 && (
+          <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(80,140,255,0.1)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:".08em",marginBottom:8}}>QUICK QUESTIONS</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {COPILOT_QUICK_QS.map((q,i)=>(
+                <button key={i} onClick={()=>sendMessage(q.q)} style={{background:"rgba(0,109,255,0.08)",border:"1px solid rgba(80,140,255,0.2)",borderRadius:12,padding:"5px 10px",cursor:"pointer",fontSize:11,color:"#CBD5E1",display:"flex",alignItems:"center",gap:5}}>
+                  <span>{q.emoji}</span><span>{q.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Suggested questions */}
         {msgs.length<=2&&<div style={{padding:"8px 14px",borderTop:"1px solid rgba(56,189,248,0.07)",flexShrink:0}}>
