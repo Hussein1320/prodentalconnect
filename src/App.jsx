@@ -2023,7 +2023,7 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
     {g:"Subscriptions",items:[{id:"admin_pricing",l:"Plan Builder",Icon:PoundSterling},{id:"admin_features",l:"Feature Management",Icon:Cpu},{id:"admin_seat_control",l:"Seat Control",Icon:Users2}]},
 
-    {g:"Platform",items:[{id:"admin_ai",l:"Platform AI",Icon:Cpu},{id:"admin_data",l:"Data Manager",Icon:Database},{id:"admin_monitoring",l:"System Monitoring",Icon:Activity},{id:"admin_security",l:"Security & Compliance",Icon:Shield},{id:"admin_backup",l:"Cloud Backup",Icon:Server},{id:"admin_tx_plans",l:"Treatment Plans",Icon:Clipboard},{id:"admin_receptionai",l:"Reception AI",Icon:Phone},{id:"admin_updates",l:"Software Updates",Icon:Server}]},
+    {g:"Platform",items:[{id:"admin_ai",l:"Platform AI",Icon:Cpu},{id:"admin_data",l:"Data Manager",Icon:Database},{id:"admin_migration",l:"Migration Centre",Icon:Database},{id:"admin_monitoring",l:"System Monitoring",Icon:Activity},{id:"admin_security",l:"Security & Compliance",Icon:Shield},{id:"admin_backup",l:"Cloud Backup",Icon:Server},{id:"admin_tx_plans",l:"Treatment Plans",Icon:Clipboard},{id:"admin_receptionai",l:"Reception AI",Icon:Phone},{id:"admin_updates",l:"Software Updates",Icon:Server}]},
 
     {g:"Communications",items:[{id:"admin_announcements",l:"Announcements",Icon:Bell}]},
 
@@ -33077,6 +33077,501 @@ function PaymentSendPrompt({patient, existingLog=[], onSend, onDismiss}) {
 
 
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MIGRATION CENTRE — Enterprise onboarding, go-live, and hypercare
+// ══════════════════════════════════════════════════════════════════════════════
+function MigrationCentrePage(){
+  const MIGS_INIT=[
+    {id:"MIG1",practice:"Riverside Dentistry",status:"review",progress:65,admin:"Super Admin",goLive:"2 Jun 2026",
+     deltaCutoff:"26 May 2026 14:00",deltaRows:{appts:847,notes:234,patients:156},liveSince:null,hypercareDays:null,
+     manager:"Sarah Bennett",managerEmail:"s.bennett@riverside.co.uk",
+     checklist:{patients:true,appointments:true,notes:true,medHistory:true,documents:true,radiography:false,financials:true,recalls:true,staffConfig:true,email:true,sms:true,whatsapp:false,stripe:true,directDebit:false,onlineBooking:true}},
+    {id:"MIG2",practice:"Oakwood Dental",status:"data_extraction",progress:30,admin:"Super Admin",goLive:"15 Jun 2026",
+     deltaCutoff:"24 May 2026 09:00",deltaRows:{appts:312,notes:89,patients:67},liveSince:null,hypercareDays:null,
+     manager:"James Oakley",managerEmail:"j.oakley@oakwood.co.uk",
+     checklist:{patients:true,appointments:false,notes:false,medHistory:false,documents:false,radiography:false,financials:false,recalls:false,staffConfig:false,email:false,sms:false,whatsapp:false,stripe:false,directDebit:false,onlineBooking:false}},
+    {id:"MIG3",practice:"City Smiles",status:"hypercare",progress:100,admin:"Super Admin",goLive:"20 May 2026",
+     deltaCutoff:"19 May 2026 18:00",deltaRows:{appts:0,notes:0,patients:0},liveSince:"20 May 2026",hypercareDays:9,
+     manager:"Priya Kapoor",managerEmail:"p.kapoor@citysmiles.co.uk",
+     checklist:{patients:true,appointments:true,notes:true,medHistory:true,documents:true,radiography:true,financials:true,recalls:true,staffConfig:true,email:true,sms:true,whatsapp:true,stripe:true,directDebit:true,onlineBooking:true}},
+  ];
+
+  const STATUS_META={
+    awaiting_data:{label:"Awaiting Data",color:"#64748B"},
+    data_extraction:{label:"Data Extraction",color:"#3B82F6"},
+    sandbox_review:{label:"Sandbox Review",color:"#F59E0B"},
+    review:{label:"Practice Review",color:"#F59E0B"},
+    delta_sync:{label:"Delta Sync",color:"#8B5CF6"},
+    go_live_ready:{label:"Go Live Ready",color:"#38BDF8"},
+    live:{label:"Live",color:"#22C55E"},
+    hypercare:{label:"Hypercare",color:"#38BDF8"},
+    paused_in_migration:{label:"Paused",color:"#EF4444"},
+  };
+
+  const HYPERCARE_COHORT=[
+    {name:"Dr. Sarah Patel",role:"Dentist",logins:12,notes:47,appts0notes:0,risk:"healthy"},
+    {name:"Dr. Michael Chen",role:"Dentist",logins:8,notes:31,appts0notes:0,risk:"healthy"},
+    {name:"Dr. James Wong",role:"Dentist",logins:2,notes:0,appts0notes:14,risk:"alert"},
+    {name:"Emma Wilson",role:"Reception",logins:18,notes:null,appts0notes:0,risk:"healthy"},
+    {name:"Lisa Davies",role:"Hygienist",logins:6,notes:8,appts0notes:0,risk:"healthy"},
+  ];
+
+  const [migs,setMigs]=useState(MIGS_INIT);
+  const [activeTab,setActiveTab]=useState("migrations");
+  const [expandedId,setExpandedId]=useState(null);
+  const [ghostModal,setGhostModal]=useState(null); // {mig}
+  const [goLiveModal,setGoLiveModal]=useState(null); // {mig, step, deltaProgress, activationStep}
+  const [rollbackModal,setRollbackModal]=useState(null); // {mig, step, confirmText, rollbackStep}
+  const [auditModal,setAuditModal]=useState(null); // {mig}
+  const [uploadModal,setUploadModal]=useState(null); // {mig}
+  const [ghostSessions,setGhostSessions]=useState([
+    {id:"GS1",at:"26 May 2026 11:32",adminId:"SA-001",practice:"Riverside Dentistry",user:"Sarah Bennett",token:"GST-A3F9C2B1-1748257920",status:"ended"},
+  ]);
+  const [toast,setToast]=useState(null);
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
+
+  const AUDIT_CATEGORIES=["Patients","Appointments","Clinical Notes","Medical Histories","Documents","Radiography","Financials","Recalls","Staff Config","Email","SMS","WhatsApp","Stripe","DirectDebit","OnlineBooking"];
+  const getAuditResults=(mig)=>AUDIT_CATEGORIES.map((cat,i)=>{
+    const checkKeys=["patients","appointments","notes","medHistory","documents","radiography","financials","recalls","staffConfig","email","sms","whatsapp","stripe","directDebit","onlineBooking"];
+    const passed=mig.checklist[checkKeys[i]];
+    return {cat,status:passed?"pass":mig.status==="data_extraction"?"pending":"fail"};
+  });
+
+  // Ghost login
+  const startGhostSession=(mig)=>{
+    const token=`GST-${Math.random().toString(16).slice(2,10).toUpperCase()}-${Math.floor(Date.now()/1000)}`;
+    const session={id:`GS${Date.now()}`,at:new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),adminId:"SA-001",practice:mig.practice,user:mig.manager,token,status:"active"};
+    setGhostSessions(p=>[session,...p]);
+    setGhostModal(null);
+    doToast(`✓ Ghost session started — all activity logged | Token: ${token}`);
+  };
+
+  const endGhostSession=(id)=>{
+    setGhostSessions(p=>p.map(s=>s.id===id?{...s,status:"ended"}:s));
+    doToast("✓ Ghost session ended — audit log updated");
+  };
+
+  // Go-live orchestration
+  const runGoLive=(migId)=>{
+    setGoLiveModal(m=>({...m,step:"activating",activationStep:0}));
+    const activate=(step)=>{
+      if(step>4){
+        setMigs(p=>p.map(m=>m.id===migId?{...m,status:"hypercare",progress:100,liveSince:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),hypercareDays:0}:m));
+        setGoLiveModal(m=>({...m,step:"done"}));
+        doToast("🎉 Practice is now LIVE! Hypercare monitoring begins now.");
+        return;
+      }
+      setTimeout(()=>{setGoLiveModal(m=>({...m,activationStep:step+1}));activate(step+1);},550);
+    };
+    activate(0);
+  };
+
+  // Rollback
+  const runRollback=(migId)=>{
+    setRollbackModal(m=>({...m,step:"rolling",rollbackStep:0}));
+    const roll=(step)=>{
+      if(step>4){
+        setMigs(p=>p.map(m=>m.id===migId?{...m,status:"paused_in_migration",hypercareDays:null}:m));
+        setRollbackModal(m=>({...m,step:"done"}));
+        doToast("✓ Emergency Rollback complete — no billing charges incurred.");
+        return;
+      }
+      setTimeout(()=>{setRollbackModal(m=>({...m,rollbackStep:step+1}));roll(step+1);},650);
+    };
+    roll(0);
+  };
+
+  const SM=STATUS_META;
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%)"}}>
+      {toast&&<div style={{position:"fixed",top:72,right:20,padding:"10px 18px",background:"rgba(7,21,39,0.97)",border:"1px solid rgba(56,189,248,0.25)",borderRadius:12,fontSize:12,color:"#4ADE80",zIndex:600,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
+
+      {/* Header */}
+      <div style={{padding:"18px 24px 0",flexShrink:0}}>
+        <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>Migration Centre</div>
+        <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Enterprise onboarding · Go-live orchestration · Hypercare monitoring</div>
+        <div style={{display:"flex",gap:0,borderBottom:"1px solid rgba(56,189,248,0.1)"}}>
+          {[{id:"migrations",l:"Active Migrations"},{id:"ghost",l:"Ghost Sessions"},{id:"hypercare",l:"Hypercare"}].map(t=>(
+            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{padding:"8px 18px",border:"none",background:"transparent",color:activeTab===t.id?"#F8FAFC":C.muted,fontSize:12,fontWeight:activeTab===t.id?700:500,cursor:"pointer",borderBottom:`2px solid ${activeTab===t.id?"#2563FF":"transparent"}`,transition:"color .12s"}}>
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tab: Active Migrations ── */}
+      {activeTab==="migrations"&&<div style={{flex:1,overflowY:"auto",padding:"16px 24px"}}>
+        {migs.map(mig=>{
+          const sm=SM[mig.status]||SM.awaiting_data;
+          const isExpanded=expandedId===mig.id;
+          const auditResults=getAuditResults(mig);
+          const passed=auditResults.filter(a=>a.status==="pass").length;
+          const failed=auditResults.filter(a=>a.status==="fail").length;
+          const hasDelta=(mig.deltaRows.appts+mig.deltaRows.notes+mig.deltaRows.patients)>0;
+          const inHypercare=mig.status==="hypercare"&&mig.hypercareDays!=null&&mig.hypercareDays<14;
+          return(
+            <div key={mig.id} style={{background:"#132238",border:`1px solid ${isExpanded?"rgba(37,99,255,0.3)":"rgba(56,189,248,0.1)"}`,borderRadius:16,marginBottom:12,overflow:"hidden",transition:"border .15s"}}>
+              {/* Row */}
+              <div style={{padding:"14px 18px",display:"flex",gap:14,alignItems:"center"}}>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:5}}>
+                    <span style={{fontSize:14,fontWeight:800,color:"#F8FAFC"}}>{mig.practice}</span>
+                    <span style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:sm.color+"22",color:sm.color,fontWeight:700,textTransform:"uppercase"}}>{sm.label}</span>
+                    {inHypercare&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:"rgba(139,92,246,0.2)",color:"#A78BFA",fontWeight:700}}>Day {mig.hypercareDays}/14</span>}
+                  </div>
+                  <div style={{display:"flex",gap:16,fontSize:10,color:C.muted,marginBottom:8}}>
+                    <span>Admin: <span style={{color:"#CBD5E1"}}>{mig.admin}</span></span>
+                    <span>Target: <span style={{color:"#CBD5E1"}}>{mig.goLive}</span></span>
+                    {mig.liveSince&&<span>Live since: <span style={{color:C.green}}>{mig.liveSince}</span></span>}
+                    <span>Manager: <span style={{color:"#CBD5E1"}}>{mig.manager}</span></span>
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <div style={{flex:1,height:6,background:"rgba(80,140,255,0.12)",borderRadius:4,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${mig.progress}%`,background:`linear-gradient(90deg,${sm.color},${sm.color}cc)`,borderRadius:4,transition:"width .5s"}}/>
+                    </div>
+                    <span style={{fontSize:10,fontWeight:700,color:sm.color,flexShrink:0}}>{mig.progress}%</span>
+                  </div>
+                </div>
+                {/* Action buttons */}
+                <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:340}}>
+                  <button onClick={()=>setUploadModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"rgba(80,140,255,0.07)",color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Upload Files</button>
+                  <button onClick={()=>setAuditModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,background:"rgba(245,158,11,0.08)",color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Run Integrity Audit</button>
+                  <button onClick={()=>setGhostModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,background:"rgba(139,92,246,0.08)",color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ghost Login</button>
+                  {mig.status!=="hypercare"&&mig.status!=="live"&&mig.status!=="paused_in_migration"&&(
+                    <button onClick={()=>setGoLiveModal({mig,step:hasDelta?"delta":"confirm",deltaProgress:0,activationStep:0})} style={{padding:"5px 11px",border:"1px solid rgba(34,197,94,0.4)",borderRadius:8,background:"rgba(34,197,94,0.1)",color:"#22C55E",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>GO LIVE TODAY</button>
+                  )}
+                  {inHypercare&&(
+                    <button onClick={()=>setRollbackModal({mig,step:"warn",confirmText:"",rollbackStep:0})} style={{padding:"5px 11px",border:"1px solid rgba(239,68,68,0.4)",borderRadius:8,background:"rgba(239,68,68,0.08)",color:"#EF4444",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Emergency Rollback</button>
+                  )}
+                  <button onClick={()=>setExpandedId(isExpanded?null:mig.id)} style={{padding:"5px 11px",border:"1px solid rgba(80,140,255,0.15)",borderRadius:8,background:"transparent",color:C.muted,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>{isExpanded?"▲ Less":"▼ Details"}</button>
+                </div>
+              </div>
+
+              {/* Expanded details */}
+              {isExpanded&&<div style={{borderTop:"1px solid rgba(56,189,248,0.08)",padding:"14px 18px",background:"rgba(0,0,0,0.15)"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                  {/* Delta Sync Ledger */}
+                  <div style={{background:"rgba(139,92,246,0.06)",borderRadius:12,padding:"12px 14px",border:"1px solid rgba(139,92,246,0.15)"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#A78BFA",marginBottom:8}}>Delta Sync Ledger</div>
+                    <div style={{fontSize:10,color:C.muted,lineHeight:1.7}}>
+                      <div>Initial extraction: <span style={{color:"#CBD5E1"}}>{mig.deltaCutoff}</span></div>
+                      {hasDelta&&<>
+                        <div style={{color:C.amber,marginTop:4}}>⚠ Delta gap detected</div>
+                        <div>New rows since cutoff:</div>
+                        <div style={{paddingLeft:8}}>• {mig.deltaRows.appts} appointments</div>
+                        <div style={{paddingLeft:8}}>• {mig.deltaRows.notes} clinical notes</div>
+                        <div style={{paddingLeft:8}}>• {mig.deltaRows.patients} patient updates</div>
+                      </>}
+                      {!hasDelta&&<div style={{color:C.green,marginTop:4}}>✓ No delta gap — data is current</div>}
+                    </div>
+                    {hasDelta&&<button onClick={()=>doToast("✓ Delta Catch-Up Sync complete — 847 appointments, 234 notes, 156 updates imported")} style={{marginTop:10,padding:"5px 12px",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,background:"rgba(139,92,246,0.12)",color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Run Delta Catch-Up Sync</button>}
+                  </div>
+
+                  {/* Checklist */}
+                  <div style={{background:"rgba(80,140,255,0.04)",borderRadius:12,padding:"12px 14px",border:"1px solid rgba(80,140,255,0.1)"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#60A5FA",marginBottom:8}}>Migration Checklist ({passed}/15)</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 12px"}}>
+                      {auditResults.map(a=>(
+                        <div key={a.cat} style={{display:"flex",gap:5,alignItems:"center",fontSize:10,color:a.status==="pass"?C.green:a.status==="pending"?C.muted:C.red}}>
+                          <span>{a.status==="pass"?"✓":a.status==="pending"?"○":"✗"}</span>
+                          <span>{a.cat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>}
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* ── Tab: Ghost Sessions ── */}
+      {activeTab==="ghost"&&<div style={{flex:1,overflowY:"auto",padding:"16px 24px"}}>
+        <div style={{fontSize:12,color:C.muted,marginBottom:14}}>All ghost sessions are permanently logged in the immutable audit trail with original admin principal identifier.</div>
+        <div style={{background:"#132238",borderRadius:14,border:"1px solid rgba(56,189,248,0.1)",overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1.2fr 1fr 1.6fr 0.8fr 0.8fr",padding:"8px 14px",borderBottom:"1px solid rgba(56,189,248,0.08)",fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".05em"}}>
+            <span>Timestamp</span><span>Practice</span><span>Admin</span><span>Token</span><span>Impersonated</span><span>Status</span>
+          </div>
+          {ghostSessions.map(s=>(
+            <div key={s.id} style={{display:"grid",gridTemplateColumns:"1fr 1.2fr 1fr 1.6fr 0.8fr 0.8fr",padding:"10px 14px",borderTop:"1px solid rgba(56,189,248,0.06)",alignItems:"center",fontSize:11}}>
+              <span style={{color:C.muted}}>{s.at}</span>
+              <span style={{fontWeight:600}}>{s.practice}</span>
+              <span style={{color:C.muted}}>{s.adminId}</span>
+              <span style={{fontFamily:"ui-monospace,monospace",fontSize:9,color:"#A78BFA"}}>{s.token}</span>
+              <span>{s.user}</span>
+              <span>
+                {s.status==="active"
+                  ?<button onClick={()=>endGhostSession(s.id)} style={{padding:"3px 8px",border:"1px solid rgba(239,68,68,0.3)",borderRadius:6,background:"rgba(239,68,68,0.08)",color:"#EF4444",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>End Session</button>
+                  :<span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:"rgba(100,116,139,0.15)",color:"#64748B",fontWeight:700}}>Ended</span>}
+              </span>
+            </div>
+          ))}
+          {ghostSessions.length===0&&<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:12}}>No ghost sessions yet</div>}
+        </div>
+      </div>}
+
+      {/* ── Tab: Hypercare ── */}
+      {activeTab==="hypercare"&&<div style={{flex:1,overflowY:"auto",padding:"16px 24px"}}>
+        {migs.filter(m=>m.status==="hypercare"||m.status==="live").map(mig=>{
+          const driftAlert=HYPERCARE_COHORT.find(u=>u.risk==="alert");
+          const overallHealth=driftAlert?"attention":"healthy";
+          return(
+            <div key={mig.id} style={{marginBottom:20}}>
+              <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+                <span style={{fontSize:14,fontWeight:800}}>{mig.practice}</span>
+                <span style={{fontSize:11,padding:"3px 10px",borderRadius:8,background:overallHealth==="healthy"?"rgba(34,197,94,0.15)":"rgba(245,158,11,0.15)",color:overallHealth==="healthy"?C.green:C.amber,fontWeight:700}}>
+                  {overallHealth==="healthy"?"🟢 Healthy":"🟡 Needs Attention"}
+                </span>
+                {mig.hypercareDays!=null&&<span style={{fontSize:10,color:C.muted}}>Day {mig.hypercareDays} of 14-day Hypercare</span>}
+              </div>
+
+              {/* KPI cards */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+                {[{l:"Logins (7d)",v:127,c:C.blue},{l:"Appointments",v:89,c:C.teal},{l:"Notes Written",v:234,c:C.green},{l:"Payments",v:"£8,640",c:C.purple},{l:"Comms Sent",v:156,c:C.amber}].map(k=>(
+                  <div key={k.l} style={{background:"#132238",borderRadius:12,padding:"12px 14px",border:`1px solid ${k.c}22`}}>
+                    <div style={{fontSize:10,color:C.muted,marginBottom:4}}>{k.l}</div>
+                    <div style={{fontSize:18,fontWeight:800,color:k.c}}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Drift alert */}
+              {driftAlert&&<div style={{marginBottom:14,padding:"12px 16px",background:"rgba(239,68,68,0.08)",borderRadius:12,border:"1px solid rgba(239,68,68,0.2)"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#EF4444",marginBottom:4}}>🔴 Staff Adoption Risk: {driftAlert.name}</div>
+                <div style={{fontSize:11,color:"#CBD5E1",marginBottom:10}}>0 notes recorded against {driftAlert.appts0notes} attended appointments over 7 days. Action required.</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>doToast("✓ Support ticket created: Staff adoption risk — Dr. James Wong")} style={{padding:"5px 12px",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,background:"rgba(239,68,68,0.1)",color:"#EF4444",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Create Support Ticket</button>
+                  <button onClick={()=>doToast("✓ Notification sent to Dr. James Wong")} style={{padding:"5px 12px",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,background:"rgba(245,158,11,0.08)",color:C.amber,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Send Notification</button>
+                </div>
+              </div>}
+
+              {/* Cohort table */}
+              <div style={{background:"#132238",borderRadius:14,border:"1px solid rgba(56,189,248,0.1)",overflow:"hidden"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 0.8fr 0.8fr 1.2fr 0.8fr",padding:"8px 14px",borderBottom:"1px solid rgba(56,189,248,0.08)",fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".05em"}}>
+                  <span>Staff Member</span><span>Role</span><span>Logins (7d)</span><span>Notes</span><span>Appts w/ 0 Notes</span><span>Risk</span>
+                </div>
+                {HYPERCARE_COHORT.map(u=>(
+                  <div key={u.name} style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 0.8fr 0.8fr 1.2fr 0.8fr",padding:"10px 14px",borderTop:"1px solid rgba(56,189,248,0.06)",alignItems:"center",fontSize:11,background:u.risk==="alert"?"rgba(239,68,68,0.04)":"transparent"}}>
+                    <span style={{fontWeight:u.risk==="alert"?700:500}}>{u.name}</span>
+                    <span style={{color:C.muted}}>{u.role}</span>
+                    <span>{u.logins}</span>
+                    <span>{u.notes===null?"N/A":u.notes}</span>
+                    <span style={{color:u.appts0notes>0?C.red:C.muted}}>{u.appts0notes>0?`${u.appts0notes} ⚠`:"—"}</span>
+                    <span>{u.risk==="alert"?<span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:"rgba(239,68,68,0.15)",color:"#EF4444",fontWeight:700}}>🔴 Alert</span>:<span style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:"rgba(34,197,94,0.12)",color:C.green,fontWeight:700}}>🟢 OK</span>}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {migs.filter(m=>m.status==="hypercare"||m.status==="live").length===0&&<div style={{padding:40,textAlign:"center",color:C.muted,fontSize:12}}>No practices currently in Hypercare or Live status.</div>}
+      </div>}
+
+      {/* ══ GHOST LOGIN MODAL ══ */}
+      {ghostModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setGhostModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:480,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(139,92,246,0.3)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:800}}>Super Admin Impersonation</div>
+            <button onClick={()=>setGhostModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.muted}}>✕</button>
+          </div>
+          <div style={{padding:"12px 14px",background:"rgba(239,68,68,0.08)",borderRadius:10,border:"1px solid rgba(239,68,68,0.2)",marginBottom:14}}>
+            <div style={{fontSize:11,color:"#EF4444",fontWeight:700,marginBottom:4}}>⚠ Security Notice</div>
+            <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.6}}>You are about to enter a read-only ghost session as <strong>{ghostModal.manager}</strong> ({ghostModal.practice}). Every action will be logged to the immutable audit trail as <em>Super Admin SA-001 impersonating {ghostModal.manager}</em>.</div>
+          </div>
+          <div style={{padding:"10px 14px",background:"rgba(139,92,246,0.08)",borderRadius:10,border:"1px solid rgba(139,92,246,0.2)",marginBottom:18}}>
+            <div style={{fontSize:10,color:"#A78BFA",fontWeight:700,marginBottom:4}}>Session Token (auto-generated)</div>
+            <div style={{fontFamily:"ui-monospace,monospace",fontSize:12,color:"#CBD5E1"}}>{`GST-${Math.random().toString(16).slice(2,10).toUpperCase()}-${Math.floor(Date.now()/1000)}`}</div>
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setGhostModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Cancel</button>
+            <button onClick={()=>startGhostSession(ghostModal)} style={{flex:2,padding:"10px",background:"linear-gradient(135deg,#7C3AED,#5B21B6)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",fontFamily:"inherit"}}>Enter Ghost Session</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ══ GO LIVE MODAL ══ */}
+      {goLiveModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget&&goLiveModal.step!=="activating"&&goLiveModal.step!=="rolling")setGoLiveModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:520,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(34,197,94,0.3)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+            <div style={{fontSize:15,fontWeight:800}}>Go-Live Orchestration</div>
+            {goLiveModal.step!=="activating"&&goLiveModal.step!=="rolling"&&<button onClick={()=>setGoLiveModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.muted}}>✕</button>}
+          </div>
+
+          {goLiveModal.step==="delta"&&<>
+            <div style={{padding:"12px 14px",background:"rgba(245,158,11,0.08)",borderRadius:10,border:"1px solid rgba(245,158,11,0.3)",marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.amber,marginBottom:4}}>⚠ Delta Gap Detected</div>
+              <div style={{fontSize:11,color:"#CBD5E1",lineHeight:1.6}}>847 rows exist between your extraction cutoff ({goLiveModal.mig.deltaCutoff}) and now. Run a Delta Catch-Up Sync to prevent data loss on Go-Live morning.</div>
+              <div style={{fontSize:10,color:C.muted,marginTop:6}}>• 847 appointments · 234 notes · 156 patient updates</div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>{
+                setGoLiveModal(m=>({...m,step:"syncing",deltaProgress:0}));
+                let p=0;
+                const tick=()=>{p+=4;setGoLiveModal(m=>({...m,deltaProgress:p}));if(p<100)setTimeout(tick,80);else setGoLiveModal(m=>({...m,step:"confirm"}));};
+                setTimeout(tick,100);
+              }} style={{flex:2,padding:"10px",background:"linear-gradient(135deg,#7C3AED,#5B21B6)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",fontFamily:"inherit"}}>Run Delta Sync Now</button>
+              <button onClick={()=>setGoLiveModal(m=>({...m,step:"confirm"}))} style={{flex:1,padding:"10px",border:"1px solid rgba(245,158,11,0.3)",borderRadius:12,background:"rgba(245,158,11,0.06)",cursor:"pointer",fontSize:11,color:C.amber,fontFamily:"inherit"}}>Skip (Not Recommended)</button>
+            </div>
+          </>}
+
+          {goLiveModal.step==="syncing"&&<>
+            <div style={{marginBottom:12,fontSize:12,color:C.muted}}>Running Delta Catch-Up Sync…</div>
+            <div style={{height:10,background:"rgba(80,140,255,0.1)",borderRadius:6,overflow:"hidden",marginBottom:8}}>
+              <div style={{height:"100%",width:`${goLiveModal.deltaProgress}%`,background:"linear-gradient(90deg,#7C3AED,#A78BFA)",borderRadius:6,transition:"width .1s"}}/>
+            </div>
+            <div style={{fontSize:10,color:"#A78BFA",textAlign:"center"}}>{goLiveModal.deltaProgress}% — importing delta rows…</div>
+          </>}
+
+          {goLiveModal.step==="confirm"&&<>
+            <div style={{padding:"10px 14px",background:"rgba(34,197,94,0.08)",borderRadius:10,border:"1px solid rgba(34,197,94,0.2)",marginBottom:16,fontSize:11,color:"#CBD5E1"}}>
+              ✓ Delta sync complete. Ready to go live for <strong>{goLiveModal.mig.practice}</strong>.
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.muted,marginBottom:8}}>Atomic activation will execute:</div>
+              {["Practice tenant state → Live","Billing activation timestamp → NOW()","Communication routers → production = true","Patient portal routing → active","Recall cron jobs → enabled"].map((item,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",fontSize:11,color:"#CBD5E1"}}>
+                  <span style={{color:C.green}}>○</span> {item}
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setGoLiveModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Cancel</button>
+              <button onClick={()=>runGoLive(goLiveModal.mig.id)} style={{flex:2,padding:"10px",background:"linear-gradient(135deg,#16A34A,#15803D)",border:"none",borderRadius:12,cursor:"pointer",fontSize:13,fontWeight:700,color:"#fff",fontFamily:"inherit"}}>ACTIVATE GO LIVE</button>
+            </div>
+          </>}
+
+          {goLiveModal.step==="activating"&&<>
+            <div style={{marginBottom:8}}>
+              {["Practice tenant state → Live","Billing activation timestamp → NOW()","Communication routers → production = true","Patient portal routing → active","Recall cron jobs → enabled"].map((item,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 10px",borderRadius:8,background:i<goLiveModal.activationStep?"rgba(34,197,94,0.08)":"transparent",marginBottom:4,fontSize:12,color:i<goLiveModal.activationStep?"#4ADE80":C.muted,transition:"all .3s"}}>
+                  <span>{i<goLiveModal.activationStep?"✓":"○"}</span>{item}
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {goLiveModal.step==="done"&&<>
+            <div style={{textAlign:"center",padding:"20px 0"}}>
+              <div style={{fontSize:40,marginBottom:12}}>🎉</div>
+              <div style={{fontSize:16,fontWeight:800,color:C.green,marginBottom:8}}>Practice is now LIVE!</div>
+              <div style={{fontSize:12,color:C.muted,marginBottom:20}}>Hypercare monitoring has begun. 14-day window active.</div>
+              <button onClick={()=>setGoLiveModal(null)} style={{padding:"10px 28px",background:"linear-gradient(135deg,#16A34A,#15803D)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",fontFamily:"inherit"}}>Done</button>
+            </div>
+          </>}
+        </div>
+      </div>}
+
+      {/* ══ ROLLBACK MODAL ══ */}
+      {rollbackModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget&&rollbackModal.step!=="rolling")setRollbackModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:500,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(239,68,68,0.3)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#EF4444"}}>Emergency Rollback</div>
+            {rollbackModal.step!=="rolling"&&<button onClick={()=>setRollbackModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.muted}}>✕</button>}
+          </div>
+
+          {rollbackModal.step==="warn"&&<>
+            <div style={{padding:"12px 14px",background:"rgba(239,68,68,0.08)",borderRadius:10,border:"1px solid rgba(239,68,68,0.25)",marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#EF4444",marginBottom:6}}>⚠ This action will:</div>
+              {["Pause the billing cycle immediately (no charges)","Revert tenant to 'Pending Go-Live' state","Preserve all migrated data in current state","Allow reversion to read-only legacy backup","Notify practice immediately via email and SMS"].map((item,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:"#CBD5E1",padding:"2px 0"}}>
+                  <input type="checkbox" defaultChecked style={{accentColor:"#EF4444"}}/> {item}
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setRollbackModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Cancel</button>
+              <button onClick={()=>setRollbackModal(m=>({...m,step:"confirm"}))} style={{flex:2,padding:"10px",background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.4)",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,color:"#EF4444",fontFamily:"inherit"}}>Continue to Confirm →</button>
+            </div>
+          </>}
+
+          {rollbackModal.step==="confirm"&&<>
+            <div style={{marginBottom:14,fontSize:11,color:"#CBD5E1"}}>Type <strong style={{color:"#EF4444"}}>ROLLBACK</strong> to confirm the emergency rollback for <strong>{rollbackModal.mig.practice}</strong>.</div>
+            <input value={rollbackModal.confirmText} onChange={e=>setRollbackModal(m=>({...m,confirmText:e.target.value}))}
+              placeholder="Type ROLLBACK to confirm"
+              style={{width:"100%",background:"#0F1C34",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#EF4444",outline:"none",fontFamily:"ui-monospace,monospace",letterSpacing:".08em",boxSizing:"border-box",marginBottom:16}}/>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setRollbackModal(m=>({...m,step:"warn"}))} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Back</button>
+              <button onClick={()=>{if(rollbackModal.confirmText!=="ROLLBACK"){doToast("⚠ Type ROLLBACK to confirm");return;}runRollback(rollbackModal.mig.id);}}
+                disabled={rollbackModal.confirmText!=="ROLLBACK"}
+                style={{flex:2,padding:"10px",background:rollbackModal.confirmText==="ROLLBACK"?"linear-gradient(135deg,#DC2626,#B91C1C)":"rgba(80,140,255,0.08)",border:rollbackModal.confirmText==="ROLLBACK"?"none":"1px solid rgba(80,140,255,0.12)",borderRadius:12,cursor:rollbackModal.confirmText==="ROLLBACK"?"pointer":"not-allowed",fontSize:12,fontWeight:700,color:rollbackModal.confirmText==="ROLLBACK"?"#fff":"#475569",fontFamily:"inherit"}}>EXECUTE ROLLBACK</button>
+            </div>
+          </>}
+
+          {rollbackModal.step==="rolling"&&<>
+            <div>
+              {["Live webhooks paused","Tenant access reverted to staging","Automated task triggers reset","Billing schedule paused (no charge issued)","Legacy read-only backup activated"].map((item,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 10px",borderRadius:8,background:i<rollbackModal.rollbackStep?"rgba(239,68,68,0.08)":"transparent",marginBottom:4,fontSize:12,color:i<rollbackModal.rollbackStep?"#EF4444":C.muted,transition:"all .35s"}}>
+                  <span>{i<rollbackModal.rollbackStep?"✓":"○"}</span>{item}
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {rollbackModal.step==="done"&&<>
+            <div style={{textAlign:"center",padding:"20px 0"}}>
+              <div style={{fontSize:32,marginBottom:10}}>🔄</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#EF4444",marginBottom:8}}>Rollback Complete</div>
+              <div style={{fontSize:11,color:C.muted,marginBottom:20}}>Practice reverted to staging. No billing charges will be incurred. Practice has been notified.</div>
+              <button onClick={()=>setRollbackModal(null)} style={{padding:"10px 28px",background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,color:"#EF4444",fontFamily:"inherit"}}>Close</button>
+            </div>
+          </>}
+        </div>
+      </div>}
+
+      {/* ══ INTEGRITY AUDIT MODAL ══ */}
+      {auditModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setAuditModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:560,padding:28,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(245,158,11,0.2)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div><div style={{fontSize:15,fontWeight:800}}>Pre-Migration Integrity Audit</div><div style={{fontSize:11,color:C.muted}}>{auditModal.practice}</div></div>
+            <button onClick={()=>setAuditModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.muted}}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {getAuditResults(auditModal).map(a=>(
+              <div key={a.cat} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 14px",background:a.status==="pass"?"rgba(34,197,94,0.06)":a.status==="pending"?"rgba(80,140,255,0.04)":"rgba(239,68,68,0.06)",borderRadius:10,border:`1px solid ${a.status==="pass"?"rgba(34,197,94,0.2)":a.status==="pending"?"rgba(80,140,255,0.1)":"rgba(239,68,68,0.2)"}`}}>
+                <span style={{fontSize:16}}>{a.status==="pass"?"✅":a.status==="pending"?"○":"❌"}</span>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600}}>{a.cat}</div>
+                  <div style={{fontSize:9,color:a.status==="pass"?C.green:a.status==="pending"?C.muted:C.red}}>{a.status==="pass"?"Verified":a.status==="pending"?"Pending extraction":"Requires attention"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:16,padding:"10px 14px",background:"rgba(80,140,255,0.06)",borderRadius:10,fontSize:11,color:C.muted}}>
+            Audit run: {new Date().toLocaleString("en-GB")} · By: Super Admin SA-001
+          </div>
+        </div>
+      </div>}
+
+      {/* ══ UPLOAD FILES MODAL ══ */}
+      {uploadModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900}} onClick={e=>{if(e.target===e.currentTarget)setUploadModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:480,padding:28,boxShadow:"0 32px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(80,140,255,0.2)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div><div style={{fontSize:15,fontWeight:800}}>Upload Migration Files</div><div style={{fontSize:11,color:C.muted}}>{uploadModal.practice}</div></div>
+            <button onClick={()=>setUploadModal(null)} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.muted}}>✕</button>
+          </div>
+          <div style={{border:"2px dashed rgba(80,140,255,0.25)",borderRadius:14,padding:"28px",textAlign:"center",marginBottom:16,background:"rgba(80,140,255,0.03)"}}>
+            <div style={{fontSize:28,marginBottom:8}}>📁</div>
+            <div style={{fontSize:12,fontWeight:600,color:"#CBD5E1",marginBottom:4}}>Drag & drop migration files here</div>
+            <div style={{fontSize:10,color:C.muted,marginBottom:12}}>CSV, XML, JSON, or SQL exports accepted</div>
+            <button onClick={()=>doToast("✓ File upload dialog opened")} style={{padding:"7px 20px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:10,cursor:"pointer",fontSize:11,fontWeight:700,color:"#fff",fontFamily:"inherit"}}>Browse Files</button>
+          </div>
+          <div style={{fontSize:10,color:C.muted,marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>Previously Uploaded</div>
+          {[{name:"patients_export_2026.csv",size:"2.4 MB",date:"26 May 2026"},{name:"appointments_v2.xml",size:"8.1 MB",date:"26 May 2026"},{name:"clinical_notes.json",size:"14.7 MB",date:"25 May 2026"}].map(f=>(
+            <div key={f.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:"1px solid rgba(56,189,248,0.06)",fontSize:11}}>
+              <span style={{color:"#CBD5E1"}}>{f.name}</span>
+              <span style={{color:C.muted,fontSize:10}}>{f.size} · {f.date}</span>
+            </div>
+          ))}
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 export default function App(){
   const [user,setUser]=useState(null);
   const [userPerms,setUserPerms]=useState(INIT_USER_PERMS());
@@ -33148,6 +33643,7 @@ export default function App(){
         admin_seat_control:<AdminSeatControl/>,
         admin_ai:<AdminDashboard/>,
         admin_data:<AdminDataManager/>,
+        admin_migration:<MigrationCentrePage/>,
         admin_monitoring:<AdminSystemMonitoring/>,
         admin_security:<AdminSecurity/>,
         admin_backup:<AdminCloudBackup/>,
