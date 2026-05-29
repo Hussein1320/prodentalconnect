@@ -318,18 +318,308 @@ NHS England, Scotland, and Wales FP17 claim management.
 The following specialist NHS pages are available for practices with the relevant regional contracts:
 
 - **UDA Tracker** — NHS contract year UDA progress by dentist (see Section 7.2)
-- **NHS Wales Claims** — Wales-specific claim workflow
-- **NHS Wales Advanced** — ACORN, CP Engine, Lab Fee, Referral, and Incomplete Work workflows
-- **NHS Wales Reconciliation** — reconciliation against BSA payment schedules
-- **NHS England Apr 2026** — new contract compliance tools
-- **NHS CDS Compliance** — CDS submission and compliance checking
-- **NHS Denture Repair** — denture repair claim workflow
-- **NHS Northern Ireland (NI)** — NI-specific claim management
-- **NHS UDA Report** — detailed UDA activity export
-- **NHS Claim Compliance** — cross-region claim compliance checking
-- **NHS Regional Routing** — route claims to correct regional BSA gateway
-- **NHS Enterprise** — multi-practice NHS contract management
-- **NHS Regional Architecture** — infrastructure configuration for multi-site NHS setups
+- **NHS Wales Claims** — Wales-specific claim workflow (see Section 7.3)
+- **NHS Reconciliation** — reconciliation against BSA payment schedules (see Section 7.4)
+- **NHS England Apr 2026** — new contract compliance tools (see Section 7.5)
+- **NHS Wales Advanced** — ACORN, CP Engine, Lab Fee, Referral, and Incomplete Work workflows (see Section 7.6)
+- **NHS CDS Compliance** — CDS submission and compliance checking (see Section 7.7)
+- **NHS Denture Repair** — denture repair claim workflow (see Section 7.8)
+- **NHS Northern Ireland (NI)** — NI-specific claim management (see Section 7.9)
+- **NHS UDA Report** — detailed UDA/UOA activity export and forecasting (see Section 7.10)
+- **NHS Claim Compliance** — cross-region claim compliance checking (see Section 7.11)
+- **NHS Wales CP Engine** — Wales Care Package real-time calculation (see Section 7.12)
+- **NHS Wales ACORN** — dynamic ACORN clinical assessment forms (see Section 7.13)
+- **NHS Wales Lab Fee** — NHS vs Private lab fee management (see Section 7.14)
+- **NHS Wales Referral** — urgent and advanced referral claim system (see Section 7.15)
+- **NHS Wales Incomplete Work** — prep-only eligibility and package downgrade engine (see Section 7.16)
+- **NHS Regional Routing** — route claims to correct regional BSA gateway (see Section 7.17)
+- **NHS Enterprise** — multi-contract management including orthodontics and Scotland (see Section 7.18)
+- **NHS Regional Architecture** — infrastructure configuration for multi-site NHS setups (see Section 7.19)
+
+---
+
+### 7.3 NHS Wales Claims
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only
+
+Wales-specific FP17 (WP17) claim management using NHS Wales Care Packages. Replaces the standard band-based claim model for practices under a Welsh NHS contract.
+
+- Claim list with status filters (Draft / Submitted / Accepted / Rejected) and Care Package filter
+- Each claim records: patient, NHS number, dentist, contract, treatment start/end dates, ethnicity, exemption, and Care Package assignment
+- **Care Package auto-mapper** — automatically assigns the correct Wales Care Package (CP1–CP4, CPE, etc.) based on treatment codes added to the claim
+- **Validation engine** — pre-submission checks for: missing ethnicity, missing Care Package, missing contract, missing treatment end date, and contract region mismatch
+- Submit claim to WebEDI (NHS Wales gateway); claim status progresses from Draft → Submitted → Accepted
+- Full **audit log** per claim recording each change, user, and timestamp
+- New claim form with patient search, treatment item builder, NHS fee and patient fee per item, and free repair/replacement status
+- Prompt on submission to close the course of treatment if complete
+
+---
+
+### 7.4 NHS Reconciliation
+
+**Role:** Dentist, Reception, Manager, Owner
+
+A "Reconciliation Command Centre" that connects NHS claims, BSA payments, practitioner allocations, and outstanding issues in one view.
+
+- **KPI summary strip:** Completed NHS value, submitted value, BSA-approved value, paid to practice, outstanding, rejected, underpaid, unallocated, and open issues count
+- **Issues tab** — list of reconciliation discrepancies: unpaid claims, rejected claims, missing claims (treatment with no FP17 submitted), underpaid claims, unallocated income, BSA-adjusted values, and period mismatches; filterable by practitioner, severity, and issue type
+- **Payments tab** — BSA payment records matched against submitted claims; highlights matched, underpaid, unallocated, and adjusted payments
+- **Practitioner Allocation tab** — income breakdown per clinician: completed value, submitted, approved, paid, rejected, adjustments, and net
+- **Audit tab** — log of all reconciliation actions taken by staff with user, timestamp, and reason
+- Per-issue actions: add internal note, mark resolved, query with BSA, export issues to CSV
+- "Reconcile Now" button triggers a full re-run of the reconciliation against current claim data
+- Date range filter for flexible period-by-period analysis
+
+---
+
+### 7.5 NHS England Apr 2026
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** England practices only (from 1 April 2026)
+
+Compliance tooling for the April 2026 NHS England contract changes, covering four new remuneration and category rules.
+
+- **Unscheduled Care tab** — mark emergency appointments as Unscheduled Care; activity credit (£60) and slot credit (£15) are applied automatically and shown as KPIs; failed-attendance flag tracks DNA status
+- **Nurse-Led Fluoride Varnish tab** — configure NHS nurses as eligible FV practitioners; validation rules enforce that only eligible FV treatment codes can be claimed under NHS Nurse role, and only for patients under 16
+- **Band Updates tab** — fissure sealants now classified as Band 2 (not Band 1); the page surfaces any existing claims using the old classification and flags them for review
+- **Denture Migration tab** — deprecated denture category codes (405, 407) are detected across existing records and a migration path to the replacement codes is provided
+- **Reporting tab** — summary metrics: Unscheduled Care claims count, activity credit total, nurse-led FV claims, Band 2 fissure sealants, deprecated category usages
+- Header KPI strip shows all five metrics at a glance with colour-coded tiles
+
+---
+
+### 7.6 NHS Wales Advanced Care Package Workflows
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only (from 1 April 2026)
+
+Advanced NHS Wales workflow pages covering eight specialised areas of the April 2026 Wales contract catalogue.
+
+- **Apr 2026 Catalogue tab** — searchable table of all NHS Wales treatment codes with: code, description, Care Package assignment, Prep-Only flag, NHS Note flag, and CDS-only flag; auto-include codes for Stabilisation packages are highlighted; deprecated codes show replacement
+- **Prep-Only tab** — lists treatments that generate a full Care Package on preparation alone (Crown, Bridge, Onlay, Veneer, anterior and posterior RCT); fitting appointment completes the package; multiple instances of the same Care Package are supported
+- **NHS Note tab** — explains and lists NHS Note category (code W9399): treatments recorded for clinical completeness but excluded from Care Package calculation, claim payload, and patient charge; does not generate a Miscellaneous Care Package
+- **Warranty tab** — manages warranty eligibility per treatment; warranty-related replacements are excluded from lab fee NHS claims
+- **Lab Fees tab** — NHS vs Private lab fee split per treatment item; tariff validation against NHS Wales limits; HC3 exemption logic
+- **Urgent Referral tab** — urgent referral flag (DAP) per course of treatment; marks the claim as Urgent Care Package (CPE) with the associated remuneration
+- **Stabilisation tab** — auto-includes four specific SNOMED codes in Stabilisation packages; tracks stabilisation plan items
+- **Reporting tab** — summary of all advanced workflow activity by category
+
+---
+
+### 7.7 NHS CDS Compliance
+
+**Role:** Dentist, Reception, Manager, Owner
+
+Enforces the transition from deprecated "Other Treatment" (OT) codes to the new CDS treatment codes (9380–9383) introduced by NHS England and Wales, with two enforcement phases: Warn (from August 2025) and Blocking (from November 2025).
+
+- **CDS Migration Assistant tab** — lists all historical records using deprecated OT codes; shows patient, date, description, and the suggested CDS replacement code (9380, 9381, 9382, or 9383); "Migrate" button per item logs the migration to audit; "Migrate All" bulk action
+- **New CDS Codes tab** — reference list of codes 9380–9383 with descriptions and applicable regions
+- **Obturator Detection tab** — automatically classifies full upper acrylic dentures applied to zero teeth as obturators (code 9309); flags cases for review where classification is ambiguous
+- **Validation Rules tab** — displays the active enforcement rules per region
+- **Reporting tab** — counts of deprecated usage, pending migrations, completed migrations, obturator detections, and unresolvable codes
+- Status banner at top of page shows current enforcement mode (Warn or Blocking) and date
+
+---
+
+### 7.8 NHS Denture Repair
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** England and Wales
+
+Dedicated claim workflow for denture repair (Band 0) ensuring correct Course of Treatment routing, automatic UDA allocation, and zero patient charge.
+
+- Claim list with CoT routing status: attached to existing Band 3 CoT, separate repair claim (for Band 1/2 CoT), or new Band 0 claim (no open CoT)
+- **New Denture Repair form** — patient name, repair component type (Clasp, Tooth, Flange, Other), and region (England/Wales)
+- Automatic rules applied on creation: Band 0 non-banded, patient charge £0 (always free), 1 UDA auto-allocated, CoT routing determined by existing open courses of treatment
+- KPI tiles: total repair claims, attached to Band 3 CoT, separate repair claims, new Band 0 claims, total UDAs allocated, patient charges raised (always £0)
+- Full audit log per claim recording every system decision and manual change
+- Tabs within the claim list: Claims | CoT Routing | Audit Log
+
+---
+
+### 7.9 NHS Northern Ireland
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Northern Ireland practices only
+
+NHS Northern Ireland (HSC) claim management including Panel Number management, Tier Amount configuration, and Prior Approval workflows.
+
+- **Panel Numbers tab** — manage per-practitioner NI Panel Numbers and PINs; each practitioner can hold multiple panel numbers with labels (Main, Locum, Emergency Contract); set a default panel number per practitioner; enable or disable individual panel numbers; full audit trail per number
+- **Tier Amount & Prior Approval tab** — configure the Tier Amount per practitioner (treatment value above which Prior Approval is required before claiming); claims exceeding the Tier Amount are flagged automatically; Prior Approval modal to submit, track, and update approval status (Awaiting / Approved / Rejected); claims linked to HCN/CHI patient identifier
+- NI claim list showing: patient, practitioner, panel number label, claim value, tier amount, tier exceeded status, and prior approval status
+- Add, edit, disable, and audit panel numbers from within the page
+- Panel selector on each claim allows staff to choose which panel number to use for a given claim
+
+---
+
+### 7.10 NHS UDA Report
+
+**Role:** Dentist, Manager, Owner
+
+Detailed UDA and UOA (orthodontic) performance reporting with contract-level analytics and year-end forecasting.
+
+- Toggle between UDA and UOA activity views
+- **KPI strip:** contract target, achieved (by treatment plan completion date), submitted to BSA, progress percentage, forecasted year-end, and forecast variance (green if on/over target, red if behind)
+- **Practitioner Performance table** — per clinician: UDAs/UOAs completed, submitted to BSA, number of claims completed, average per claim, and contract target with a visual progress bar
+- **Contract table** — each NHS contract with annual UDA/UOA target, achieved to date, submitted, and region
+- **Claim Status breakdown** — counts and UDA values by status: Completed, Submitted, Queued, Queried, Error
+- **Monthly trend chart** — UDAs completed and submitted per month vs monthly target
+- Filters: date range (by treatment plan completion date, not submission date), practitioner
+- Activity counts by treatment plan completion date (not submission date) — clearly labelled
+- Export to CSV
+
+---
+
+### 7.11 NHS Claim Compliance
+
+**Role:** Dentist, Reception, Manager, Owner
+
+A comprehensive NHS Claim Compliance Centre covering invalid claims, queried claims, XML diagnostics, contract tenure, overlap detection, location IDs, treatment validation, continuation eligibility, performer PINs, and SQ indicators — across all NHS regions.
+
+- **Invalid Claims tab** — list of claims rejected by BSA with error detail; filter by practitioner and error category; drill into each claim to see all validation errors and actions (fix, resubmit, mark resolved)
+- **Queried Claims tab** — BSA-queried claims with resolution status; accept adjusted value or dispute
+- **XML Diagnostics tab** — input patient and contract details; run pre-submission XML validation check; flags XML-unsafe characters, postcode format errors, missing contract number, encoding issues; shows risk score (Low/Medium/High)
+- **Contract Tenure tab** — validate claim dates against contract start/end dates
+- **Overlap Detection tab** — test a date range for overlapping claims; flags courses of treatment that overlap a given period
+- **Location IDs tab** — flags active NHS contracts without a Location ID assigned; shows count of missing IDs
+- **Treatment Validation tab** — validates treatment codes per region rules
+- **Continuation Validation tab** — tests whether a claim qualifies as a continuation (same patient, same contract, same or higher band, within 2-month window)
+- **Performer PIN tab** — shows PIN status per practitioner (active, verified, missing); flags missing PINs
+- **SQ Indicator tab** — manages SQ (sequence) claim indicators for replacements; validates whether the original claim was in an Acknowledged state before an SQ REPLACE can be used
+- **Reporting tab** — summary metrics across all compliance categories
+
+---
+
+### 7.12 NHS Wales Care Package Engine
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only
+
+Real-time NHS Wales Care Package calculation engine embedded within the treatment plan view, providing live fee calculation as treatments are added, removed, or completed.
+
+- Displays the full treatment plan with items per appointment, each linked to a Care Package
+- **Real-time auto-calculation** — Care Packages are calculated instantly as items are marked done; patient charge and practice fee update live
+- **Urgent Referral (DAP) toggle** — marks the course of treatment as an Urgent Referral; triggers the Urgent Care Package (CPE) and associated remuneration
+- **Transitional pricing detection** — plans started before 1 April 2026 are identified and priced under the transitional rules
+- Claim settings per plan: Continuation flag, Treatment on Referral flag, Regulation 11 percentage reduction
+- Exemption status banner if no NHS exemption is associated with the course of treatment
+- Lab fee display — NHS lab fees linked to treatment items shown per Care Package
+- Submit Care Package Claim button
+
+---
+
+### 7.13 NHS Wales ACORN Assessment System
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales pilot practices
+
+Dynamic ACORN (clinical assessment) form system for NHS Wales pilot practices. Allows creation, management, completion, and submission of ACORN-compliant clinical assessments.
+
+- **Templates tab** — list of ACORN assessment templates with version, field count, region, and active/inactive status; activate the current template for use across the practice
+- **Complete Assessment tab** — structured multi-section form dynamically rendered from the active ACORN template; field types include dropdowns, checkboxes, text, number, and textarea; required field validation; save as draft or submit
+- **History tab** — log of previously completed assessments with patient, date, template version, status, and practitioner
+- **Import Template tab** — import a new ACORN template from JSON; validates structure before activation; keeps historical templates for reference; supports pilot v2 templates
+- **Reporting tab** — assessment completion and submission metrics
+- JSON-based template format supports NHS Wales pilot versioning (v1.0, v2.0, etc.)
+
+---
+
+### 7.14 NHS Wales Lab Fee Management
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only
+
+Manages laboratory fees for NHS Wales practices, applying tariff limits, HC3 exemption logic, and correctly splitting NHS-claimable versus private lab charges.
+
+- Lab fee list with: patient, treatment, charge type (NHS/Private), lab amount, NHS tariff limit, actual charged, warranty flag, HC3 exemption applied, and invoice status
+- **Add Lab Fee form** — patient, treatment, charge type toggle (NHS/Private), amount, and tariff limit; NHS lab fees are capped at the NHS tariff; HC3 exemptions automatically adjust the patient-payable amount
+- KPI strip: NHS claimable total, Private lab total, Warranty labs excluded total, HC3 adjusted total
+- **HC3 Logic tab** — explains and applies HC3 certificate logic (reduced patient contributions based on income/benefit status)
+- **Tariff Validation tab** — validates submitted lab amounts against NHS Wales tariff caps; flags over-tariff amounts
+- **Reporting tab** — lab fee breakdown by type and status
+- Warranty-related lab work is automatically excluded from NHS claim calculations
+
+---
+
+### 7.15 NHS Wales Referral and Referral Care Package System
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only
+
+Manages all referral types within NHS Wales — urgent (DAP), advanced services, high-needs, and outgoing referrals — generating the correct Care Package and tracking non-attendance.
+
+- Referral plan list with type badge (Urgent/Advanced), submission status, and patient details
+- KPI strip: urgent referrals, non-attended claims, advanced services, high-needs, submitted
+- **New patient banner** — if the patient has no NHS claim in the previous 3 years, a banner flags they may qualify as New Patient Urgent Referral (DAP)
+- Per-referral plan settings: referral type, new patient flag, urgent referral flag, non-attendance flag, DBOH (dietary advice, smoking, alcohol, fluoride) checkboxes, outgoing referral flags (High Needs, Advanced Services)
+- **Non-Attended claims** — when a patient fails to attend a referral appointment, the non-attended flag generates the appropriate reduced-value claim
+- **Referral Types tab** — reference list of all Wales referral types with descriptions and remuneration values
+- Submit generates the appropriate Care Package (CPE for urgent referrals); claim status tracked from Draft → Submitted
+
+---
+
+### 7.16 NHS Wales Incomplete Work and Prep-Only Eligibility
+
+**Role:** Dentist, Reception, Manager, Owner  
+**Region:** Wales practices only
+
+Real-time eligibility engine for NHS Wales Care Package claims where treatment is incomplete, determining whether each Care Package can be claimed based on current completion state.
+
+- Package-level eligibility display: each Care Package in the treatment plan shows Claimable, Not Claimable, or Auto-Downgraded status with a one-line reason
+- Tooth count indicator — shows the number of teeth with completed treatment; Extensive Restorative requires more than 4 teeth; if fewer are completed, the package is automatically downgraded to Simple Restorative
+- **Prep-Only override** — treatments where only the preparation is complete (e.g. Crown Prep) are still claimable; the engine flags these as Prep-Only claims with the correct Care Package
+- KPI strip: claimable packages, non-claimable (incomplete), auto-downgraded, prep-only claims
+- Toggle individual treatment items as done/not done; eligibility recalculates instantly
+- Each Care Package card shows patient charge and practice fee, and the reason for the eligibility decision
+
+---
+
+### 7.17 NHS Regional Rules and Claim Routing Engine
+
+**Role:** Dentist, Reception, Manager, Owner
+
+Routes NHS claims to the correct regional BSA gateway automatically by detecting the practice location's NHS region and applying the appropriate claim form, validation rules, and submission endpoint.
+
+- **Claim Routing tab** — overview of the four NHS regions (England, Wales, Scotland, Northern Ireland) with claim form, currency, and submission endpoint for each; "Test Claim Routing" tool: select a patient and location, click Determine Routing, and the system shows the region, claim form, and all validation rules that will be applied
+- **Location Config tab** — list of all practice locations with their assigned NHS region, contract, and active status
+- **Rules Engine tab** — per-region list of active validation rules (e.g. England: UDA band auto-calculation, fissure sealant Band 2 from Apr 2026; Wales: Care Package auto-mapping, ethnicity mandatory; Scotland: capitation claim type, ASN marker; NI: panel number required, Tier Amount prior approval)
+- **Rules Versioning tab** — changelog of NHS ruleset versions applied to each region
+
+---
+
+### 7.18 NHS Enterprise Hub
+
+**Role:** Dentist, Manager, Owner  
+**Plan:** Enterprise
+
+A multi-contract NHS hub combining orthodontics, Scotland-specific workflows, document management, reconciliation, AI validation, referral management, compliance, patient comms, monitoring, and UDA/UOA forecasting in one consolidated interface.
+
+- **Orthodontics tab** — FP17O/FP17PR claim management; IOTN scoring tool (DHC grades 1–5 and AC grades 1–10) with automatic eligibility determination; Part 1/Part 2 ortho claim lifecycle; NHS Ortho contract UOA tracking
+- **Documents & Signatures tab** — manage FP17, FP17PR, and consent forms; signed/unsigned status; view and countersign documents inline
+- **Scotland Workflow tab** — Scotland-specific claim management with HCN/CHI patient identifiers; capitation and restorative claim types; ASN (Additional Support Needs) marker with Section X Code 10(b)
+- **Reconciliation tab** — period-by-period comparison of Compass UDA count vs claimed UDAs; highlights discrepancies, minor variances, and reconciled periods; payment total per period
+- **AI Validation tab** — AI-driven risk scoring of pending claims; flags High/Medium/Low risk with specific issues and suggested corrections (e.g. expired Free Repair marker, missing ethnicity, missing Location ID)
+- **Referral Management tab** — track CDS, Ortho, and Advanced referrals with priority and status; includes domiciliary care referrals
+- **Compliance tab** — cross-region compliance status overview
+- **Patient Comms tab** — NHS-specific patient communication templates and send log
+- **Monitoring tab** — NHS API connectivity and submission pipeline status
+- **Forecasting tab** — year-end UDA/UOA projection based on current pace
+
+---
+
+### 7.19 NHS Regional Architecture
+
+**Role:** Manager, Owner  
+**Plan:** Growth, Enterprise (multi-site practices)
+
+Practice-level configuration for multi-location NHS setups, allowing each practice site to have its own NHS region, contracts, UDA targets, submission credentials, and practitioner assignments.
+
+- **Locations tab** — list of all practice sites with region, ODS code, NHS authority, and active status; add new location with name, address, region, and ODS code; each location has its own NHS region which automatically determines the claim form and submission endpoint
+- **Contract Management** — per location: add, view, and configure NHS contracts (GDS, PDS, Ortho); each contract carries contract number, type, UDA/UOA target, start/end date, submission method (Compass/WebEDI/etc.), and region ruleset version
+- **Claim Resolver tool** — select a location and contract, enter a test date, and the resolver determines: claim form type, region label, blocked or routed status, and any blocking reason (e.g. contract expired or not yet started)
+- **Add Contract modal** — contract name, number, UDA target, submission method, start/end dates, and NHS region; selecting the region shows the claim form and submission endpoint that will be used
+- Region-aware ruleset versioning: each contract records the ruleset version at the time it was configured (e.g. `england@2026.04`)
 
 ---
 
@@ -690,6 +980,72 @@ Comprehensive practice configuration, organised into sections:
 
 ---
 
+### 12.7 Business Copilot
+
+**Role:** Manager, Owner  
+**Add-on feature — £49/month**
+
+An AI-powered business advisor embedded in the platform as a slide-out chat panel. Business Copilot has access to the practice's real operational data — revenue, team performance, appointment trends, and patient metrics — and answers questions from owners and managers with data-driven analysis.
+
+- **Chat interface** — free-text question input; the AI responds with bullet-point analysis, specific figures (with £ signs), and actionable recommendations; responses are formatted with bold section headers and bullet points for clarity
+- Questions answered include: revenue trends, which dentist is underperforming, recall conversion, DNA patterns, outstanding balances, UDA progress, and cost reduction opportunities
+- Greeting message on first open references the actual practice name and today's date
+- **Subscription wall** — unsubscribed practices see a teaser response and are prompted to subscribe; subscribed practices receive full AI analysis backed by live practice data
+- Subscribe / activate flow built into the panel header (£49/month add-on)
+- Panel can be opened from anywhere in the app; closes without losing conversation history during the session
+
+---
+
+### 12.8 Integrations and Connected Software
+
+**Role:** Manager, Owner
+
+A directory of third-party integrations available to connect to the practice's ProDentalConnect account.
+
+- Integrations grid showing all available connectors grouped by category (e.g. Imaging, Finance, Communication, Lab, Clinical)
+- **Status badge per integration** — Connected or Available
+- **Category filter tabs** — filter the grid by integration category; "All" shows the full list
+- **Search** — live text search by integration name or description
+- **Active integrations counter** — "X of Y integrations active" shown in the header
+- **Configure modal** — click any integration to open a configuration panel with API key / credential entry; save connects the integration and updates its status badge
+- **Disconnect** — remove an existing connection from the configure modal
+- **Request Integration modal** — submit a request for a new integration not yet in the catalogue: name, website URL, and use-case description; submitted to the ProDentalConnect team for review
+- Toast confirmation on successful connection or disconnection
+
+---
+
+### 12.9 HR Leave Management
+
+**Role:** Reception, Dentist, Hygienist, Manager, Owner
+
+A dedicated HR leave management module for tracking staff leave requests, allowances, and approvals.
+
+- **Overview tab** — summary of all staff with their leave allowances and used days per leave type
+- **Staff leave cards** — per staff member: annual leave used vs allowance, sick days, compassionate leave, training days, and other leave types
+- **Pending approvals** — manager view shows all pending leave requests across the team with staff name, role, leave type, dates, day count, and reason; approve or reject with one click; approved leave automatically updates the staff rota and deducts from the allowance balance
+- **New Leave Request modal** — all staff can submit requests; managers can submit on behalf of any team member; leave type selector (Annual Leave, Sick, Compassionate, Training, Other); from/to date picker with automatic day count calculation; notes field
+- **Leave conflict detection** — checks for existing approved leave on the requested dates for the same staff member
+- **Set Allowances modal** — managers can configure annual allowance per leave type per staff member
+- Staff rota is updated automatically when leave is approved
+
+---
+
+### 12.10 Appointment Audit Page
+
+**Role:** Manager, Owner
+
+An immutable audit trail specifically for appointment-level changes: cancellations, DNAs, reschedules, and creation events.
+
+- **Two views:** Timeline (chronological event feed) and Table (sortable grid)
+- **Filters:** action type (cancelled, DNA, moved, created), dentist/provider, date (today, yesterday, all), and free-text search by patient name, reason, or treatment type
+- **Summary KPI tiles** — total audit entries, cancellations, DNAs, and moves at a glance
+- Each audit entry records: timestamp, patient name, action type (with colour-coded icon), from appointment (time, provider, treatment type), to appointment (for moves), reason, actioned by, and role
+- Click any entry to open a **Detail Panel** with full breakdown of the appointment change, before/after comparison, and the reason logged
+- **Export to CSV** — exports the current filtered view with all fields to a dated CSV file
+- Separate from the general Audit Log (Section 12.5); focused exclusively on appointment-level changes
+
+---
+
 ## 13. Help & Support
 
 **Role:** All roles
@@ -826,8 +1182,340 @@ Managers can override individual permissions per staff member from the Users pag
 
 ### Super Admin
 
-The Super Admin role is reserved for ProDentalConnect platform administrators. Super Admins see a separate admin sidebar with tools for managing all practices, subscriptions, platform AI, system monitoring, security, cloud backup, support tickets, software updates, and announcements. Super Admin login always requires 2FA.
+The Super Admin role is reserved for ProDentalConnect platform administrators. Super Admins see a separate admin sidebar with tools for managing all practices, subscriptions, platform AI, system monitoring, security, cloud backup, support tickets, software updates, and announcements. Super Admin login always requires 2FA. Full detail on each admin tool is in Section 16.
 
 ---
 
 *For technical support, use the Help & Support page within the app or email support@prodental.co.uk*
+
+---
+
+## 16. Super Admin Tools
+
+The Super Admin interface is a separate admin console accessible only to ProDentalConnect platform staff. All Super Admin sessions require 2FA login. Every action in the admin console is logged to the immutable platform audit trail.
+
+---
+
+### 16.1 Admin Dashboard
+
+**Role:** Super Admin
+
+The platform-wide overview screen showing headline operational metrics for the entire ProDentalConnect platform.
+
+- **Hero KPI tiles (4):** Monthly Recurring Revenue (MRR) across all active practices, Active Practice count (with trial count sub-label), Total Patient Records across all practices, and System Uptime (%)
+- **Practice Overview panel** — list of practices with location, user count, patient count, plan badge (Starter/Growth/Enterprise), status indicator (active/trial/suspended), and MRR per practice
+- **System Status panel** — real-time status of all platform services: API Gateway, Database Cluster, PDF Generation, Email (SendGrid), SMS (Twilio), WhatsApp API, NHS BSA API; services show Operational or Degraded with latency/reason on hover
+- **Plan Distribution panel** — bar chart showing how many practices are on each plan (Enterprise, Growth, Starter)
+- **Recent System Activity feed** — timestamped platform events: new trials, plan upgrades, payment failures, deployment completions, API rate limit warnings, and new feature activations
+
+---
+
+### 16.2 Admin Pricing (Plan Builder)
+
+**Role:** Super Admin
+
+Full control over ProDentalConnect subscription plans and add-on pricing.
+
+- **Plans view** — list of all subscription plans (Core, Starter, Growth, Enterprise, Multi-Clinic) with price, practice count, "most popular" badge, highlighted status, and MRR contribution; click any plan to edit
+- **Plan Editor** — edit plan name, monthly price, badge text, feature flags (on/off per feature category: Core, NHS, Clinical, Comms, Growth, Reports, AI, API, Support), and per-plan limits (patient records cap, dentist seats, staff seats, SMS monthly allowance, extra SMS rate, email allowance, AI phone minutes, storage GB, support tier, SLA percentage, onboarding type, contract length)
+- **Create New Plan** — blank plan template with all configurable fields
+- **Delete Plan** — confirm before removing a plan; active practices on the plan are flagged
+- **Add-ons view** — list of all add-on products (Reception AI, WhatsApp Business, Business Copilot, Lab Portal Pro, X-Ray Cloud Sync, Patient Finance) with monthly price, description, and active/inactive toggle; edit any add-on's price inline
+- **Plan Builder tab** — visual feature-by-feature comparison matrix across all plans; tick/untick features per plan; shows which plan each feature is first available on
+- **MRR calculator** — live total MRR across plans and add-ons updates as prices are changed
+
+---
+
+### 16.3 Admin Treatment Plans (Platform Pricing)
+
+**Role:** Super Admin
+
+Manage the default treatment plan price list used as the platform baseline across all practices.
+
+- Full price list table: treatment code, description, category (NHS, Private, Implant, Orthodontics, etc.), and NHS/Private fee
+- **Category filter tabs** — filter the list by treatment category
+- **Search** — live filter by treatment code or description
+- **Inline price editing** — click any fee to edit it; edited rows are highlighted until saved
+- **Bulk Price Adjustment modal** — increase or decrease all prices (or a selected category) by a percentage in one action; select increase/decrease direction and percentage; preview of new prices
+- **Push to All Practices** — deploy the updated price list to all 127+ practices platform-wide with one click
+- **Reset to Defaults** — revert all prices to platform defaults; confirmation required
+- Changed rows are tracked and highlighted until pushed or reset
+
+---
+
+### 16.4 Admin Monitoring (Infrastructure & Services)
+
+**Role:** Super Admin
+
+Comprehensive real-time infrastructure monitoring across all ProDentalConnect platform services.
+
+- **Overview tab** — service health cards for all platform services (API Gateway, PostgreSQL, Redis, AI Engine, Twilio, S3, SendGrid, WhatsApp API) with: uptime %, average latency, P95 and P99 latency, status (healthy/degraded/down), region, and last incident date; colour-coded overall platform status banner
+- **Latency Charts tab** — 24-hour time-series charts for API, Database, and AI Engine latency (line charts, hourly resolution)
+- **Error Rate tab** — 24-hour time-series for HTTP 4xx and 5xx error rates
+- **Traffic tab** — requests per minute over 24 hours
+- **Infrastructure tab** — server-level metrics per host (app servers, DB primary and replica, Redis, worker): CPU %, memory %, disk %, network throughput, status (healthy/warning)
+- **AI Usage tab** — per-model AI usage: calls, token count, cost (£), average latency, and error count for all models (GPT-4o clinical summaries, GPT-4o-mini Reception AI, GPT-4o-mini Business Copilot, Whisper transcription); total AI cost MTD
+- **Incidents tab** — list of current and historical incidents with: ID, title, severity, start time, resolution time, impact description, and duration; active incidents shown with "ongoing" badge
+- **Alerts** — configure alert thresholds per service; PagerDuty integration shown
+
+---
+
+### 16.5 Admin Platform AI
+
+**Role:** Super Admin
+
+An AI-powered platform management assistant that allows Super Admins to make changes to the ProDentalConnect app using natural language — either as live in-app changes or as generated source-code updates.
+
+- **Chat tab** — conversational interface for requesting app changes; the AI can make "live changes" (toggling features, navigation changes, colours, patient data) instantly, or "code changes" (new pages, bug fixes, layout changes) by generating updated source code for download
+- **Smart Component Extractor** — when the source code is loaded, the AI automatically identifies the relevant React component for the requested change using a keyword-to-component mapping, extracts only that section, and sends it to the AI to minimise token usage
+- **Setup tab** — paste in the full App.jsx source code; once loaded, the AI uses it as context for all subsequent code-change requests; source is persisted in local storage across sessions
+- Download updated file — code changes are delivered as a downloadable `.jsx` file
+- AI self-identifies as "Platform AI" and never mentions Claude or the underlying model
+
+---
+
+### 16.6 Admin Updates (Software Deployment)
+
+**Role:** Super Admin
+
+Manages software version control and deployment of updates to all practices on the platform.
+
+- **Deploy tab:**
+  - Bump type selector: Patch, Minor, Major, or Hotfix; live preview of next version number
+  - Custom version input (override auto-bump)
+  - Changelog text field — written description of changes included in the deployment
+  - Deploy target: All Practices, or a single named practice
+  - Upload new build: drag-and-drop or file-select `.jsx` or `.zip` source file; file name and size shown on upload
+  - "Deploy to [X] Practices" button with live progress bar and deployment log (timestamped step-by-step output)
+  - Deployment result: success confirmation with new version number and practice count
+- **Version History tab** — list of all past deployments with: version number, date, type (feature/bugfix), changelog summary, practice count pushed to, deployed by, and status (current/deployed/deprecated)
+- **Feature Flags tab** — toggle individual features on or off platform-wide (Reception AI, WhatsApp Messaging, Short Notice Filler, Revenue Recovery, X-Ray Imaging, Lab Manager, Practice Reports, Patient Finance, Calendar, Patient Records, and others); core features are locked and cannot be disabled
+- Version state is shared with the platform version indicator shown to all users
+
+---
+
+### 16.7 Announcements Admin
+
+**Role:** Super Admin
+
+Platform-wide announcement management: create, schedule, target, and monitor the delivery of announcements to practices and staff users across the platform.
+
+- **Announcement list tab** — all announcements with status (Draft / Active / Paused / Expired), type, priority, and delivery stats; filter by status and type; send now, pause, edit, or delete each announcement
+- **Announcement Builder modal:**
+  - Title and message body (supports line breaks)
+  - Type (General, Feature Update, Maintenance, Billing, Security, etc.)
+  - Priority (Low / Normal / High / Critical)
+  - Display Mode (Banner, Modal, Blocking, Bell notification)
+  - Target Audience: All Practices & Users, Selected Practices, Individual Practice, Selected Roles, Trial Only, Overdue Billing, Beta Practices
+  - Scheduling: start date, expiry date, recurrence rule (once, daily, weekly)
+  - Acknowledgement requirement: require explicit user acknowledgement before dismissal
+  - Snooze settings: allow snooze, snooze duration (hours), allow "don't show again"
+  - Blocking mode: prevents app use until acknowledged
+  - Action button: optional label and URL
+  - Release version tag
+- **Preview** — live preview of the announcement in the selected display mode (banner, modal, blocking overlay, or bell notification) before sending
+- **Delivery stats** — per announcement: targeted users, viewed count, acknowledged count, and acknowledgement rate
+- **Audit tab** — log of which practices and users have viewed and acknowledged each announcement, filterable by announcement, practice, and acknowledgement status
+
+---
+
+### 16.8 Appointment Audit (Platform-wide)
+
+**Role:** Super Admin
+
+*This is the same Appointment Audit page as Section 12.10, surfaced in the Super Admin console with the ability to view audit entries across all practices (not just one).*
+
+- All features of the practice-level Appointment Audit (see Section 12.10)
+- Additional practice selector — filter by All Practices or a specific practice
+- Exports cover the full cross-practice dataset
+
+---
+
+### 16.9 Admin Security
+
+**Role:** Super Admin
+
+Platform-level security monitoring, compliance tracking, active session management, and SSO configuration.
+
+- **Overview tab** — security status summary: login success/failure counts, high-risk events flagged, active sessions, and compliance score; key security indicators (MFA coverage, policy compliance, recent failed logins)
+- **Audit Log tab** — platform-wide security event log with: user, action type (login, edit, view, delete, failed login, export, settings change), target resource, IP address, timestamp, and risk level (Low/Medium/High); colour-coded by event type; filterable
+- **Infrastructure tab** — list of all platform infrastructure components (Production DB, Application Server, File Storage, CDN, Backup Store, Email Gateway) with: provider, region, status, encryption standard, backup schedule, and uptime
+- **Compliance tab** — staged compliance roadmap showing: Foundational (Cyber Essentials, GDPR, MFA, Automated Backups, Security Policies, RBAC — all complete), Advanced, and Enterprise compliance stages with individual item status and detail
+- **Active Sessions tab** — real-time list of all active admin sessions: user, device/browser, IP address, location, session start time, last activity, and MFA status; "Terminate Session" action per non-current session
+- **SSO Management tab** — configure and manage SSO providers (Google, Microsoft); view which admin users have SSO linked; manage SSO client credentials
+
+---
+
+### 16.10 Admin Users (Platform Staff)
+
+**Role:** Super Admin
+
+Manage the ProDentalConnect internal admin team — the staff who have access to the Super Admin console.
+
+- Admin team list showing: name, email, role (Super Admin, Support Agent, Developer, Customer Success), last login, status (active/inactive), avatar, and per-module permissions
+- **Invite Admin User** — form to add a new admin team member: name, email, and role
+- **Permissions modal** per user — toggle granular access on/off for each admin module: All Practices, Billing & Plans, Admin Users, Feature Control, System Monitoring, Support Tickets, Deployments
+- **Revoke Access** — immediately deactivates the user and strips all permissions; action is logged; confirmation modal required
+- **Role labels** — Super Admin, Support Agent, Developer, Customer Success (used to describe the team member's function, separate from permissions)
+- Permission changes take effect immediately and are logged to the platform audit trail
+
+---
+
+### 16.11 Admin Support Access (GDPR-compliant)
+
+**Role:** Super Admin
+
+Manages time-limited support access sessions where ProDentalConnect support agents need to access a practice's data to diagnose issues. All access is logged and GDPR Article 28 compliant.
+
+- List of active and historical support access requests with: requesting agent, target practice, reason, request time, approved duration, and status (Pending Approval / Active / Expired)
+- **Approve** or **Deny** pending requests; approved sessions are activated immediately and the practice is notified by email
+- **Revoke** an active support session at any time
+- **View Log** — opens a detailed access audit log for each session showing every action the agent performed, with timestamps and log levels (info/warn/success/error)
+- Export log to file
+- Access auto-expires after the approved duration (1 hour, 4 hours, or 24 hours)
+- Info banner: "All support access is logged to the immutable audit log. Access auto-expires after the approved duration." GDPR Article 28 compliance note displayed
+
+---
+
+### 16.12 Admin Tickets (Support Ticket Management)
+
+**Role:** Super Admin
+
+Full support ticket management interface for the ProDentalConnect support team.
+
+- **Two-pane layout** — left panel: ticket list with search and filters; right panel: full ticket conversation thread
+- **Ticket list filters** — by status (Open / In Progress / Resolved / Closed), priority (Low / Medium / High / Critical), and practice plan (Starter / Growth / Enterprise)
+- Tickets sorted by priority (Critical first); each ticket row shows: ticket ID, priority badge, status badge, title, practice name, plan badge, channel icon (portal/email/phone/chat), and assignee
+- **Summary KPI strip** — Open, Active (In Progress), Critical, and Resolved ticket counts
+- **Ticket detail panel** — full conversation thread with timestamps; ticket metadata (practice, plan, channel, created date, last updated, assignee); status and assignee update controls; reply box
+- Send reply — reply is added to the conversation and ticket status changes from Open → In Progress automatically; practice is notified
+- Update status — manually set status to any stage
+- Assign ticket — assign to a named support agent
+
+---
+
+### 16.13 Admin Support Config (Support Channel Configuration)
+
+**Role:** Super Admin
+
+Configures which support contact channels and SLA response times are available to practices on each subscription plan — these settings automatically populate what practices see in their Help & Support page.
+
+- Three-column layout, one column per plan (Starter, Growth, Enterprise)
+- Per plan configuration:
+  - **Response Time SLA** — editable text field (e.g. "4 hours")
+  - **Contact Channel toggles** — Email Support, Phone Support, WhatsApp Support, Live Chat, Dedicated CSM (on/off per plan)
+  - **Phone number** — shown when phone is enabled
+  - **WhatsApp number** — shown when WhatsApp is enabled
+  - **CSM name and email** — shown when dedicated CSM is enabled
+  - **Emergency/Out-of-hours line toggle** — separate emergency number field
+  - **Support page display text** — the SLA description shown to practices on their Help & Support page; editable rich-text label
+- "Save [Plan] Config" button per column; toast confirmation on save
+- Changes take effect immediately on practices' Help & Support pages
+
+---
+
+### 16.14 Admin Reception AI (System Control)
+
+**Role:** Super Admin
+
+Platform-level control panel for the Reception AI add-on feature — enabling/disabling per practice, pricing management, provider configuration, and usage analytics.
+
+- **Hero header** — shows globally enabled/disabled status, total add-on revenue (£/month), and number of active vs total practices
+- **Global Feature Switch** — a single master toggle to enable or disable Reception AI for the entire platform; when off, no practice can activate it
+- **Telephony Provider selector** — choose the active provider: Twilio (live), Vonage, Aircall, or SIP (planned); provider setting applies platform-wide
+- **Pricing panel** — inline editable fields for: monthly base fee (£), included minutes, and extra per-minute rate (£); changes update billing automatically on next cycle
+- **Platform Stats panel** — active practices count, total AI minutes consumed per month, total appointments booked by AI, and monthly revenue
+- **Per-Practice Control table** — for each practice: name, plan, AI phone number (auto-provisioned on activation), enabled status, AI minutes consumed, calls handled, appointments booked, monthly bill impact, and an enable/disable toggle; disabling removes the AI number and stops billing
+
+---
+
+### 16.15 Admin Features (Feature Control)
+
+**Role:** Super Admin
+
+Granular per-practice and per-feature control over which add-on features are enabled across the platform.
+
+- **Feature cards** — each add-on (Reception AI, WhatsApp Business, Business Copilot, Lab Portal Pro, X-Ray Cloud Sync, Patient Finance) shown with icon, name, price per practice, and count of enabled vs total practices; total add-on revenue calculated live
+- **Manage Per-Practice modal** — for a selected feature: list of all practices with an enable/disable toggle per practice; shows enabled count and total monthly add-on revenue; save applies changes
+- **Practice Settings modal** — configure a feature's settings for a single practice or bulk-select multiple practices; scope selector (Single Practice / Bulk Select)
+- **Add Feature modal** — define a new platform add-on: name, monthly price, provider, description
+- Add-on revenue total across all features shown in the page header
+
+---
+
+### 16.16 Admin Practices
+
+**Role:** Super Admin
+
+Complete management of all dental practices on the ProDentalConnect platform.
+
+- **Practice list** — searchable table of all practices with: name, location, plan badge, user count vs seat limit, patient count, UDA target, MRR, active add-ons, and status (active/suspended)
+- **Total MRR** shown at the top of the list
+- **Practice Detail view** — drill into any practice to see: plan, MRR, users/seats, patients, UDA target, add-on count; and perform actions: Reset Password, Resend Invite, Change Plan, Suspend Practice, View Reports
+- Active add-ons displayed per practice; Integrations & Configuration panel embedded in the detail view
+- **Add New Practice modal** — enter practice name, location, UDA target, plan (Starter/Growth/Enterprise), and seat limit; on creation, an onboarding email is sent automatically; practice is immediately active
+- Status badge (ACTIVE / SUSPENDED) on each practice
+
+---
+
+### 16.17 Admin Data Manager
+
+**Role:** Super Admin
+
+Platform-level data operations for individual practices or all practices — covering GDPR exports, data imports, archiving, integrity checks, backups, and record purges.
+
+- **Practice scope selector** — apply operations to All Practices or a specific named practice
+- **Operation cards (6):**
+  - **GDPR Data Export** — exports all patient data in JSON/CSV format; UK GDPR Article 20 compliant; download link sent to admin email
+  - **Data Import / Migration** — three-step wizard: (1) choose source system (R4+, Dentally, EXACT, SOE Exact, Generic CSV) and upload file (.csv, .xml, .json, .zip up to 500MB); (2) preview detected records with validity indicator; (3) run import with live progress bar
+  - **Archive Practice** — archive a suspended practice; data retained for 7 years per CQC; only available for suspended practices; destructive — confirmation required
+  - **Data Integrity Check** — scans all records for orphaned data, missing NHS numbers, duplicate patients, and broken relationships
+  - **Database Backup** — triggers an immediate AES-256 encrypted backup to AWS S3; supplements the existing automated backup schedule
+  - **Purge Deleted Records** — permanently deletes records past their retention period; irreversible; explicit confirmation required
+- Destructive operations require a two-step confirmation before execution
+- Progress bars and success toasts for all operations
+
+---
+
+### 16.18 Admin System Monitoring
+
+**Role:** Super Admin
+
+Simplified real-time infrastructure health monitoring focused on external service connectivity and API performance.
+
+- **Health tab** — status cards for all connected services: API Gateway, Database, NHS BSA Compass, WebEDI Wales, WhatsApp API, Twilio AI Phone, AWS S3 Backup, Email/SMTP, System Uptime; each card shows status (Online/Healthy/Degraded/Connected/Active/Synced) with latency or last-sync sub-label and a colour-coded left border
+- **API tab** — top-5 API endpoints by call volume: endpoint path, calls per day, P95 latency, and error rate (colour-coded green/amber/red)
+- **Errors tab** — "No issues in the last 24 hours" if clean; otherwise lists recent error events
+- **Performance tab** — same as Errors tab; shows clean-bill or performance anomalies
+- Tabs selected by underline navigation bar at the top of the page
+
+---
+
+### 16.19 Admin Cloud Backup
+
+**Role:** Super Admin
+
+Detailed cloud backup monitoring and management for all practice data across the platform.
+
+- **Summary KPI strip** — healthy backups, warnings, critical/offline, and total storage (MB) across all practices
+- **Per-practice backup job list** — each row shows: practice name, location, last backup timestamp, backup age, size, status (healthy/warning/critical/offline), last error, and retry count; actions per row: View Logs, View History, Retry, Manual Backup, View Details
+- **Status indicators** — healthy (green), warning (amber — e.g. replication lag), critical (red — backup failed after 3 retries), offline (grey — backup agent not responding)
+- **Backup Logs modal** — full step-by-step timestamped job log for the most recent backup run; metadata header (status, duration, file count, size, encryption method, replication status, compression, initiated by); failure analysis section explains the root cause when status is critical; Export log; Retry Backup button for failed jobs
+- **Backup History modal** — rolling history of past backup runs per practice with status, size, duration, and file count per run; highlights failed runs; SLA compliance indicator
+- **Details modal** — full technical configuration per practice: destination S3 path, encryption key, compression, retention period, replication status
+- **Alert configuration** — toggle alert channels: email, in-app, SMS, Slack
+- **Audit panel** — timestamped log of all manual backup actions taken by Super Admins
+
+---
+
+### 16.20 Admin Activity Log
+
+**Role:** Super Admin
+
+A cross-platform activity and appointment audit log covering all practices.
+
+- **Two tabs:**
+  - **Activity Log tab** — timestamped feed of all significant events across all practices: user, role, action, detail, practice, and action type (create/edit/delete/status change); filters: practice selector, action type; Export CSV button
+  - **Appointment Audit tab** — cross-practice appointment audit (same as Section 12.10 but platform-wide); practice selector to drill into a specific practice; columns: timestamp, practice, patient/detail, actioned by, role, appointment time, action type; Export button
+- Action type colour coding: create (green), edit (amber), delete (red), status (blue)
+- Exportable to CSV with all fields
