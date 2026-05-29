@@ -1961,6 +1961,8 @@ const ALL_NAV_ITEMS=[
   {id:"subscription", l:"Features & Plans",Icon:Sparkles,     g:"Practice",      roles:["manager","owner"]},
   {id:"templates",    l:"Templates",       Icon:Archive,      g:"Practice",      roles:["manager","owner"]},
   {id:"audit",        l:"Audit Log",       Icon:Shield,       g:"Practice",      roles:["manager","owner"]},
+  {id:"clinicalrisk", l:"Clinical Risk",   Icon:AlertTriangle,g:"Practice",      roles:["manager","owner"]},
+  {id:"knowledgehub", l:"Knowledge Hub",   Icon:Archive,      g:"Practice",      roles:["reception","dentist","hygienist","manager","owner"]},
   {id:"settings",     l:"Settings",        Icon:Settings,     g:"Practice",      roles:["manager","owner"]},
   // ─── SUPPORT ──────────────────────────────────────────────────────────────
   {id:"helpsupport",  l:"Help & Support",  Icon:HelpCircle,   g:"Support",       roles:["reception","dentist","hygienist","manager","owner"]},
@@ -16469,6 +16471,91 @@ const MHQ_FIELD_TYPES=[
 // Core questions that can be disabled but not deleted
 const MHQ_CORE_IDS=new Set(["allergy_la","allergy_pen","heart","blood_thinners","medication","diabetes","pregnant"]);
 
+function buildPatientComms(pid,patName){
+  const now=Date.now();
+  const d=(daysAgo)=>new Date(now-daysAgo*86400000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  return[
+    {id:`c1${pid}`,channel:"appt_reminder",direction:"outbound",ts:now-1*86400000,date:d(1),summary:"Appointment reminder sent",body:`Hi ${patName}, this is a reminder that you have an appointment tomorrow. Please reply YES to confirm or call us to reschedule.`,staff:"System",icon:"📅"},
+    {id:`c2${pid}`,channel:"sms",direction:"inbound",ts:now-1*86400000+3600000,date:d(1),summary:"SMS reply received: YES",body:"YES",staff:"Patient",icon:"💬"},
+    {id:`c3${pid}`,channel:"whatsapp",direction:"outbound",ts:now-7*86400000,date:d(7),summary:"WhatsApp: payment reminder sent",body:`Hi ${patName}, you have an outstanding balance. Please visit our patient portal to pay or call us.`,staff:"Sarah (Reception)",icon:"💚"},
+    {id:`c4${pid}`,channel:"email",direction:"outbound",ts:now-14*86400000,date:d(14),summary:"Email: treatment plan sent",body:`Dear ${patName}, please find your treatment plan attached. Do not hesitate to contact us with any questions.`,staff:"Dr. S. Patel",icon:"✉️"},
+    {id:`c5${pid}`,channel:"recall_reminder",direction:"outbound",ts:now-30*86400000,date:d(30),summary:"Recall reminder sent",body:`Hi ${patName}, it's time for your routine check-up! Please book your appointment at your earliest convenience.`,staff:"System",icon:"🔔"},
+    {id:`c6${pid}`,channel:"ai_call",direction:"inbound",ts:now-45*86400000,date:d(45),summary:"AI call: appointment booking enquiry",body:"Call transcript: Patient enquired about appointment availability for a routine check-up. AI confirmed next available slot and transferred to booking.",staff:"Reception AI",icon:"🤖"},
+    {id:`c7${pid}`,channel:"portal",direction:"inbound",ts:now-60*86400000,date:d(60),summary:"Portal: medical history updated",body:"Patient updated their medical history via the patient portal. New medication added: Atorvastatin 20mg.",staff:"Patient (Portal)",icon:"🌐"},
+    {id:`c8${pid}`,channel:"payment_reminder",direction:"outbound",ts:now-90*86400000,date:d(90),summary:"Payment reminder: outstanding balance",body:`Dear ${patName}, your account has an outstanding balance. Please make payment at your earliest convenience.`,staff:"System",icon:"💳"},
+  ].sort((a,b)=>b.ts-a.ts);
+}
+
+function PatientCommsTab({patient}){
+  const CHANNELS=["All","Email","SMS","WhatsApp","AI Call","Reminder","Portal"];
+  const CH_MAP={"email":"Email","sms":"SMS","whatsapp":"WhatsApp","ai_call":"AI Call","appt_reminder":"Reminder","recall_reminder":"Reminder","payment_reminder":"Reminder","portal":"Portal"};
+  const CH_COLOR={Email:"#60A5FA",SMS:"#4ADE80",WhatsApp:"#25D366","AI Call":"#A78BFA",Reminder:"#FCD34D",Portal:"#38BDF8"};
+
+  const [chanFilter,setChanFilter]=useState("All");
+  const [expanded,setExpanded]=useState(null);
+
+  const comms=useMemo(()=>buildPatientComms(patient.id,patient.name),[patient.id,patient.name]);
+
+  const filtered=useMemo(()=>comms.filter(c=>{
+    if(chanFilter==="All")return true;
+    return CH_MAP[c.channel]===chanFilter;
+  }),[comms,chanFilter]);
+
+  return(
+    <div style={{padding:"16px 0"}}>
+      {/* Filter chips */}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+        {CHANNELS.map(ch=>(
+          <button key={ch} onClick={()=>setChanFilter(ch)} style={{padding:"4px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:chanFilter===ch?"rgba(56,189,248,0.15)":C.card,color:chanFilter===ch?"#38BDF8":C.muted}}>{ch}</button>
+        ))}
+      </div>
+
+      {/* Timeline */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.length===0&&<div style={{padding:32,textAlign:"center",color:C.muted,fontSize:13}}>No communications in this category.</div>}
+        {filtered.map(item=>{
+          const chLabel=CH_MAP[item.channel]||item.channel;
+          const chColor=CH_COLOR[chLabel]||"#CBD5E1";
+          const isExp=expanded===item.id;
+          return(
+            <div key={item.id} onClick={()=>setExpanded(isExp?null:item.id)} style={{background:C.card,border:"1px solid rgba(80,140,255,0.1)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"border-color .15s",borderColor:isExp?"rgba(56,189,248,0.3)":"rgba(80,140,255,0.1)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18,flexShrink:0}}>{item.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontSize:10,fontWeight:700,color:chColor,textTransform:"uppercase"}}>{chLabel}</span>
+                    <span style={{fontSize:10,color:item.direction==="inbound"?C.green:"#60A5FA",fontWeight:600}}>{item.direction==="inbound"?"← Inbound":"→ Outbound"}</span>
+                    <span style={{fontSize:10,color:C.muted,marginLeft:"auto"}}>{item.date}</span>
+                  </div>
+                  <div style={{fontSize:13,color:"#F1F5F9",marginTop:3,fontWeight:500}}>{item.summary}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>via {item.staff}</div>
+                </div>
+              </div>
+              {isExp&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(80,140,255,0.1)",fontSize:12,color:"#CBD5E1",lineHeight:1.6}}>{item.body}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function computeTxAcceptance(plan){
+  const val=plan.total??plan.value??plan.items?.reduce((s,i)=>s+(i.fee||0),0)??0;
+  const ageDays=plan.date?Math.floor((Date.now()-new Date(plan.date))/86400000):null;
+  const tier=val>2000?"high":val>500?"medium":"low";
+  const baseScore={high:72,medium:55,low:38}[tier];
+  const ageDiscount=ageDays?Math.min(30,Math.floor(ageDays/2)):0;
+  const acceptScore=Math.max(10,baseScore-ageDiscount);
+  const financeEligible=val>500;
+  const ageColor=ageDays===null?null:ageDays>30?C.red:ageDays>14?C.amber:null;
+  let aiSuggestion;
+  if(acceptScore>=65)aiSuggestion="Book appointment — patient likely to proceed";
+  else if(financeEligible&&ageDays>14)aiSuggestion="Send finance options — high-value plan ageing";
+  else if(ageDays>30)aiSuggestion="WhatsApp follow-up — quote has been pending 30+ days";
+  else aiSuggestion="Standard recall — monitor for 2 more weeks";
+  return{acceptScore,ageDays,ageColor,financeEligible,aiSuggestion,val};
+}
 
 function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
 
@@ -16637,9 +16724,10 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
     {id:"docs",     l:"Documents",       icon:"📂",roles:["reception","dentist","hygienist","manager"]},
     {id:"history",  l:"History",         icon:"🔒",roles:["manager","dentist"]},
     {id:"consent",  l:"Consent Forms",   icon:"✍️",roles:["dentist","manager","reception","hygienist"]},
+    {id:"comms",    l:"Communications",  icon:"💬",roles:["reception","dentist","hygienist","manager","owner"]},
   ];
-  const DENTIST_ORDER=["chart","activity","notes","medical","plans","appts","details","docs","consent","history"];
-  const RECEPTION_ORDER=["details","activity","appts","accounts","plans","medical","docs","consent"];
+  const DENTIST_ORDER=["chart","activity","notes","comms","medical","plans","appts","details","docs","consent","history"];
+  const RECEPTION_ORDER=["details","activity","appts","comms","accounts","plans","medical","docs","consent"];
   const TABS=user?.role==="dentist"||user?.role==="hygienist"
     ? ALL_PATIENT_TABS.filter(t=>t.roles.includes(user.role)).sort((a,b)=>DENTIST_ORDER.indexOf(a.id)-DENTIST_ORDER.indexOf(b.id))
     : user?.role==="reception"
@@ -17803,6 +17891,16 @@ Added by: ${showDocPreview.by}
               </span>
             </div>}
 
+            {/* Treatment Acceptance Intelligence */}
+            {(()=>{const intel=computeTxAcceptance(plan);return(
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"8px 14px",borderBottom:"1px solid rgba(80,140,255,0.08)",background:"rgba(0,0,0,0.1)"}}>
+                <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10,background:intel.acceptScore>=65?"rgba(34,197,94,0.12)":intel.acceptScore>=45?"rgba(245,158,11,0.12)":"rgba(239,68,68,0.12)",color:intel.acceptScore>=65?C.green:intel.acceptScore>=45?C.amber:C.red}}>🎯 {intel.acceptScore}% acceptance likelihood</span>
+                {intel.ageColor&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10,background:`${intel.ageColor}18`,color:intel.ageColor}}>⏱ {intel.ageDays}d old</span>}
+                {intel.financeEligible&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"rgba(245,158,11,0.1)",color:C.amber}}>💳 Finance eligible</span>}
+                <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,background:"rgba(139,92,246,0.1)",color:C.purple}}>✨ {intel.aiSuggestion}</span>
+              </div>
+            );})()}
+
             {/* Items */}
             <div style={{background:"#0F1C34",padding:"0 14px",display:"grid",gridTemplateColumns:"1fr 80px 80px 120px 16px",gap:0,borderBottom:"1px solid rgba(56,189,248,0.12)"}}>
               {["Treatment","Patient £","NHS £","Free R/R",""].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",padding:"5px 0",letterSpacing:".06em"}}>{h}</div>)}
@@ -17936,6 +18034,8 @@ Added by: ${showDocPreview.by}
         </div>
       </div>
     </div>}
+
+    {tab==="comms"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}><PatientCommsTab patient={patient}/></div>}
 
     </div>
   </div>);
@@ -19128,7 +19228,7 @@ const REC_STATUS={
   declined:      {l:"Declined",    bg:"rgba(80,140,255,0.1)",c:"#64748b"},
 };
 
-function RecoveryRow({item,type,onAction,onPreview,selected,onToggle}){
+function RecoveryRow({item,type,onAction,onPreview,selected,onToggle,aiRec}){
   const s=REC_STATUS[item.status]||REC_STATUS.not_contacted;
   const needsAction=item.status==="not_contacted";
   const isDNA=type==="dna";
@@ -19160,6 +19260,7 @@ function RecoveryRow({item,type,onAction,onPreview,selected,onToggle}){
           </div>
           <div style={{fontSize:11,color:"#CBD5E1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.type}</div>
           <div style={{fontSize:10,color:"#CBD5E1",marginTop:1}}>{item.date||item.since}{item.dentist?` · ${item.dentist}`:""}</div>
+          {aiRec&&<div style={{fontSize:10,color:C.purple,fontWeight:600,marginTop:4}}>{aiRec}</div>}
         </div>
         {/* Workflow status or regular status */}
         {isDNA&&ws?<span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:10,background:ws.bg,color:ws.c,border:`1px solid ${ws.bc}`,flexShrink:0,whiteSpace:"nowrap"}}>{ws.l}</span>
@@ -19484,7 +19585,16 @@ function RevenueRecoveryPage(){
             </div>
             <span style={{fontSize:12,fontWeight:800,color:C.red,fontFamily:"ui-monospace,monospace"}}>£{(srcData[tab]||[]).reduce((s,r)=>s+(r.value||0),0).toLocaleString()} at risk</span>
           </div>
-          {(srcData[tab]||[]).map(item=><RecoveryRow key={item.id} item={item} type={srcType[tab]} onAction={handleAction} onPreview={handlePreview} selected={selected.has(item.id)} onToggle={()=>toggleSelect(item.id)}/>)}
+          {(srcData[tab]||[]).map(item=>{
+            const aiRec=tab==="plans"?(()=>{
+              const ageDays=item.date?Math.floor((Date.now()-new Date(item.date))/86400000):0;
+              if((item.value||0)>1000&&item.status==="not_contacted")return"📞 High-value — personal call";
+              if(ageDays>30)return"🔄 Quote expired — resend plan";
+              if((item.value||0)>500)return"💳 Offer finance option";
+              return"💬 WhatsApp follow-up";
+            })():null;
+            return <RecoveryRow key={item.id} item={item} type={srcType[tab]} onAction={handleAction} onPreview={handlePreview} selected={selected.has(item.id)} onToggle={()=>toggleSelect(item.id)} aiRec={aiRec}/>;
+          })}
         </div>
       </div>}
     </div>
@@ -21579,6 +21689,277 @@ function TemplatesPage(){
             :<div style={{background:"rgba(15,23,42,0.8)",border:"1px solid rgba(80,140,255,0.16)",borderRadius:14,padding:"16px 18px",fontSize:13,color:"#F8FAFC",lineHeight:2,whiteSpace:"pre-wrap",fontFamily:"inherit",minHeight:300}}>{selTemplate.preview}</div>}
         </div>
       </div>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLINICAL RISK CENTRE
+// ══════════════════════════════════════════════════════════════════════════════
+const CLINICAL_RISK_DATA=[
+  {id:"CR001",category:"Missing Consent",severity:"critical",patient:"Amy Torres",pid:"P4",clinician:"Dr. S. Patel",daysOverdue:21,action:"Obtain signed general consent before next appointment",tab:"consent"},
+  {id:"CR002",category:"Missing Consent",severity:"high",patient:"Robert Hall",pid:"P3",clinician:"Dr. L. Chen",daysOverdue:14,action:"Send consent form via patient portal",tab:"consent"},
+  {id:"CR003",category:"Unsigned Notes",severity:"critical",patient:"John Mills",pid:"P1",clinician:"Dr. S. Patel",daysOverdue:3,action:"Finalise and sign clinical note from 26 May",tab:"notes"},
+  {id:"CR004",category:"Unsigned Notes",severity:"high",patient:"Sarah Chen",pid:"P2",clinician:"Dr. S. Patel",daysOverdue:7,action:"Clinical note from crown fit appointment unsigned",tab:"notes"},
+  {id:"CR005",category:"Overdue Medical History",severity:"high",patient:"David Park",pid:"P5",clinician:"Dr. L. Chen",daysOverdue:420,action:"Medical history not updated in 14 months — request update",tab:"medical"},
+  {id:"CR006",category:"Overdue Medical History",severity:"medium",patient:"Lisa White",pid:"P6",clinician:"Dr. S. Patel",daysOverdue:380,action:"Medical history last updated 12+ months ago",tab:"medical"},
+  {id:"CR007",category:"Incomplete Treatment Plan",severity:"high",patient:"Amy Torres",pid:"P4",clinician:"Dr. S. Patel",daysOverdue:45,action:"Implant plan accepted 45 days ago — no appointment booked",tab:"plans"},
+  {id:"CR008",category:"Incomplete Treatment Plan",severity:"medium",patient:"Robert Hall",pid:"P3",clinician:"Dr. L. Chen",daysOverdue:30,action:"Crown treatment plan stalled — follow up required",tab:"plans"},
+  {id:"CR009",category:"NHS Compliance",severity:"critical",patient:"John Mills",pid:"P1",clinician:"Dr. S. Patel",daysOverdue:6,action:"FP17 claim unsubmitted — 6 days old, at risk of BSA rejection",tab:"details"},
+  {id:"CR010",category:"NHS Compliance",severity:"critical",patient:"Sarah Chen",pid:"P2",clinician:"Dr. S. Patel",daysOverdue:5,action:"FP17 claim draft not submitted within required window",tab:"details"},
+  {id:"CR011",category:"Missing X-Ray",severity:"medium",patient:"David Park",pid:"P5",clinician:"Dr. L. Chen",daysOverdue:60,action:"No periapical X-ray recorded for RCT treatment episode",tab:"details"},
+  {id:"CR012",category:"Missing X-Ray",severity:"low",patient:"Lisa White",pid:"P6",clinician:"Dr. S. Patel",daysOverdue:18,action:"Bitewing X-rays due at routine exam — not yet taken",tab:"details"},
+];
+
+function ClinicalRiskPage({openPatient,doToast}){
+  const SEV_WEIGHT={critical:10,high:5,medium:2,low:1};
+  const SEV_COLOR={critical:C.red,high:C.amber,medium:"#38BDF8",low:C.green};
+  const CAT_ICON={"Missing Consent":"🖊️","Unsigned Notes":"📝","Overdue Medical History":"🏥","Incomplete Treatment Plan":"📋","NHS Compliance":"⚕️","Missing X-Ray":"🔬"};
+
+  const [filters,setFilters]=useState({severity:"All",category:"All"});
+  const [items]=useState(CLINICAL_RISK_DATA);
+  const [toast,setToast]=useState(null);
+  const dT=(m)=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+
+  const filtered=useMemo(()=>items.filter(it=>{
+    if(filters.severity!=="All"&&it.severity!==filters.severity.toLowerCase())return false;
+    if(filters.category!=="All"&&it.category!==filters.category)return false;
+    return true;
+  }),[items,filters]);
+
+  const riskScore=useMemo(()=>{
+    const raw=items.reduce((s,it)=>s+SEV_WEIGHT[it.severity],0);
+    return Math.min(100,Math.round(raw/1.8));
+  },[items]);
+
+  const scoreColor=riskScore>70?C.red:riskScore>40?C.amber:C.green;
+  const cats=["All",...new Set(CLINICAL_RISK_DATA.map(r=>r.category))];
+  const sevs=["All","Critical","High","Medium","Low"];
+
+  const handleOpen=(item)=>{
+    if(!item.pid){dT("No linked patient record");return;}
+    openPatient(item.pid,item.tab||"details");
+  };
+
+  return(
+    <div style={{padding:20,maxWidth:1100}}>
+      {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:9999,background:C.card,border:"1px solid rgba(80,140,255,0.3)",borderRadius:10,padding:"10px 18px",fontSize:13,color:C.green,display:"flex",gap:6,alignItems:"center"}}><span>✓</span>{toast}</div>}
+
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:"#F1F5F9",marginBottom:4}}>Clinical Risk Centre</div>
+          <div style={{fontSize:13,color:C.muted}}>Compliance and clinical governance overview</div>
+        </div>
+        <div style={{textAlign:"center",background:C.card,border:`2px solid ${scoreColor}`,borderRadius:16,padding:"16px 28px"}}>
+          <div style={{fontSize:36,fontWeight:900,color:scoreColor,lineHeight:1}}>{riskScore}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:4,fontWeight:700}}>RISK SCORE</div>
+          <div style={{fontSize:10,color:scoreColor,fontWeight:600}}>{riskScore>70?"HIGH RISK":riskScore>40?"MODERATE":"LOW RISK"}</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {sevs.map(s=>(
+            <button key={s} onClick={()=>setFilters(f=>({...f,severity:s}))} style={{padding:"4px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:filters.severity===s?"rgba(56,189,248,0.15)":C.card,color:filters.severity===s?"#38BDF8":C.muted}}>{s}</button>
+          ))}
+        </div>
+        <select value={filters.category} onChange={e=>setFilters(f=>({...f,category:e.target.value}))} style={{padding:"4px 10px",borderRadius:8,border:"1px solid rgba(80,140,255,0.2)",background:C.card,color:"#CBD5E1",fontSize:11,cursor:"pointer"}}>
+          {cats.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* Stats row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {["critical","high","medium","low"].map(s=>{
+          const count=items.filter(i=>i.severity===s).length;
+          return(
+            <div key={s} style={{background:C.card,border:`1px solid ${SEV_COLOR[s]}30`,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:800,color:SEV_COLOR[s]}}>{count}</div>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",fontWeight:700}}>{s}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Risk items */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.muted,fontSize:14}}>No risk items match the selected filters.</div>}
+        {filtered.map(item=>(
+          <div key={item.id} style={{background:C.card,border:`1px solid ${SEV_COLOR[item.severity]}30`,borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:14}}>
+            <div style={{fontSize:20,flexShrink:0}}>{CAT_ICON[item.category]||"⚠️"}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,fontWeight:800,color:SEV_COLOR[item.severity],textTransform:"uppercase"}}>{item.severity}</span>
+                <span style={{fontSize:10,color:C.muted,background:"rgba(80,140,255,0.08)",padding:"1px 7px",borderRadius:10}}>{item.category}</span>
+                <span style={{fontSize:10,color:C.muted}}>· {item.daysOverdue}d overdue</span>
+              </div>
+              <div style={{fontSize:13,fontWeight:600,color:"#F1F5F9",marginBottom:3}}>{item.patient}</div>
+              <div style={{fontSize:11,color:C.muted}}>{item.action}</div>
+            </div>
+            <div style={{flexShrink:0,textAlign:"right"}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{item.clinician}</div>
+              <button onClick={()=>handleOpen(item)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid rgba(56,189,248,0.3)`,background:"rgba(56,189,248,0.08)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#38BDF8"}}>Open Record</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// KNOWLEDGE HUB
+// ══════════════════════════════════════════════════════════════════════════════
+const KNOWLEDGE_DOCS_INIT=[
+  {id:"KD001",title:"Infection Control Policy",cat:"Compliance",desc:"CQC-compliant decontamination and infection control procedures",by:"Dr. Kim (Manager)",date:"12 Jan 2026",size:"2.4 MB",type:"PDF"},
+  {id:"KD002",title:"CQC Self-Assessment 2025",cat:"Compliance",desc:"Annual CQC inspection readiness self-assessment checklist",by:"Dr. Kim (Manager)",date:"03 Mar 2026",size:"1.1 MB",type:"PDF"},
+  {id:"KD003",title:"Radiation Protection Supervisor Report",cat:"Compliance",desc:"IRMER RPS annual review and X-ray audit documentation",by:"Dr. Kim (Manager)",date:"15 Feb 2026",size:"890 KB",type:"PDF"},
+  {id:"KD004",title:"Cancellation & DNA Policy",cat:"Policies",desc:"Practice policy for late cancellations, DNAs, and rebooking fees",by:"Dr. Kim (Manager)",date:"01 Jan 2026",size:"340 KB",type:"PDF"},
+  {id:"KD005",title:"Complaints Handling Policy",cat:"Policies",desc:"Step-by-step complaints procedure including escalation to GDC",by:"Dr. Kim (Manager)",date:"01 Jan 2026",size:"280 KB",type:"PDF"},
+  {id:"KD006",title:"GDPR & Patient Data Policy",cat:"Policies",desc:"Data protection, patient consent, and ICO compliance guidelines",by:"Dr. Kim (Manager)",date:"01 Jan 2026",size:"510 KB",type:"PDF"},
+  {id:"KD007",title:"New Patient Workflow",cat:"Procedures",desc:"Reception step-by-step guide for registering and onboarding new patients",by:"Sarah (Reception)",date:"10 Feb 2026",size:"220 KB",type:"PDF"},
+  {id:"KD008",title:"Implant Treatment Workflow",cat:"Procedures",desc:"Clinical and administrative workflow for implant cases from consultation to fit",by:"Dr. S. Patel",date:"20 Jan 2026",size:"450 KB",type:"PDF"},
+  {id:"KD009",title:"Referral Procedure",cat:"Procedures",desc:"How to generate, send, and track specialist referrals",by:"Sarah (Reception)",date:"05 Feb 2026",size:"190 KB",type:"PDF"},
+  {id:"KD010",title:"Reception Induction Pack",cat:"Training",desc:"Complete onboarding guide for new reception staff",by:"Dr. Kim (Manager)",date:"15 Jan 2026",size:"1.8 MB",type:"PDF"},
+  {id:"KD011",title:"Clinical Notes Training Guide",cat:"Training",desc:"How to write, finalise, and submit clinical notes in ProDentalConnect",by:"Dr. S. Patel",date:"22 Jan 2026",size:"640 KB",type:"PDF"},
+  {id:"KD012",title:"NHS FP17 Submission Guide",cat:"Training",desc:"Step-by-step guide to completing and submitting NHS FP17 claims",by:"Sarah (Reception)",date:"18 Jan 2026",size:"520 KB",type:"PDF"},
+];
+
+function KnowledgeHubPage({user}){
+  const isManager=user?.role==="manager"||user?.role==="owner"||user?.role==="superadmin";
+  const CATS=["All","Policies","Procedures","Compliance","Training"];
+
+  const [docs,setDocs]=useState(KNOWLEDGE_DOCS_INIT);
+  const [selCat,setSelCat]=useState("All");
+  const [search,setSearch]=useState("");
+  const [aiMsgs,setAiMsgs]=useState([{role:"ai",text:"Hi! I'm your Practice Knowledge Assistant. Ask me anything about your policies, procedures, or compliance documents — I'll find the relevant guidance for you."}]);
+  const [aiInput,setAiInput]=useState("");
+  const [aiLoading,setAiLoading]=useState(false);
+  const [toast,setToast]=useState(null);
+  const [activeTab,setActiveTab]=useState("docs");
+  const chatRef=useRef(null);
+  const fileRef=useRef(null);
+  const dT=(m)=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+
+  const filtered=useMemo(()=>docs.filter(d=>{
+    const matchCat=selCat==="All"||d.cat===selCat;
+    const matchSearch=!search||d.title.toLowerCase().includes(search.toLowerCase())||d.desc.toLowerCase().includes(search.toLowerCase());
+    return matchCat&&matchSearch;
+  }),[docs,selCat,search]);
+
+  useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[aiMsgs]);
+
+  const sendKnowledgeMsg=()=>{
+    const q=aiInput.trim();
+    if(!q)return;
+    setAiMsgs(m=>[...m,{role:"user",text:q}]);
+    setAiInput("");
+    setAiLoading(true);
+    setTimeout(()=>{
+      const words=q.toLowerCase().split(/\s+/).filter(w=>w.length>3);
+      const matches=docs.filter(d=>words.some(w=>d.title.toLowerCase().includes(w)||d.desc.toLowerCase().includes(w)));
+      let reply;
+      if(matches.length===0){
+        reply="I couldn't find any documents matching your query. Try searching for specific policy names, procedures, or topics like 'infection control', 'complaints', or 'implant'.";
+      } else {
+        reply=`I found ${matches.length} relevant document${matches.length>1?"s":""} for your query:\n\n`+matches.map(d=>`• **${d.title}** (${d.cat}) — ${d.desc}`).join("\n");
+      }
+      setAiMsgs(m=>[...m,{role:"ai",text:reply}]);
+      setAiLoading(false);
+    },700);
+  };
+
+  const handleUpload=(e)=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const newDoc={id:`KD${Date.now()}`,title:file.name.replace(/\.[^.]+$/,""),cat:selCat==="All"?"Policies":selCat,desc:"Uploaded document",by:user?.name||"Staff",date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}),size:`${(file.size/1024).toFixed(0)} KB`,type:file.name.split(".").pop().toUpperCase()};
+    setDocs(d=>[newDoc,...d]);
+    dT(`✓ "${newDoc.title}" uploaded successfully`);
+    e.target.value="";
+  };
+
+  const handleDelete=(id,title)=>{
+    if(!window.confirm(`Delete "${title}"?`))return;
+    setDocs(d=>d.filter(doc=>doc.id!==id));
+    dT("Document deleted");
+  };
+
+  const TYPE_ICON={"PDF":"📄","DOCX":"📝","XLSX":"📊","PNG":"🖼️","JPG":"🖼️"};
+
+  return(
+    <div style={{padding:20,maxWidth:1100}}>
+      {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:9999,background:C.card,border:"1px solid rgba(80,140,255,0.3)",borderRadius:10,padding:"10px 18px",fontSize:13,color:C.green,display:"flex",gap:6,alignItems:"center"}}><span>✓</span>{toast}</div>}
+
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:"#F1F5F9",marginBottom:4}}>Knowledge Hub</div>
+          <div style={{fontSize:13,color:C.muted}}>Policies, procedures, compliance and training documents</div>
+        </div>
+        {isManager&&<button onClick={()=>fileRef.current?.click()} style={{padding:"9px 18px",background:"linear-gradient(135deg,#2563FF,#1D4ED8)",border:"none",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",gap:6}}>⬆ Upload Document</button>}
+        <input ref={fileRef} type="file" accept=".pdf,.docx,.xlsx,.png,.jpg" style={{display:"none"}} onChange={handleUpload}/>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:0,marginBottom:16,background:C.card,borderRadius:10,padding:4,border:"1px solid rgba(80,140,255,0.1)",width:"fit-content"}}>
+        {[{id:"docs",l:"📁 Documents"},{id:"ai",l:"🤖 AI Assistant"}].map(t=>(
+          <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:activeTab===t.id?"rgba(56,189,248,0.15)":"transparent",color:activeTab===t.id?"#38BDF8":C.muted,transition:"all .15s"}}>{t.l}</button>
+        ))}
+      </div>
+
+      {activeTab==="docs"&&(
+        <div>
+          {/* Category + search */}
+          <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {CATS.map(c=>(
+                <button key={c} onClick={()=>setSelCat(c)} style={{padding:"4px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:selCat===c?"rgba(56,189,248,0.15)":C.card,color:selCat===c?"#38BDF8":C.muted}}>{c}</button>
+              ))}
+            </div>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents…" style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(80,140,255,0.2)",background:C.card,color:"#CBD5E1",fontSize:12,outline:"none",minWidth:200}}/>
+          </div>
+
+          {/* Doc list */}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {filtered.length===0&&<div style={{padding:40,textAlign:"center",color:C.muted,fontSize:14}}>No documents found.</div>}
+            {filtered.map(doc=>(
+              <div key={doc.id} style={{background:C.card,border:"1px solid rgba(80,140,255,0.1)",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+                <span style={{fontSize:22,flexShrink:0}}>{TYPE_ICON[doc.type]||"📄"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#F1F5F9",marginBottom:2}}>{doc.title}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{doc.desc}</div>
+                  <div style={{fontSize:10,color:C.muted,marginTop:3}}>{doc.date} · {doc.by} · {doc.size}</div>
+                </div>
+                <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"rgba(56,189,248,0.1)",color:"#38BDF8",flexShrink:0}}>{doc.cat}</span>
+                <button onClick={()=>dT(`"${doc.title}" download started`)} style={{padding:"5px 12px",borderRadius:8,border:"1px solid rgba(80,140,255,0.2)",background:"rgba(80,140,255,0.05)",cursor:"pointer",fontSize:11,color:"#CBD5E1",flexShrink:0}}>⬇ Download</button>
+                {isManager&&<button onClick={()=>handleDelete(doc.id,doc.title)} style={{padding:"5px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",cursor:"pointer",fontSize:11,color:C.red,flexShrink:0}}>Delete</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab==="ai"&&(
+        <div style={{background:C.card,border:"1px solid rgba(80,140,255,0.12)",borderRadius:14,overflow:"hidden",display:"flex",flexDirection:"column",height:520}}>
+          <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(80,140,255,0.1)",fontSize:13,fontWeight:700,color:"#F1F5F9",display:"flex",alignItems:"center",gap:8}}><span>📚</span>Practice Knowledge Assistant<span style={{fontSize:10,color:C.green,background:"rgba(34,197,94,0.1)",padding:"2px 8px",borderRadius:10,fontWeight:600}}>LIVE</span></div>
+          <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12}}>
+            {aiMsgs.map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?"linear-gradient(135deg,#2563FF,#1D4ED8)":C.bg,border:m.role==="ai"?"1px solid rgba(80,140,255,0.15)":"none",fontSize:13,color:"#F1F5F9",whiteSpace:"pre-wrap",lineHeight:1.55}}>
+                  {m.role==="ai"&&<div style={{fontSize:10,fontWeight:700,color:"#38BDF8",marginBottom:5}}>📚 Knowledge Assistant</div>}
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {aiLoading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:"14px 14px 14px 4px",background:C.bg,border:"1px solid rgba(80,140,255,0.15)",fontSize:13,color:C.muted}}>Searching documents…</div></div>}
+          </div>
+          <div style={{padding:12,borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8}}>
+            <input value={aiInput} onChange={e=>setAiInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&(e.preventDefault(),sendKnowledgeMsg())} placeholder="Ask about policies, procedures, compliance…" style={{flex:1,padding:"9px 14px",borderRadius:10,border:"1px solid rgba(80,140,255,0.2)",background:"#0A1628",color:"#F1F5F9",fontSize:13,outline:"none"}}/>
+            <button onClick={sendKnowledgeMsg} disabled={!aiInput.trim()} style={{padding:"9px 18px",background:aiInput.trim()?"linear-gradient(135deg,#2563FF,#1D4ED8)":"rgba(80,140,255,0.1)",border:"none",borderRadius:10,cursor:aiInput.trim()?"pointer":"default",fontSize:13,fontWeight:700,color:"#fff"}}>Send</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -32395,6 +32776,8 @@ export default function App(){
       helpsupport:<HelpSupportPage user={user}/>,
       templates:<TemplatesPage/>,
       audit:<AuditPage/>,
+      clinicalrisk:<ClinicalRiskPage openPatient={openPatient}/>,
+      knowledgehub:<KnowledgeHubPage user={user}/>,
       integrations:<IntegrationsPage/>,
       settings:<SettingsPage user={user}/>,
       usermgmt:<UserManagementPage plan="Growth"/>,
