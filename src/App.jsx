@@ -33239,7 +33239,7 @@ function MigrationCentrePage(){
                 <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:340}}>
                   <button onClick={()=>setUploadModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"rgba(80,140,255,0.07)",color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Upload Files</button>
                   <button onClick={()=>setAuditModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,background:"rgba(245,158,11,0.08)",color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Run Integrity Audit</button>
-                  <button onClick={()=>setGhostModal(mig)} style={{padding:"5px 11px",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,background:"rgba(139,92,246,0.08)",color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ghost Login</button>
+                  <button onClick={()=>setGhostModal({...mig,previewToken:`GST-${Math.random().toString(16).slice(2,10).toUpperCase()}-${Math.floor(Date.now()/1000)}`})} style={{padding:"5px 11px",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,background:"rgba(139,92,246,0.08)",color:"#A78BFA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Ghost Login</button>
                   {mig.status!=="hypercare"&&mig.status!=="live"&&mig.status!=="paused_in_migration"&&(
                     <button onClick={()=>setGoLiveModal({mig,step:hasDelta?"delta":"confirm",deltaProgress:0,activationStep:0})} style={{padding:"5px 11px",border:"1px solid rgba(34,197,94,0.4)",borderRadius:8,background:"rgba(34,197,94,0.1)",color:"#22C55E",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>GO LIVE TODAY</button>
                   )}
@@ -33384,7 +33384,7 @@ function MigrationCentrePage(){
           </div>
           <div style={{padding:"10px 14px",background:"rgba(139,92,246,0.08)",borderRadius:10,border:"1px solid rgba(139,92,246,0.2)",marginBottom:18}}>
             <div style={{fontSize:10,color:"#A78BFA",fontWeight:700,marginBottom:4}}>Session Token (auto-generated)</div>
-            <div style={{fontFamily:"ui-monospace,monospace",fontSize:12,color:"#CBD5E1"}}>{`GST-${Math.random().toString(16).slice(2,10).toUpperCase()}-${Math.floor(Date.now()/1000)}`}</div>
+            <div style={{fontFamily:"ui-monospace,monospace",fontSize:12,color:"#CBD5E1"}}>{ghostModal.previewToken}</div>
           </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setGhostModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(80,140,255,0.18)",borderRadius:12,background:"#0F1C34",cursor:"pointer",fontSize:12,color:C.muted,fontFamily:"inherit"}}>Cancel</button>
