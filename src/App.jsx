@@ -16494,7 +16494,7 @@ function PatientCommsTab({patient}){
   const [chanFilter,setChanFilter]=useState("All");
   const [expanded,setExpanded]=useState(null);
 
-  const comms=useMemo(()=>buildPatientComms(patient.id,patient.name),[patient.id,patient.name]);
+  const comms=useMemo(()=>patient?buildPatientComms(patient.id,patient.name):[],[patient]);
 
   const filtered=useMemo(()=>comms.filter(c=>{
     if(chanFilter==="All")return true;
@@ -17910,7 +17910,7 @@ Added by: ${showDocPreview.by}
               const isFR=frStatus!=="none";
               const canSetFR=item.nhs&&isEnglandWales&&plan.status==="open";
               return(
-              <div key={ii} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px 16px",gap:0,padding:"8px 14px",borderTop:ii>0?"1px solid rgba(56,189,248,0.07)":"none",alignItems:"center",background:item.done?"rgba(34,197,94,0.06)":isFR?"rgba(245,158,11,0.05)":"transparent"}}>
+              <div key={item.id||ii} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px 16px",gap:0,padding:"8px 14px",borderTop:ii>0?"1px solid rgba(56,189,248,0.07)":"none",alignItems:"center",background:item.done?"rgba(34,197,94,0.06)":isFR?"rgba(245,158,11,0.05)":"transparent"}}>
                 {/* Treatment name + done toggle */}
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <div onClick={()=>setTxPlans(p=>p.map(pl=>pl.id!==plan.id?pl:{...pl,items:pl.items.map(it=>it.id!==item.id?it:{...it,done:!it.done})}))}
@@ -21945,7 +21945,7 @@ function KnowledgeHubPage({user}){
           <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(80,140,255,0.1)",fontSize:13,fontWeight:700,color:"#F1F5F9",display:"flex",alignItems:"center",gap:8}}><span>📚</span>Practice Knowledge Assistant<span style={{fontSize:10,color:C.green,background:"rgba(34,197,94,0.1)",padding:"2px 8px",borderRadius:10,fontWeight:600}}>LIVE</span></div>
           <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12}}>
             {aiMsgs.map((m,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+              <div key={m.id||i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
                 <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?"linear-gradient(135deg,#2563FF,#1D4ED8)":C.bg,border:m.role==="ai"?"1px solid rgba(80,140,255,0.15)":"none",fontSize:13,color:"#F1F5F9",whiteSpace:"pre-wrap",lineHeight:1.55}}>
                   {m.role==="ai"&&<div style={{fontSize:10,fontWeight:700,color:"#38BDF8",marginBottom:5}}>📚 Knowledge Assistant</div>}
                   {m.text}
@@ -25146,13 +25146,6 @@ ${PRACTICE_CONTEXT}`;
           </div>
         )}
 
-        {/* Suggested questions */}
-        {msgs.length<=2&&<div style={{padding:"8px 14px",borderTop:"1px solid rgba(56,189,248,0.07)",flexShrink:0}}>
-          <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".08em",textTransform:"uppercase",marginBottom:7}}>Suggested questions</div>
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
-            {COPILOT_SUGGESTED.slice(0,5).map(q=><button key={q} onClick={()=>sendMessage(q)} style={{padding:"5px 11px",borderRadius:16,border:`1.5px solid rgba(59,130,246,0.35)`,background:"#0F1C34",cursor:"pointer",fontSize:10,fontWeight:500,color:"#CBD5E1",whiteSpace:"nowrap",flexShrink:0}}>{q}</button>)}
-          </div>
-        </div>}
 
         {/* Input */}
         <div style={{padding:"12px 14px",borderTop:"1px solid rgba(56,189,248,0.07)",display:"flex",gap:8,flexShrink:0,background:"#132238"}}>
