@@ -1561,7 +1561,7 @@ function LoginScreen({onLogin}){
 
               <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",paddingTop:16}}>
 
-                <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",textAlign:"center",marginBottom:9,letterSpacing:".08em",textTransform:"uppercase"}}>Demo Quick Access</div>
+                <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",textAlign:"center",marginBottom:9,letterSpacing:".08em",textTransform:"uppercase"}}>Quick Access</div>
 
                 <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
 
