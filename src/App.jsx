@@ -178,7 +178,7 @@ const NOW = Date.now(); const M=60000;
 
 // ── Global platform version (updated by Super Admin) ──────────────────────────
 
-let PLATFORM_VERSION={major:2,minor:4,patch:2};
+let PLATFORM_VERSION={major:2,minor:4,patch:3};
 
 const getVersion=()=>`v${PLATFORM_VERSION.major}.${PLATFORM_VERSION.minor}.${PLATFORM_VERSION.patch}`;
 
@@ -4825,29 +4825,32 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
         <div style={{fontSize:12,color:"#CBD5E1",marginBottom:14}}>{booking.time} · {DCOLS[booking.col]}</div>
 
         {/* Patient name with autocomplete */}
-        <div style={{marginBottom:10,position:"relative",zIndex:50}}>
+        <div style={{marginBottom:10}}>
           <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Patient Name</label>
           <input value={bForm.patient}
             onChange={e=>{const v=e.target.value;setBForm(p=>({...p,patient:v,pid:null}));
               const q=v.trim().toLowerCase();
               setBPatientSugg(q.length>0?PATIENTS.filter(pt=>pt.name.toLowerCase().includes(q)).slice(0,8):[]);}}
-            onBlur={()=>setTimeout(()=>setBPatientSugg([]),200)}
-            placeholder="Type to search patients…" autoComplete="off"
-            style={{width:"100%",padding:"9px 12px",border:"1.5px solid rgba(56,189,248,0.4)",borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#0d1b2a",color:"#F8FAFC"}}/>
-          {bPatientSugg.length>0&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#1a2e44",border:"1.5px solid rgba(56,189,248,0.35)",borderRadius:10,zIndex:9999,overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,.6)"}}>
-            {bPatientSugg.map(pt=>(
-              <div key={pt.id} onMouseDown={e=>{e.preventDefault();setBForm(p=>({...p,patient:pt.name,pid:pt.id}));setBPatientSugg([]);}}
-                style={{padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#F8FAFC",display:"flex",alignItems:"center",gap:10}}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(56,189,248,0.15)"}
-                onMouseLeave={e=>e.currentTarget.style.background=""}>
-                <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(56,189,248,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{pt.ini||pt.name.slice(0,2).toUpperCase()}</div>
-                <div>
-                  <div style={{fontWeight:700}}>{pt.name}</div>
-                  <div style={{fontSize:11,color:"#94A3B8",marginTop:1}}>{pt.dob} · {(pt.type||"").toUpperCase()}</div>
+            onBlur={()=>setTimeout(()=>setBPatientSugg([]),250)}
+            placeholder="Type patient name to search…" autoComplete="off"
+            style={{width:"100%",padding:"9px 12px",border:"1.5px solid rgba(56,189,248,0.5)",borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#0d1b2a",color:"#F8FAFC"}}/>
+          {bPatientSugg.length>0&&(
+            <div style={{marginTop:4,background:"#1a2e44",border:"1.5px solid rgba(56,189,248,0.35)",borderRadius:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.5)"}}>
+              {bPatientSugg.map(pt=>(
+                <div key={pt.id}
+                  onMouseDown={e=>{e.preventDefault();setBForm(p=>({...p,patient:pt.name,pid:pt.id}));setBPatientSugg([]);}}
+                  style={{padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#F8FAFC",display:"flex",alignItems:"center",gap:10,background:"transparent"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(56,189,248,0.18)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(56,189,248,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{pt.ini||pt.name.slice(0,2).toUpperCase()}</div>
+                  <div>
+                    <div style={{fontWeight:700}}>{pt.name}</div>
+                    <div style={{fontSize:11,color:"#94A3B8",marginTop:1}}>{pt.dob} · {(pt.type||"NHS").toUpperCase()}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>}
+              ))}
+            </div>
+          )}
         </div>
         {/* Type + Dentist fields */}
         {[{l:"Type",k:"type",opts:["Check-up","Filling","Crown","Extraction","Hygiene","Implant","Consultation","Emergency","Recall","Orthodontic"]},{l:"Dentist",k:"dentist",opts:DCOLS}].map(f=>(
