@@ -1429,7 +1429,7 @@ function LoginScreen({onLogin}){
 
               <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",paddingTop:16}}>
 
-                <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",textAlign:"center",marginBottom:9,letterSpacing:".08em",textTransform:"uppercase"}}>Demo Quick Access</div>
+                <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",textAlign:"center",marginBottom:9,letterSpacing:".08em",textTransform:"uppercase"}}>Quick Access</div>
 
                 <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
 
@@ -1463,13 +1463,6 @@ function LoginScreen({onLogin}){
 
                 </div>
 
-                <div style={{fontSize:10,color:"#CBD5E1",textAlign:"center",marginTop:8}}>
-
-
-
-                  &nbsp;·&nbsp; PIN examples: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>9999</code> (Dr. Chen) <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>1111</code> (Amy)
-
-                </div>
 
               </div>
 
