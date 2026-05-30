@@ -4336,6 +4336,8 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const [resizing,setResizing]=useState(null); // {id,startY,startDuration}
   const resizingRef=useRef(false);
+  const [previewDur,setPreviewDur]=useState(null);
+  const previewDurRef=useRef(null);
 
   const [ctx,setCtx]=useState(null);const ctxRef=useRef(null);
 
@@ -4417,9 +4419,18 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
     const onMove=(e)=>{
       const deltaRows=Math.round((e.clientY-resizing.startY)/SNAP_PX);
       const newDur=Math.max(5,resizing.startDuration+deltaRows*5);
-      setAppts(p=>p.map(a=>a.id===resizing.id?{...a,duration:newDur}:a));
+      previewDurRef.current=newDur;
+      setPreviewDur(newDur); // stretch card visually — no rowSpan change during drag
     };
-    const onUp=()=>{resizingRef.current=false;setResizing(null);doToast("✓ Duration updated");};
+    const onUp=()=>{
+      const finalDur=previewDurRef.current||resizing.startDuration;
+      setAppts(p=>p.map(a=>a.id===resizing.id?{...a,duration:finalDur}:a));
+      resizingRef.current=false;
+      previewDurRef.current=null;
+      setPreviewDur(null);
+      setResizing(null);
+      doToast("✓ Duration updated");
+    };
     document.addEventListener("mousemove",onMove);
     document.addEventListener("mouseup",onUp);
     return()=>{document.removeEventListener("mousemove",onMove);document.removeEventListener("mouseup",onUp);};
@@ -4985,10 +4996,13 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                       const urgentColor=appt.type&&(appt.type.toLowerCase().includes("emergency")||appt.type.toLowerCase().includes("pain"))?"#EF4444":null;
                       const ac=urgentColor||appt.color;
                       const isBeingResized=resizing&&resizing.id===appt.id;
+                      const displayMinH=(isBeingResized&&previewDur!=null)?Math.ceil(previewDur/5)*18-4:rowSpanCount*18-4;
                       return(
+                        <>
+                        {/* appointment card — draggable for move, NOT containing the resize handle */}
                         <div draggable onDragStart={(e)=>{if(resizingRef.current){e.preventDefault();return;}setDragging(appt);}} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
                           title={tipLines}
-                          style={{background:ac+"20",borderLeft:"4px solid "+ac,borderRadius:6,padding:"5px 8px 14px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:ac,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${ac}25`,position:"relative"}}>
+                          style={{background:ac+"20",borderLeft:"4px solid "+ac,borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:ac,fontWeight:600,height:"100%",minHeight:displayMinH,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${ac}25`}}>
                           <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
                             <span style={{fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{appt.patient}</span>
                             {isOverdue&&<span title={"Overdue balance: £"+apptPt.balance} style={{fontSize:8,background:"rgba(239,68,68,0.2)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0,fontWeight:800}}>£!</span>}
@@ -4997,18 +5011,20 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                           <span style={{fontSize:10,opacity:.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>
                           {appt.reason&&rowSpanCount>2&&<span style={{fontSize:9,opacity:.65,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontStyle:"italic",fontWeight:400}}>{appt.reason}</span>}
                           {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
-                          {/* ── Resize handle — drag bottom edge to extend/shorten ── */}
-                          <div
-                            draggable={false}
-                            onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
-                            style={{position:"absolute",bottom:0,left:0,right:0,height:14,cursor:"ns-resize",display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(transparent,${ac}30)`,borderRadius:"0 0 6px 6px",zIndex:5}}
-                            title="Drag to resize appointment"
-                          >
-                            {isBeingResized
-                              ?<span style={{fontSize:8,fontWeight:700,color:ac,background:ac+"22",borderRadius:4,padding:"1px 5px",pointerEvents:"none"}}>{appt.duration}m</span>
-                              :<div style={{width:28,height:3,borderRadius:3,background:ac+"70",pointerEvents:"none"}}/>}
-                          </div>
                         </div>
+                        {/* resize handle — sibling of the draggable div, anchored to bottom of TD.
+                            Being outside the draggable element means browser drag mode never
+                            interferes with document mousemove events during resize. */}
+                        <div
+                          onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
+                          style={{position:"absolute",bottom:0,left:0,right:0,height:12,cursor:"ns-resize",zIndex:20,display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(transparent,${ac}35)`,borderRadius:"0 0 5px 5px"}}
+                          title="Drag to resize"
+                        >
+                          {isBeingResized
+                            ?<span style={{fontSize:9,fontWeight:800,color:"#fff",background:ac,borderRadius:4,padding:"1px 6px",pointerEvents:"none",letterSpacing:".02em"}}>{previewDur||appt.duration}m</span>
+                            :<div style={{width:30,height:3,borderRadius:3,background:ac+"90",pointerEvents:"none"}}/>}
+                        </div>
+                        </>
                       );
                     })()}
                   </td>
