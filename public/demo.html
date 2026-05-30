@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProDentalConnect — Dev Preview Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #071428;
+    --surface: #0F1C34;
+    --card:    #132238;
+    --border:  rgba(80,140,255,0.18);
+    --blue:    #3B82F6;
+    --cyan:    #00C2FF;
+    --teal:    #38BDF8;
+    --green:   #22C55E;
+    --amber:   #F59E0B;
+    --purple:  #8B5CF6;
+    --text:    #F8FAFC;
+    --muted:   #CBD5E1;
+    --dim:     #64748B;
+  }
+
+  html, body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .logo {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -.2px;
+  }
+  .logo span { color: var(--blue); }
+  .sep { width: 1px; height: 20px; background: var(--border); }
+  .header-tag {
+    font-size: 11px;
+    color: var(--dim);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: .04em;
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: .04em;
+    background: rgba(139,92,246,0.15);
+    color: var(--purple);
+    border: 1px solid rgba(139,92,246,0.3);
+  }
+  header .spacer { flex: 1; }
+  .header-note {
+    font-size: 11px;
+    color: var(--dim);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── Page body ── */
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.4px;
+    margin-bottom: 6px;
+  }
+  .page-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 40px;
+    line-height: 1.6;
+    max-width: 560px;
+  }
+
+  /* ── Section ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Cards ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 48px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-decoration: none;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+    cursor: pointer;
+  }
+  .card:hover {
+    border-color: var(--blue);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(59,130,246,.12);
+  }
+
+  .card-top { display: flex; align-items: flex-start; gap: 12px; }
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .icon-cyan   { background: rgba(0,194,255,.12); }
+  .icon-green  { background: rgba(34,197,94,.12); }
+  .icon-purple { background: rgba(139,92,246,.12); }
+  .icon-amber  { background: rgba(245,158,11,.12); }
+
+  .card-meta { flex: 1; }
+  .card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .card-component {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--dim);
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .status-pill {
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: .04em;
+  }
+  .pill-ready   { background: rgba(34,197,94,.12);  color: var(--green);  border: 1px solid rgba(34,197,94,.25); }
+  .pill-wip     { background: rgba(245,158,11,.12); color: var(--amber);  border: 1px solid rgba(245,158,11,.25); }
+  .pill-planned { background: rgba(100,116,139,.1); color: var(--dim);    border: 1px solid rgba(100,116,139,.2); }
+
+  .open-arrow {
+    font-size: 12px;
+    color: var(--blue);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+  .card.disabled { opacity: .5; pointer-events: none; cursor: default; }
+  .card.disabled:hover { transform: none; box-shadow: none; border-color: var(--border); }
+
+  /* ── Info box ── */
+  .info-box {
+    background: rgba(59,130,246,.06);
+    border: 1px solid rgba(59,130,246,.2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .info-box strong { color: var(--text); }
+  .info-box code {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--cyan);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ProDental<span>Connect</span></div>
+  <div class="sep"></div>
+  <div class="header-tag">Dev Preview Hub</div>
+  <div class="badge">ISOLATED</div>
+  <div class="spacer"></div>
+  <div class="header-note">Not part of the main app</div>
+</header>
+
+<main>
+  <div class="page-title">Preview Hub</div>
+  <div class="page-sub">
+    Isolated staging area for new features before they're wired into the main application.
+    Nothing here affects live patient data, routing, or the React app.
+  </div>
+
+  <div class="section-label">3D Dental Chart</div>
+  <div class="cards">
+
+    <a href="/tooth_resolver_preview.html" class="card" target="_blank">
+      <div class="card-top">
+        <div class="card-icon icon-cyan">🦷</div>
+        <div class="card-meta">
+          <div class="card-name">Tooth Resolver</div>
+          <div class="card-component">useToothResolver · toothMapping</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Interactive 3D viewer. Verifies the GLB mesh → Palmer notation mapping.
+        Hover or click any tooth to inspect its resolved ID. Toggle stained / no-stain model.
+      </div>
+      <div class="card-footer">
+        <span class="status-pill pill-ready">READY TO REVIEW</span>
+        <span class="open-arrow">Open →</span>
+      </div>
+    </a>
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon icon-green">📊</div>
+        <div class="card-meta">
+          <div class="card-name">Chart Integration</div>
+          <div class="card-component">ChartingPage · DentalChart3D</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Full resolver wired into the live charting page. Click handler reads
+        <code>userData.toothId</code> instead of mesh name.
+      </div>
+      <div class="card-footer">
+        <span class="status-pill pill-planned">PENDING APPROVAL</span>
+        <span class="open-arrow">—</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Other Previews</div>
+  <div class="cards">
+
+    <a href="/PatientPortal.html" class="card" target="_blank">
+      <div class="card-top">
+        <div class="card-icon icon-purple">👤</div>
+        <div class="card-meta">
+          <div class="card-name">Patient Portal</div>
+          <div class="card-component">PatientPortal.html</div>
+        </div>
+      </div>
+      <div class="card-desc">Standalone patient-facing portal page.</div>
+      <div class="card-footer">
+        <span class="status-pill pill-ready">LIVE</span>
+        <span class="open-arrow">Open →</span>
+      </div>
+    </a>
+
+    <a href="/ReceptionKiosk.html" class="card" target="_blank">
+      <div class="card-top">
+        <div class="card-icon icon-amber">🖥️</div>
+        <div class="card-meta">
+          <div class="card-name">Reception Kiosk</div>
+          <div class="card-component">ReceptionKiosk.html</div>
+        </div>
+      </div>
+      <div class="card-desc">Standalone reception check-in kiosk view.</div>
+      <div class="card-footer">
+        <span class="status-pill pill-ready">LIVE</span>
+        <span class="open-arrow">Open →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="info-box">
+    <strong>Isolation guarantee</strong> — This hub and all pages linked from it are static HTML files
+    served directly by Netlify from <code>public/</code>. They share no state, no imports, and no
+    routes with the React app. The main app is unaffected. To add a new preview, drop an HTML file
+    into <code>public/</code> and add a card above.
+  </div>
+</main>
+
+</body>
+</html>
