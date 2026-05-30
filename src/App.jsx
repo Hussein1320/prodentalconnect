@@ -405,6 +405,27 @@ const getUserPractices=(user)=>{
 
 };
 
+// ── GP Practice Directory (shared reference table — not per-patient) ─────────
+
+let GP_PRACTICES=[
+  {id:"GP001",name:"Riverdale Medical Centre",odsCode:"E81001",address:"12 Riverdale Road, Southampton",postcode:"SO14 2AB",town:"Southampton",phone:"0207 222 3333",email:"reception@riverdale.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP002",name:"Millbrook Surgery",odsCode:"E81002",address:"45 Millbrook Avenue, Southampton",postcode:"SO15 0LL",town:"Southampton",phone:"0238 077 4400",email:"admin@millbrooksurgery.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP003",name:"Ocean View Practice",odsCode:"E81003",address:"8 Marine Parade, Southampton",postcode:"SO17 1BD",town:"Southampton",phone:"0238 063 5500",email:"contact@oceanviewpractice.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP004",name:"Portswood Health Centre",odsCode:"E81004",address:"33 Portswood Road, Southampton",postcode:"SO17 2ER",town:"Southampton",phone:"0238 055 7700",email:"info@portswoodhealth.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP005",name:"St Denys Surgery",odsCode:"E81005",address:"19 St Denys Road, Southampton",postcode:"SO17 2GN",town:"Southampton",phone:"0238 058 2200",email:"reception@stdenyssurgery.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP006",name:"Regents Park Medical Practice",odsCode:"E81006",address:"100 Regents Park Road, Southampton",postcode:"SO15 8QY",town:"Southampton",phone:"0238 077 8800",email:"admin@regentsparkmedical.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP007",name:"Thornhill Surgery",odsCode:"E81007",address:"6 Thornhill Park Road, Southampton",postcode:"SO18 5SN",town:"Southampton",phone:"0238 044 1100",email:"thornhill@nhs.net",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP008",name:"Bitterne Park Health Centre",odsCode:"E81008",address:"22 Cobden Avenue, Southampton",postcode:"SO18 1FS",town:"Southampton",phone:"0238 055 3300",email:"bitterneparkmed@nhs.net",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP009",name:"Shirley Medical Centre",odsCode:"E81009",address:"78 Shirley High Street, Southampton",postcode:"SO15 3EH",town:"Southampton",phone:"0238 077 2200",email:"reception@shirleymedical.nhs.uk",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP010",name:"Hedge End Surgery",odsCode:"E81010",address:"3 Wildern Lane, Hedge End",postcode:"SO30 4EJ",town:"Hedge End",phone:"0148 978 3300",email:"hedgeend@nhs.net",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP011",name:"Eastleigh Medical Group",odsCode:"E81011",address:"Leigh Road Medical Centre, Eastleigh",postcast:"SO50 9DE",postcode:"SO50 9DE",town:"Eastleigh",phone:"0238 061 4400",email:"eastleighmed@nhs.net",status:"active",lastUpdated:"2025-04-01"},
+  {id:"GP012",name:"Hamble Surgery",odsCode:"E81012",address:"1 Memorial Road, Hamble",postcode:"SO31 4HQ",town:"Hamble",phone:"0238 045 2200",email:"hamble@nhs.net",status:"active",lastUpdated:"2025-04-01"},
+];
+
+let GP_DIRECTORY_UPDATE_LOG=[
+  {id:"GDU1",at:"2025-04-01T00:00:00",by:"system",source:"NHS ODS",practicesUpdated:12,note:"Initial load from NHS ODS API"},
+];
+
 // ── Global Patient Audit Log (edit history + deletion requests) ───────────────
 
 let PATIENT_AUDIT_LOG=[
@@ -2023,7 +2044,7 @@ function Sidebar({page,setPage,user,onLogout,waiting,tasks,unread,userPerms,feat
 
     {g:"Subscriptions",items:[{id:"admin_pricing",l:"Plan Builder",Icon:PoundSterling},{id:"admin_features",l:"Feature Management",Icon:Cpu},{id:"admin_seat_control",l:"Seat Control",Icon:Users2}]},
 
-    {g:"Platform",items:[{id:"admin_ai",l:"Platform AI",Icon:Cpu},{id:"admin_data",l:"Data Manager",Icon:Database},{id:"admin_monitoring",l:"System Monitoring",Icon:Activity},{id:"admin_security",l:"Security & Compliance",Icon:Shield},{id:"admin_backup",l:"Cloud Backup",Icon:Server},{id:"admin_tx_plans",l:"Treatment Plans",Icon:Clipboard},{id:"admin_receptionai",l:"Reception AI",Icon:Phone},{id:"admin_updates",l:"Software Updates",Icon:Server}]},
+    {g:"Platform",items:[{id:"admin_ai",l:"Platform AI",Icon:Cpu},{id:"admin_data",l:"Data Manager",Icon:Database},{id:"admin_gp_directory",l:"GP Directory",Icon:Database},{id:"admin_monitoring",l:"System Monitoring",Icon:Activity},{id:"admin_security",l:"Security & Compliance",Icon:Shield},{id:"admin_backup",l:"Cloud Backup",Icon:Server},{id:"admin_tx_plans",l:"Treatment Plans",Icon:Clipboard},{id:"admin_receptionai",l:"Reception AI",Icon:Phone},{id:"admin_updates",l:"Software Updates",Icon:Server}]},
 
     {g:"Communications",items:[{id:"admin_announcements",l:"Announcements",Icon:Bell}]},
 
@@ -16817,6 +16838,15 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
     nhsProvided:   patient.nhsProvided!==undefined?patient.nhsProvided:true,
 
     gpContact:     patient.gpContact||"Riverdale Medical Centre · 0207 222 3333",
+    gpPracticeId:  patient.gpPracticeId||"GP001",
+    gpPracticeName:patient.gpPracticeName||"Riverdale Medical Centre",
+    gpDoctorName:  patient.gpDoctorName||patient.gpName||"Dr. James Wilson",
+    gpOdsCode:     patient.gpOdsCode||"E81001",
+    gpSurgeryAddress:patient.gpSurgeryAddress||"12 Riverdale Road, Southampton",
+    gpSurgeryPhone:patient.gpSurgeryPhone||patient.gpContact?.split("·")[1]?.trim()||"0207 222 3333",
+    gpSurgeryEmail:patient.gpSurgeryEmail||"reception@riverdale.nhs.uk",
+    gpNotes:       patient.gpNotes||"",
+    gpManualOverride:patient.gpManualOverride||false,
 
     referredFrom:  patient.referredFrom||"Existing Patient",
 
@@ -16857,6 +16887,10 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
   const [addFamilyModal,setAddFamilyModal]=useState(false);
 
   const [familyForm,setFamilyForm]=useState({});
+
+  const [gpPickerOpen,setGpPickerOpen]=useState(false);
+  const [gpSearch,setGpSearch]=useState("");
+  const [gpSearchField,setGpSearchField]=useState("name"); // name|postcode|town|ods
 
   const startEdit=(field,val)=>{setEditingField(field);setEditVal(String(val||""));};
 
@@ -17569,6 +17603,107 @@ Added by: ${showDocPreview.by}
               <FRow label="Specialist Ref" field="specialistRef" sid="system_ids"/>
             </div>
           </Section>
+
+          {/* ── GP / Medical Practice ── */}
+          <div style={{background:"#132238",borderRadius:18,border:`1.5px solid ${editSection==="gp"?"#2563FF":"rgba(80,140,255,0.2)"}`,overflow:"hidden",transition:"border .15s"}}>
+            <div style={{padding:"10px 16px",background:editSection==="gp"?"rgba(80,140,255,0.06)":"#132238",borderBottom:`1px solid ${editSection==="gp"?"#99f6e4":"rgba(80,140,255,0.2)"}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <div style={{fontSize:12,fontWeight:800,color:editSection==="gp"?"#2563FF":"#374151"}}>GP / Medical Practice</div>
+                {detailsEdit.gpManualOverride&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:5,background:"rgba(245,158,11,0.15)",color:"#F59E0B",border:"1px solid rgba(245,158,11,0.3)"}}>MANUAL OVERRIDE</span>}
+                {detailsEdit.gpPracticeId&&!detailsEdit.gpManualOverride&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:5,background:"rgba(34,197,94,0.12)",color:"#4ADE80",border:"1px solid rgba(34,197,94,0.2)"}}>NHS DIRECTORY</span>}
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                {editSection==="gp"&&(
+                  <>
+                    <button onClick={()=>{setGpPickerOpen(true);}} style={{padding:"4px 12px",border:"1px solid rgba(56,189,248,0.3)",borderRadius:7,background:"rgba(56,189,248,0.08)",cursor:"pointer",fontSize:11,color:"#38BDF8",fontWeight:600}}>🔍 Search Directory</button>
+                    <button onClick={()=>{setEditSection(null);const entry={id:"AE"+Date.now(),pid:patient.id,type:"edit",field:"GP Details",oldVal:patientDetails.gpPracticeName||"",newVal:detailsEdit.gpPracticeName||"",by:"U2",byName:"Current User",at:"Just now",date:new Date().toISOString()};if(patientDetails.gpPracticeName!==detailsEdit.gpPracticeName||patientDetails.gpDoctorName!==detailsEdit.gpDoctorName||patientDetails.gpNotes!==detailsEdit.gpNotes){PATIENT_AUDIT_LOG=[entry,...PATIENT_AUDIT_LOG];setPatientAudit(p=>[entry,...p]);}doToast("✓ GP details saved — logged");}} style={{padding:"4px 14px",border:"none",borderRadius:7,background:"#2563FF",cursor:"pointer",fontSize:11,color:"#132238",fontWeight:700}}>Save</button>
+                    <button onClick={()=>setEditSection(null)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>Cancel</button>
+                  </>
+                )}
+                {editSection!=="gp"&&<button onClick={()=>setEditSection("gp")} style={{padding:"4px 12px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:7,background:"#132238",cursor:"pointer",fontSize:11,color:"#CBD5E1",fontWeight:600}}>✏ Edit</button>}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr"}}>
+              {[
+                ["GP Practice Name","gpPracticeName"],
+                ["GP Doctor Name","gpDoctorName"],
+                ["NHS ODS Code","gpOdsCode"],
+                ["GP Surgery Address","gpSurgeryAddress"],
+                ["GP Surgery Phone","gpSurgeryPhone"],
+                ["GP Surgery Email","gpSurgeryEmail"],
+              ].map(([label,field],idx)=>(
+                <div key={field} style={{padding:"10px 16px",gridColumn:field==="gpSurgeryAddress"?"1/-1":"auto",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{label}</div>
+                  {editSection==="gp"
+                    ?<input value={detailsEdit[field]||""} onChange={e=>{setDetailsEdit(p=>({...p,[field]:e.target.value,gpManualOverride:true}));}} style={{width:"100%",padding:"5px 8px",border:"1.5px solid #0d9488",borderRadius:7,fontSize:12,fontFamily:"inherit",outline:"none",background:"rgba(80,140,255,0.06)",boxSizing:"border-box"}}/>
+                    :<div style={{fontSize:12,fontWeight:500,color:"#F8FAFC"}}>{detailsEdit[field]||"—"}</div>}
+                </div>
+              ))}
+              <div style={{padding:"10px 16px",gridColumn:"1/-1",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>Notes</div>
+                {editSection==="gp"
+                  ?<textarea value={detailsEdit.gpNotes||""} onChange={e=>setDetailsEdit(p=>({...p,gpNotes:e.target.value}))} rows={2} style={{width:"100%",padding:"5px 8px",border:"1.5px solid #0d9488",borderRadius:7,fontSize:12,fontFamily:"inherit",outline:"none",background:"rgba(80,140,255,0.06)",resize:"vertical",boxSizing:"border-box"}}/>
+                  :<div style={{fontSize:12,fontWeight:500,color:"#F8FAFC"}}>{detailsEdit.gpNotes||"—"}</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* ── GP Directory Picker Modal ── */}
+          {gpPickerOpen&&(()=>{
+            const q=gpSearch.toLowerCase().trim();
+            const matches=q.length<1?GP_PRACTICES:GP_PRACTICES.filter(gp=>{
+              if(gpSearchField==="postcode") return gp.postcode.toLowerCase().replace(/\s/g,"").includes(q.replace(/\s/g,""));
+              if(gpSearchField==="town") return gp.town.toLowerCase().includes(q);
+              if(gpSearchField==="ods") return gp.odsCode.toLowerCase().includes(q);
+              return gp.name.toLowerCase().includes(q);
+            });
+            return(
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setGpPickerOpen(false)}>
+              <div style={{background:"#0F1C34",borderRadius:18,border:"1.5px solid rgba(80,140,255,0.3)",width:"min(92vw,580px)",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+                <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(80,140,255,0.15)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:800,color:"#F8FAFC"}}>GP Directory Search</div>
+                    <div style={{fontSize:10,color:"#64748B",marginTop:2}}>NHS / ODS registered practices · select to auto-fill GP fields</div>
+                  </div>
+                  <button onClick={()=>setGpPickerOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#CBD5E1",fontSize:18}}>✕</button>
+                </div>
+                <div style={{padding:"12px 18px",borderBottom:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {[["name","Practice Name"],["postcode","Postcode"],["town","Town / City"],["ods","ODS Code"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>{setGpSearchField(v);setGpSearch("");}} style={{padding:"4px 12px",borderRadius:8,border:`1px solid ${gpSearchField===v?"#2563FF":"rgba(80,140,255,0.2)"}`,background:gpSearchField===v?"rgba(37,99,255,0.15)":"#132238",color:gpSearchField===v?"#60A5FA":"#CBD5E1",fontSize:11,cursor:"pointer",fontWeight:gpSearchField===v?700:400}}>{l}</button>
+                  ))}
+                </div>
+                <div style={{padding:"10px 18px",borderBottom:"1px solid rgba(80,140,255,0.1)"}}>
+                  <input autoFocus value={gpSearch} onChange={e=>setGpSearch(e.target.value)} placeholder={`Search by ${gpSearchField==="name"?"practice name":gpSearchField==="postcode"?"postcode":gpSearchField==="town"?"town or city":"ODS code"}…`} style={{width:"100%",padding:"8px 12px",border:"1.5px solid rgba(80,140,255,0.3)",borderRadius:10,fontSize:12,fontFamily:"inherit",outline:"none",background:"rgba(80,140,255,0.06)",color:"#F8FAFC",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{overflowY:"auto",flex:1}}>
+                  {matches.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#64748B",fontSize:12}}>No practices found · <button onClick={()=>{setDetailsEdit(p=>({...p,gpManualOverride:true}));setGpPickerOpen(false);}} style={{background:"none",border:"none",cursor:"pointer",color:"#38BDF8",fontSize:12,textDecoration:"underline"}}>enter manually instead</button></div>}
+                  {matches.map((gp,i)=>(
+                    <div key={gp.id} onClick={()=>{
+                      const oldPractice=detailsEdit.gpPracticeName||"";
+                      setDetailsEdit(p=>({...p,gpPracticeId:gp.id,gpPracticeName:gp.name,gpOdsCode:gp.odsCode,gpSurgeryAddress:gp.address+" "+gp.postcode,gpSurgeryPhone:gp.phone,gpSurgeryEmail:gp.email,gpManualOverride:false}));
+                      const entry={id:"AE"+Date.now(),pid:patient.id,type:"edit",field:"GP Practice",oldVal:oldPractice,newVal:gp.name,by:"U2",byName:"Current User",at:"Just now",date:new Date().toISOString()};
+                      PATIENT_AUDIT_LOG=[entry,...PATIENT_AUDIT_LOG];
+                      setPatientAudit(p=>[entry,...p]);
+                      setGpPickerOpen(false);
+                      doAuditToast(`✓ GP set to ${gp.name} — logged`);
+                    }} style={{padding:"11px 18px",borderBottom:i<matches.length-1?"1px solid rgba(80,140,255,0.08)":"none",cursor:"pointer",transition:"background .1s",display:"flex",gap:12,alignItems:"flex-start"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(80,140,255,0.08)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{gp.name}</div>
+                        <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>{gp.address} · {gp.postcode}</div>
+                        <div style={{fontSize:10,color:"#64748B",marginTop:1}}>{gp.phone} · {gp.email}</div>
+                      </div>
+                      <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:5,background:"rgba(56,189,248,0.1)",color:"#38BDF8",border:"1px solid rgba(56,189,248,0.2)",flexShrink:0,marginTop:2}}>{gp.odsCode}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{padding:"10px 18px",borderTop:"1px solid rgba(80,140,255,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:10,color:"#64748B"}}>{matches.length} practice{matches.length!==1?"s":""} found · NHS ODS data</span>
+                  <button onClick={()=>{setDetailsEdit(p=>({...p,gpManualOverride:true,gpPracticeId:""}));setGpPickerOpen(false);}} style={{padding:"5px 14px",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,background:"rgba(245,158,11,0.06)",color:"#F59E0B",cursor:"pointer",fontSize:11,fontWeight:600}}>✏ Enter manually</button>
+                </div>
+              </div>
+            </div>
+            );
+          })()}
 
             {/* ── NHS Northern Ireland ── */}
             <div style={{background:"#132238",borderRadius:18,border:`1.5px solid ${detailsEdit.niRegion?"#1d4ed8":"rgba(80,140,255,0.2)"}`,overflow:"hidden"}}>
@@ -31867,6 +32002,163 @@ function AdminPractices(){
 }
 
 // ════════════════════════════════════════════════════════════════
+// GP DIRECTORY ADMIN
+// ════════════════════════════════════════════════════════════════
+function AdminGPDirectory(){
+  const [toast,setToast]=useState(null);
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
+  const [practices,setPractices]=useState(GP_PRACTICES);
+  const [search,setSearch]=useState("");
+  const [editId,setEditId]=useState(null);
+  const [editForm,setEditForm]=useState({});
+  const [addForm,setAddForm]=useState({});
+  const [showAdd,setShowAdd]=useState(false);
+  const [updateLog,setUpdateLog]=useState(GP_DIRECTORY_UPDATE_LOG);
+  const [syncing,setSyncing]=useState(false);
+  const [syncProg,setSyncProg]=useState(0);
+
+  const filtered=search.trim().length<2?practices:practices.filter(p=>
+    p.name.toLowerCase().includes(search.toLowerCase())||
+    p.postcode.toLowerCase().includes(search.toLowerCase())||
+    p.odsCode.toLowerCase().includes(search.toLowerCase())||
+    p.town.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const startEdit=(gp)=>{setEditId(gp.id);setEditForm({...gp});};
+  const saveEdit=()=>{
+    const updated=practices.map(p=>p.id===editId?{...editForm,lastUpdated:new Date().toISOString().slice(0,10)}:p);
+    GP_PRACTICES=updated;setPractices(updated);setEditId(null);
+    doToast("✓ Practice updated");
+  };
+  const addPractice=()=>{
+    if(!addForm.name||!addForm.odsCode){doToast("⚠ Name and ODS Code required");return;}
+    const gp={...addForm,id:"GP"+Date.now(),status:"active",lastUpdated:new Date().toISOString().slice(0,10)};
+    GP_PRACTICES=[...GP_PRACTICES,gp];setPractices([...practices,gp]);
+    setShowAdd(false);setAddForm({});
+    doToast("✓ Practice added to directory");
+  };
+  const toggleStatus=(id)=>{
+    const updated=practices.map(p=>p.id===id?{...p,status:p.status==="active"?"inactive":"active"}:p);
+    GP_PRACTICES=updated;setPractices(updated);
+    doToast("✓ Status updated");
+  };
+
+  const runSync=()=>{
+    setSyncing(true);setSyncProg(0);
+    const iv=setInterval(()=>setSyncProg(v=>{
+      if(v>=100){
+        clearInterval(iv);setSyncing(false);
+        const entry={id:"GDU"+Date.now(),at:new Date().toISOString(),by:"SuperAdmin",source:"NHS ODS",practicesUpdated:practices.length,note:"Manual sync from admin panel"};
+        GP_DIRECTORY_UPDATE_LOG=[entry,...GP_DIRECTORY_UPDATE_LOG];
+        setUpdateLog(p=>[entry,...p]);
+        doToast("✓ GP directory synced with NHS ODS — "+practices.length+" practices verified");
+        return 100;
+      }
+      return v+Math.floor(Math.random()*15)+5;
+    }),180);
+  };
+
+  const FIELD_ROW=({label,k,form,setForm,mono})=>(
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:9,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3}}>{label}</div>
+      <input value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"6px 9px",border:"1.5px solid rgba(80,140,255,0.3)",borderRadius:8,fontSize:11,fontFamily:mono?"monospace":"inherit",outline:"none",background:"rgba(80,140,255,0.06)",color:"#F8FAFC",boxSizing:"border-box"}}/>
+    </div>
+  );
+
+  return(
+    <div style={{padding:24,maxWidth:1000,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+      {toast&&<div style={{position:"fixed",top:18,right:18,background:"#132238",border:"1px solid #2563FF",borderRadius:12,padding:"10px 18px",color:"#F8FAFC",fontSize:12,fontWeight:600,zIndex:9999,boxShadow:"0 4px 24px rgba(0,0,0,0.4)"}}>{toast}</div>}
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:800,color:"#F8FAFC"}}>GP Directory</div>
+          <div style={{fontSize:11,color:"#64748B",marginTop:4}}>Shared NHS / ODS GP practice reference data · {practices.filter(p=>p.status==="active").length} active practices</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{setShowAdd(true);setAddForm({});}} style={{padding:"8px 16px",background:"rgba(80,140,255,0.1)",border:"1px solid rgba(80,140,255,0.3)",borderRadius:10,cursor:"pointer",fontSize:11,fontWeight:700,color:"#60A5FA"}}>+ Add Practice</button>
+          <button onClick={runSync} disabled={syncing} style={{padding:"8px 16px",background:syncing?"rgba(80,140,255,0.1)":"linear-gradient(135deg,#006DFF,#0057CC)",border:"none",borderRadius:10,cursor:syncing?"not-allowed":"pointer",fontSize:11,fontWeight:700,color:syncing?"#64748B":"#132238"}}>
+            {syncing?`Syncing… ${syncProg}%`:"🔄 Sync from NHS ODS"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.15)",overflow:"hidden"}}>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(80,140,255,0.1)",display:"flex",gap:10,alignItems:"center"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, postcode, town, ODS code…" style={{flex:1,padding:"7px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,fontSize:12,fontFamily:"inherit",outline:"none",background:"rgba(80,140,255,0.06)",color:"#F8FAFC"}}/>
+          <span style={{fontSize:11,color:"#64748B",flexShrink:0}}>{filtered.length} result{filtered.length!==1?"s":""}</span>
+        </div>
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#64748B",fontSize:12}}>No practices match your search.</div>}
+        {filtered.map((gp,i)=>(
+          <div key={gp.id} style={{borderBottom:i<filtered.length-1?"1px solid rgba(80,140,255,0.07)":"none",padding:"11px 16px",background:"#132238"}}>
+            {editId===gp.id?(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                <FIELD_ROW label="Practice Name" k="name" form={editForm} setForm={setEditForm}/>
+                <FIELD_ROW label="ODS Code" k="odsCode" form={editForm} setForm={setEditForm} mono/>
+                <FIELD_ROW label="Postcode" k="postcode" form={editForm} setForm={setEditForm} mono/>
+                <FIELD_ROW label="Address" k="address" form={editForm} setForm={setEditForm}/>
+                <FIELD_ROW label="Town / City" k="town" form={editForm} setForm={setEditForm}/>
+                <FIELD_ROW label="Phone" k="phone" form={editForm} setForm={setEditForm}/>
+                <FIELD_ROW label="Email" k="email" form={editForm} setForm={setEditForm}/>
+                <div style={{gridColumn:"1/-1",display:"flex",gap:8,marginTop:4}}>
+                  <button onClick={saveEdit} style={{padding:"6px 16px",background:"#2563FF",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:"#132238"}}>Save</button>
+                  <button onClick={()=>setEditId(null)} style={{padding:"6px 12px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:8,background:"#0F1C34",cursor:"pointer",fontSize:11,color:"#CBD5E1"}}>Cancel</button>
+                </div>
+              </div>
+            ):(
+              <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{gp.name}</span>
+                    <span style={{fontSize:9,fontWeight:700,padding:"1px 7px",borderRadius:5,background:"rgba(56,189,248,0.1)",color:"#38BDF8",border:"1px solid rgba(56,189,248,0.2)"}}>{gp.odsCode}</span>
+                    <span style={{fontSize:9,padding:"1px 7px",borderRadius:5,background:gp.status==="active"?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:gp.status==="active"?"#4ADE80":"#EF4444",border:`1px solid ${gp.status==="active"?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)"}`}}>{gp.status}</span>
+                  </div>
+                  <div style={{fontSize:10,color:"#94A3B8",marginTop:3}}>{gp.address} · {gp.postcode} · {gp.phone}</div>
+                </div>
+                <div style={{display:"flex",gap:6,flexShrink:0}}>
+                  <button onClick={()=>startEdit(gp)} style={{padding:"4px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:7,background:"#0F1C34",cursor:"pointer",fontSize:10,color:"#CBD5E1"}}>Edit</button>
+                  <button onClick={()=>toggleStatus(gp.id)} style={{padding:"4px 10px",border:`1px solid ${gp.status==="active"?"rgba(239,68,68,0.3)":"rgba(34,197,94,0.3)"}`,borderRadius:7,background:"#0F1C34",cursor:"pointer",fontSize:10,color:gp.status==="active"?"#EF4444":"#4ADE80"}}>{gp.status==="active"?"Deactivate":"Activate"}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {showAdd&&(
+        <div style={{background:"#132238",borderRadius:16,border:"1.5px solid rgba(56,189,248,0.3)",padding:18}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC",marginBottom:12}}>Add GP Practice</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <FIELD_ROW label="Practice Name *" k="name" form={addForm} setForm={setAddForm}/>
+            <FIELD_ROW label="ODS Code *" k="odsCode" form={addForm} setForm={setAddForm} mono/>
+            <FIELD_ROW label="Postcode" k="postcode" form={addForm} setForm={setAddForm} mono/>
+            <FIELD_ROW label="Address" k="address" form={addForm} setForm={setAddForm}/>
+            <FIELD_ROW label="Town / City" k="town" form={addForm} setForm={setAddForm}/>
+            <FIELD_ROW label="Phone" k="phone" form={addForm} setForm={setAddForm}/>
+            <FIELD_ROW label="Email" k="email" form={addForm} setForm={setAddForm}/>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:12}}>
+            <button onClick={addPractice} style={{padding:"7px 18px",background:"#2563FF",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,color:"#132238"}}>Add Practice</button>
+            <button onClick={()=>{setShowAdd(false);setAddForm({});}} style={{padding:"7px 14px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"#0F1C34",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{background:"#132238",borderRadius:16,border:"1px solid rgba(80,140,255,0.15)",overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(80,140,255,0.1)",fontSize:12,fontWeight:700,color:"#F8FAFC"}}>Sync History</div>
+        {updateLog.map((u,i)=>(
+          <div key={u.id} style={{padding:"10px 16px",borderBottom:i<updateLog.length-1?"1px solid rgba(80,140,255,0.07)":"none",display:"flex",gap:12,alignItems:"center"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{u.note}</div>
+              <div style={{fontSize:10,color:"#64748B",marginTop:2}}>{u.source} · {u.practicesUpdated} practices · by {u.by}</div>
+            </div>
+            <span style={{fontSize:10,color:"#64748B",flexShrink:0}}>{u.at?.slice(0,10)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // DATA MANAGER
 // ════════════════════════════════════════════════════════════════
 function AdminDataManager(){
@@ -33038,6 +33330,7 @@ export default function App(){
         admin_seat_control:<AdminSeatControl/>,
         admin_ai:<AdminDashboard/>,
         admin_data:<AdminDataManager/>,
+        admin_gp_directory:<AdminGPDirectory/>,
         admin_monitoring:<AdminSystemMonitoring/>,
         admin_security:<AdminSecurity/>,
         admin_backup:<AdminCloudBackup/>,
