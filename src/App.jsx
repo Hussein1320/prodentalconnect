@@ -4983,11 +4983,12 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                         appt.notes?"Note: "+appt.notes:"",
                       ].filter(Boolean).join("\n");
                       const urgentColor=appt.type&&(appt.type.toLowerCase().includes("emergency")||appt.type.toLowerCase().includes("pain"))?"#EF4444":null;
+                      const ac=urgentColor||appt.color;
+                      const isBeingResized=resizing&&resizing.id===appt.id;
                       return(
-                        <>
                         <div draggable onDragStart={(e)=>{if(resizingRef.current){e.preventDefault();return;}setDragging(appt);}} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
                           title={tipLines}
-                          style={{background:(urgentColor||appt.color)+"20",borderLeft:"4px solid "+(urgentColor||appt.color),borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:urgentColor||appt.color,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${urgentColor||appt.color}25`}}>
+                          style={{background:ac+"20",borderLeft:"4px solid "+ac,borderRadius:6,padding:"5px 8px 14px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:ac,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${ac}25`,position:"relative"}}>
                           <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
                             <span style={{fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{appt.patient}</span>
                             {isOverdue&&<span title={"Overdue balance: £"+apptPt.balance} style={{fontSize:8,background:"rgba(239,68,68,0.2)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0,fontWeight:800}}>£!</span>}
@@ -4996,15 +4997,18 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                           <span style={{fontSize:10,opacity:.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>
                           {appt.reason&&rowSpanCount>2&&<span style={{fontSize:9,opacity:.65,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontStyle:"italic",fontWeight:400}}>{appt.reason}</span>}
                           {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
+                          {/* ── Resize handle — drag bottom edge to extend/shorten ── */}
+                          <div
+                            draggable={false}
+                            onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
+                            style={{position:"absolute",bottom:0,left:0,right:0,height:14,cursor:"ns-resize",display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(transparent,${ac}30)`,borderRadius:"0 0 6px 6px",zIndex:5}}
+                            title="Drag to resize appointment"
+                          >
+                            {isBeingResized
+                              ?<span style={{fontSize:8,fontWeight:700,color:ac,background:ac+"22",borderRadius:4,padding:"1px 5px",pointerEvents:"none"}}>{appt.duration}m</span>
+                              :<div style={{width:28,height:3,borderRadius:3,background:ac+"70",pointerEvents:"none"}}/>}
+                          </div>
                         </div>
-                        <div
-                          onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
-                          style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",zIndex:10,display:"flex",alignItems:"center",justifyContent:"center"}}
-                          title="Drag to resize"
-                        >
-                          <div style={{width:22,height:3,borderRadius:2,background:"rgba(255,255,255,0.28)",pointerEvents:"none"}}/>
-                        </div>
-                        </>
                       );
                     })()}
                   </td>
