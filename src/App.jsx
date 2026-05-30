@@ -4806,30 +4806,32 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
     {booking&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800}}>
 
-      <div style={{background:"#132238",borderRadius:18,width:380,padding:22,boxShadow:"0 20px 60px rgba(0,0,0,.3)",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
+      <div style={{background:"#132238",borderRadius:18,width:380,padding:22,boxShadow:"0 20px 60px rgba(0,0,0,.3)",overflow:"visible",...(isMob&&{width:"calc(100vw - 24px)",borderRadius:14,padding:16,maxHeight:"85vh",overflowY:"auto"})}}>
 
         <div style={{fontSize:15,fontWeight:800,marginBottom:2}}>New Appointment</div>
 
         <div style={{fontSize:12,color:"#CBD5E1",marginBottom:14}}>{booking.time} · {DCOLS[booking.col]}</div>
 
         {/* Patient name with autocomplete */}
-        <div style={{marginBottom:10,position:"relative"}}>
+        <div style={{marginBottom:10,position:"relative",zIndex:50}}>
           <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Patient Name</label>
           <input value={bForm.patient}
-            onChange={e=>{const v=e.target.value;setBForm(p=>({...p,patient:v,pid:null}));setBPatientSugg(v.trim().length>0?PATIENTS.filter(p=>p.name.toLowerCase().includes(v.toLowerCase())).slice(0,6):[]);}}
-            onBlur={()=>setTimeout(()=>setBPatientSugg([]),150)}
-            placeholder="e.g. John Mills" autoComplete="off"
-            style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(56,189,248,0.28)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#0d1b2a",color:"#F8FAFC"}}/>
-          {bPatientSugg.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#132238",border:"1px solid rgba(56,189,248,0.25)",borderRadius:10,zIndex:999,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.4)",marginTop:2}}>
+            onChange={e=>{const v=e.target.value;setBForm(p=>({...p,patient:v,pid:null}));
+              const q=v.trim().toLowerCase();
+              setBPatientSugg(q.length>0?PATIENTS.filter(pt=>pt.name.toLowerCase().includes(q)).slice(0,8):[]);}}
+            onBlur={()=>setTimeout(()=>setBPatientSugg([]),200)}
+            placeholder="Type to search patients…" autoComplete="off"
+            style={{width:"100%",padding:"9px 12px",border:"1.5px solid rgba(56,189,248,0.4)",borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#0d1b2a",color:"#F8FAFC"}}/>
+          {bPatientSugg.length>0&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#1a2e44",border:"1.5px solid rgba(56,189,248,0.35)",borderRadius:10,zIndex:9999,overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,.6)"}}>
             {bPatientSugg.map(pt=>(
-              <div key={pt.id} onMouseDown={()=>{setBForm(p=>({...p,patient:pt.name,pid:pt.id}));setBPatientSugg([]);}}
-                style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.06)",fontSize:12,color:"#F8FAFC",display:"flex",alignItems:"center",gap:8}}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(56,189,248,0.12)"}
+              <div key={pt.id} onMouseDown={e=>{e.preventDefault();setBForm(p=>({...p,patient:pt.name,pid:pt.id}));setBPatientSugg([]);}}
+                style={{padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#F8FAFC",display:"flex",alignItems:"center",gap:10}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(56,189,248,0.15)"}
                 onMouseLeave={e=>e.currentTarget.style.background=""}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(56,189,248,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{pt.ini||pt.name.slice(0,2).toUpperCase()}</div>
+                <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(56,189,248,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{pt.ini||pt.name.slice(0,2).toUpperCase()}</div>
                 <div>
                   <div style={{fontWeight:700}}>{pt.name}</div>
-                  <div style={{fontSize:10,color:"#94A3B8"}}>{pt.dob} · {pt.type?.toUpperCase()}</div>
+                  <div style={{fontSize:11,color:"#94A3B8",marginTop:1}}>{pt.dob} · {(pt.type||"").toUpperCase()}</div>
                 </div>
               </div>
             ))}
