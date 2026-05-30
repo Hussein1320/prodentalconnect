@@ -4349,7 +4349,8 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const [booking,setBooking]=useState(null);
   const [bForm,setBForm]=useState({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});
-  const openBooking=(time,col)=>{setBooking({time,col});setBForm({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});};
+  const [bPatientSugg,setBPatientSugg]=useState([]);
+  const openBooking=(time,col)=>{setBooking({time,col});setBForm({patient:"",type:"Check-up",duration:"30",dentist:"Dr. S. Patel",reason:"",notes:""});setBPatientSugg([]);};
 
   // ── Edit appointment state ───────────────────────────────────────
   const [editAppt,setEditAppt]=useState(null); // the appt being edited
@@ -4400,7 +4401,7 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
     const colors={"Check-up":C.teal,"Filling":C.blue,"Crown":C.purple,"Extraction":C.red,"Hygiene":C.green,"Implant":"#7c3aed","Consultation":C.amber};
 
-    const newA={id:"A"+Date.now(),time:booking.time,col:booking.col,patient:bForm.patient,pid:null,status:"booked",type:bForm.type,color:colors[bForm.type]||C.teal,duration:parseInt(bForm.duration)||30,dentist:bForm.dentist,reason:bForm.reason,notes:bForm.notes};
+    const newA={id:"A"+Date.now(),time:booking.time,col:booking.col,patient:bForm.patient,pid:bForm.pid||null,status:"booked",type:bForm.type,color:colors[bForm.type]||C.teal,duration:parseInt(bForm.duration)||30,dentist:bForm.dentist,reason:bForm.reason,notes:bForm.notes};
 
     setAppts(p=>[...p,newA]);
 
@@ -4811,13 +4812,34 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
 
         <div style={{fontSize:12,color:"#CBD5E1",marginBottom:14}}>{booking.time} · {DCOLS[booking.col]}</div>
 
-        {/* Patient + Type fields */}
-        {[{l:"Patient Name",k:"patient",ph:"e.g. John Mills"},{l:"Type",k:"type",opts:["Check-up","Filling","Crown","Extraction","Hygiene","Implant","Consultation","Emergency","Recall","Orthodontic"]},{l:"Dentist",k:"dentist",opts:DCOLS}].map(f=>(
+        {/* Patient name with autocomplete */}
+        <div style={{marginBottom:10,position:"relative"}}>
+          <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>Patient Name</label>
+          <input value={bForm.patient}
+            onChange={e=>{const v=e.target.value;setBForm(p=>({...p,patient:v,pid:null}));setBPatientSugg(v.trim().length>0?PATIENTS.filter(p=>p.name.toLowerCase().includes(v.toLowerCase())).slice(0,6):[]);}}
+            onBlur={()=>setTimeout(()=>setBPatientSugg([]),150)}
+            placeholder="e.g. John Mills" autoComplete="off"
+            style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(56,189,248,0.28)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#0d1b2a",color:"#F8FAFC"}}/>
+          {bPatientSugg.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#132238",border:"1px solid rgba(56,189,248,0.25)",borderRadius:10,zIndex:999,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.4)",marginTop:2}}>
+            {bPatientSugg.map(pt=>(
+              <div key={pt.id} onMouseDown={()=>{setBForm(p=>({...p,patient:pt.name,pid:pt.id}));setBPatientSugg([]);}}
+                style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.06)",fontSize:12,color:"#F8FAFC",display:"flex",alignItems:"center",gap:8}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(56,189,248,0.12)"}
+                onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(56,189,248,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#38BDF8",flexShrink:0}}>{pt.ini||pt.name.slice(0,2).toUpperCase()}</div>
+                <div>
+                  <div style={{fontWeight:700}}>{pt.name}</div>
+                  <div style={{fontSize:10,color:"#94A3B8"}}>{pt.dob} · {pt.type?.toUpperCase()}</div>
+                </div>
+              </div>
+            ))}
+          </div>}
+        </div>
+        {/* Type + Dentist fields */}
+        {[{l:"Type",k:"type",opts:["Check-up","Filling","Crown","Extraction","Hygiene","Implant","Consultation","Emergency","Recall","Orthodontic"]},{l:"Dentist",k:"dentist",opts:DCOLS}].map(f=>(
           <div key={f.k} style={{marginBottom:10}}>
             <label style={{fontSize:11,fontWeight:600,color:"#CBD5E1",display:"block",marginBottom:4}}>{f.l}</label>
-            {f.opts
-              ?<select value={bForm[f.k]} onChange={e=>setBForm(p=>({...p,[f.k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none"}}>{f.opts.map(o=><option key={o}>{o}</option>)}</select>
-              :<input value={bForm[f.k]} onChange={e=>setBForm(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>}
+            <select value={bForm[f.k]} onChange={e=>setBForm(p=>({...p,[f.k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(56,189,248,0.12)",borderRadius:14,fontSize:12,fontFamily:"inherit",outline:"none"}}>{f.opts.map(o=><option key={o}>{o}</option>)}</select>
           </div>
         ))}
         {/* Duration dropdown */}
@@ -4996,13 +5018,17 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                       const urgentColor=appt.type&&(appt.type.toLowerCase().includes("emergency")||appt.type.toLowerCase().includes("pain"))?"#EF4444":null;
                       const ac=urgentColor||appt.color;
                       const isBeingResized=resizing&&resizing.id===appt.id;
-                      const displayMinH=(isBeingResized&&previewDur!=null)?Math.ceil(previewDur/5)*18-4:rowSpanCount*18-4;
+                      // During drag: absolute-position the card so it can overflow the TD visually
+                      const PX_PER_5MIN=18;
+                      const resizeH=isBeingResized&&previewDur!=null?Math.ceil(previewDur/5)*PX_PER_5MIN:null;
                       return(
                         <>
-                        {/* appointment card — draggable for move, NOT containing the resize handle */}
+                        {/* Wrapper — absolute during resize so card can overflow TD boundary */}
+                        <div style={isBeingResized?{position:"absolute",top:0,left:0,right:0,zIndex:30,height:resizeH,overflow:"hidden",borderRadius:6,boxShadow:`0 4px 16px ${ac}55`}:{position:"relative",height:"100%"}}>
+                        {/* appointment card — draggable for move */}
                         <div draggable onDragStart={(e)=>{if(resizingRef.current){e.preventDefault();return;}setDragging(appt);}} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
                           title={tipLines}
-                          style={{background:ac+"20",borderLeft:"4px solid "+ac,borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:ac,fontWeight:600,height:"100%",minHeight:displayMinH,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${ac}25`}}>
+                          style={{background:ac+"20",borderLeft:"4px solid "+ac,borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:ac,fontWeight:600,height:"100%",minHeight:rowSpanCount*PX_PER_5MIN-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${ac}25`}}>
                           <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
                             <span style={{fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{appt.patient}</span>
                             {isOverdue&&<span title={"Overdue balance: £"+apptPt.balance} style={{fontSize:8,background:"rgba(239,68,68,0.2)",color:"#FCA5A5",borderRadius:3,padding:"0 3px",flexShrink:0,fontWeight:800}}>£!</span>}
@@ -5011,18 +5037,16 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                           <span style={{fontSize:10,opacity:.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</span>
                           {appt.reason&&rowSpanCount>2&&<span style={{fontSize:9,opacity:.65,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontStyle:"italic",fontWeight:400}}>{appt.reason}</span>}
                           {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
+                          {isBeingResized&&<span style={{fontSize:9,fontWeight:800,color:"#fff",background:ac,borderRadius:4,padding:"1px 6px",alignSelf:"flex-start",marginTop:"auto"}}>{previewDur||appt.duration}m</span>}
                         </div>
-                        {/* resize handle — sibling of the draggable div, anchored to bottom of TD.
-                            Being outside the draggable element means browser drag mode never
-                            interferes with document mousemove events during resize. */}
+                        {/* resize handle — absolutely anchored to bottom of wrapper */}
                         <div
                           onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
-                          style={{position:"absolute",bottom:0,left:0,right:0,height:12,cursor:"ns-resize",zIndex:20,display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(transparent,${ac}35)`,borderRadius:"0 0 5px 5px"}}
-                          title="Drag to resize"
+                          style={{position:"absolute",bottom:0,left:0,right:0,height:14,cursor:"ns-resize",zIndex:20,display:"flex",alignItems:"center",justifyContent:"center",background:`linear-gradient(transparent,${ac}55)`,borderRadius:"0 0 5px 5px"}}
+                          title="Drag to resize appointment"
                         >
-                          {isBeingResized
-                            ?<span style={{fontSize:9,fontWeight:800,color:"#fff",background:ac,borderRadius:4,padding:"1px 6px",pointerEvents:"none",letterSpacing:".02em"}}>{previewDur||appt.duration}m</span>
-                            :<div style={{width:30,height:3,borderRadius:3,background:ac+"90",pointerEvents:"none"}}/>}
+                          <div style={{width:36,height:4,borderRadius:4,background:isBeingResized?"#fff":ac+"cc",pointerEvents:"none"}}/>
+                        </div>
                         </div>
                         </>
                       );
