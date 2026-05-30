@@ -178,7 +178,7 @@ const NOW = Date.now(); const M=60000;
 
 // ── Global platform version (updated by Super Admin) ──────────────────────────
 
-let PLATFORM_VERSION={major:2,minor:4,patch:3};
+let PLATFORM_VERSION={major:2,minor:4,patch:4};
 
 const getVersion=()=>`v${PLATFORM_VERSION.major}.${PLATFORM_VERSION.minor}.${PLATFORM_VERSION.patch}`;
 
@@ -1590,53 +1590,6 @@ function LoginScreen({onLogin}){
                 ))}
               </div>
 
-              {/* Quick login demo strip */}
-
-              <div style={{borderTop:"1px solid rgba(56,189,248,0.07)",paddingTop:16}}>
-
-                <div style={{fontSize:9,fontWeight:800,color:"rgba(56,189,248,0.6)",letterSpacing:".12em",textTransform:"uppercase",textAlign:"center",marginBottom:9,letterSpacing:".08em",textTransform:"uppercase"}}>Demo Quick Access</div>
-
-                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
-
-                  {quickUsers.map(u=>{
-
-                    const usr=USERS.find(x=>x.email===u.email);
-
-                    return(
-
-                      <button key={u.email} onClick={()=>quickLogin(u)}
-
-                        style={{padding:"8px 4px",background:u.color+"14",border:`1.5px solid ${u.color}25`,borderRadius:9,cursor:"pointer",fontSize:9,fontWeight:700,color:u.color,display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all .12s"}}
-
-                        onMouseOver={e=>e.currentTarget.style.background=u.color+"28"}
-
-                        onMouseOut={e=>e.currentTarget.style.background=u.color+"14"}
-
-                      >
-
-                        <span style={{fontSize:18}}>{u.icon}</span>
-
-                        <span>{u.label}</span>
-
-                        <span style={{fontSize:7,opacity:.6,fontFamily:"ui-monospace,monospace"}}>{usr?.username}</span>
-
-                      </button>
-
-                    );
-
-                  })}
-
-                </div>
-
-                <div style={{fontSize:10,color:"#CBD5E1",textAlign:"center",marginTop:8}}>
-
-
-
-                  Admin 2FA: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3,color:"#F8FAFC",fontWeight:700}}>123456</code>&nbsp;·&nbsp; PIN examples: <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>9999</code> (Dr. Chen) <code style={{background:"#0F1C34",padding:"1px 5px",borderRadius:3}}>1111</code> (Amy)
-
-                </div>
-
-              </div>
 
             </>}
 
