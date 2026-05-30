@@ -178,7 +178,7 @@ const NOW = Date.now(); const M=60000;
 
 // ── Global platform version (updated by Super Admin) ──────────────────────────
 
-let PLATFORM_VERSION={major:2,minor:4,patch:1};
+let PLATFORM_VERSION={major:2,minor:4,patch:2};
 
 const getVersion=()=>`v${PLATFORM_VERSION.major}.${PLATFORM_VERSION.minor}.${PLATFORM_VERSION.patch}`;
 
@@ -479,6 +479,18 @@ const PATIENTS=[
   {id:"P6",name:"Lisa White",ini:"LW",dob:"02 Feb 1975",nhs:"467 221 8843",phone:"07700 900666",email:"l.white@email.com",addr:"9 Cedar Ave, Southampton SO14 1AB",type:"nhs",dentist:"Dr. S. Patel",balance:150,overdue:true,lastVisit:"7 May 2025",nextAppt:null,alerts:[{id:"AL5",t:"general",title:"Recall Overdue",desc:"Last hygiene appointment 8 months ago."}],medAlerts:[],
 
    ep:{anxiety:3,triggers:["drill_sound","smell_of_surgery"],dentistPref:"female",commsStyle:"detailed",contactPref:"whatsapp",costSensitive:true,extraTime:false,waitNote:"Sensitive to smells — avoid air freshener in surgery",notes:"Always nervous before appointments. Reassure by phone/WhatsApp the day before. Hates the sound of the drill — use headphones if available.",language:"English",flags:["😟 Pre-appointment anxiety","👩 Female dentist","🔊 Sensitive to drill sound","💬 WhatsApp","💰 Cost-conscious"]}},
+
+  {id:"P7",name:"Karen Hughes",ini:"KH",dob:"14 Jun 1968",nhs:"512 334 9901",phone:"07700 900777",email:"k.hughes@email.com",addr:"22 Beech Close, Southampton SO17 3PL",type:"nhs",dentist:"Dr. M. Chen",balance:0,overdue:false,lastVisit:"2 Apr 2025",nextAppt:null,alerts:[],medAlerts:[],ep:{anxiety:1,triggers:[],dentistPref:"none",commsStyle:"brief",contactPref:"email",costSensitive:false,extraTime:false,waitNote:"",notes:"",language:"English",flags:[]}},
+
+  {id:"P8",name:"Michael Brown",ini:"MB",dob:"30 Sep 1979",nhs:"398 012 5567",phone:"07700 900888",email:"m.brown@email.com",addr:"5 Oak Street, Southampton SO15 5RR",type:"private",dentist:"Dr. S. Patel",balance:220,overdue:true,lastVisit:"11 Mar 2025",nextAppt:null,alerts:[{id:"AL6",t:"medical",title:"Latex Allergy",desc:"Use latex-free gloves at all times."}],medAlerts:["LATEX ALLERGY"],ep:{anxiety:2,triggers:[],dentistPref:"none",commsStyle:"brief",contactPref:"sms",costSensitive:false,extraTime:false,waitNote:"",notes:"Prefers morning slots.",language:"English",flags:["⚠️ Latex allergy","🌅 Morning slots"]}},
+
+  {id:"P9",name:"Patricia Walsh",ini:"PW",dob:"08 Jan 1955",nhs:"601 887 2234",phone:"07700 900999",email:"patricia.walsh@email.com",addr:"67 Willow Lane, Southampton SO18 1CD",type:"nhs",dentist:"Amy Grant",balance:0,overdue:false,lastVisit:"20 May 2025",nextAppt:"10 Jun 2025 · 10:00",alerts:[],medAlerts:[],ep:{anxiety:1,triggers:[],dentistPref:"female",commsStyle:"detailed",contactPref:"phone",costSensitive:true,extraTime:true,waitNote:"Elderly — allow extra time",notes:"Hard of hearing, speak clearly. Prefers phone calls to messages.",language:"English",flags:["👩 Female pref","📞 Phone only","👴 Extra time needed"]}},
+
+  {id:"P10",name:"James Patel",ini:"JP",dob:"17 Nov 1992",nhs:"277 443 6678",phone:"07700 900100",email:"james.patel@email.com",addr:"11 Chestnut Rd, Southampton SO14 6TQ",type:"private",dentist:"Dr. S. Patel",balance:0,overdue:false,lastVisit:"5 May 2025",nextAppt:"12 Jun 2025 · 14:00",alerts:[],medAlerts:[],ep:{anxiety:0,triggers:[],dentistPref:"none",commsStyle:"brief",contactPref:"email",costSensitive:false,extraTime:false,waitNote:"",notes:"Teeth whitening enquiry noted.",language:"English",flags:["✨ Whitening interest"]}},
+
+  {id:"P11",name:"Sophie King",ini:"SK",dob:"25 Mar 2001",nhs:"",phone:"07700 900200",email:"s.king@email.com",addr:"3 Ash Grove, Southampton SO16 2XY",type:"private",dentist:"Amy Grant",balance:0,overdue:false,lastVisit:"28 Apr 2025",nextAppt:null,alerts:[],medAlerts:[],ep:{anxiety:4,triggers:["injections","blood"],dentistPref:"female",commsStyle:"detailed",contactPref:"sms",costSensitive:true,extraTime:true,waitNote:"Very anxious — call in straight away",notes:"Young patient, first crown. Reassure thoroughly.",language:"English",flags:["😰 Very anxious","💉 Fears injections","👩 Female pref"]}},
+
+  {id:"P12",name:"George Turner",ini:"GT",dob:"03 Aug 1960",nhs:"544 219 8890",phone:"07700 900300",email:"g.turner@email.com",addr:"88 Maple Court, Southampton SO17 8WZ",type:"nhs",dentist:"Dr. M. Chen",balance:45,overdue:false,lastVisit:"15 Apr 2025",nextAppt:null,alerts:[],medAlerts:[],ep:{anxiety:1,triggers:[],dentistPref:"none",commsStyle:"brief",contactPref:"phone",costSensitive:true,extraTime:false,waitNote:"",notes:"NHS patient on low income — refer to finance options if treatment needed.",language:"English",flags:["💰 Cost-conscious","📞 Phone"]}},
 
 ];
 
