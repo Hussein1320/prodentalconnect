@@ -4334,6 +4334,9 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
 
   const [dragOver,setDragOver]=useState(null);
 
+  const [resizing,setResizing]=useState(null); // {id,startY,startDuration}
+  const resizingRef=useRef(false);
+
   const [ctx,setCtx]=useState(null);const ctxRef=useRef(null);
 
   const [toast,setToast]=useState(null);
@@ -4406,6 +4409,21 @@ function CalendarPage({openPatient,user,waiting,setWaiting}){
   };
 
   useEffect(()=>{if(!ctx)return;const h=e=>{if(ctxRef.current&&!ctxRef.current.contains(e.target))setCtx(null);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[ctx]);
+
+  // ── Appointment resize by dragging bottom edge ────────────────
+  useEffect(()=>{
+    if(!resizing)return;
+    const SNAP_PX=18; // matches the 5-min row height used by the existing grid
+    const onMove=(e)=>{
+      const deltaRows=Math.round((e.clientY-resizing.startY)/SNAP_PX);
+      const newDur=Math.max(5,resizing.startDuration+deltaRows*5);
+      setAppts(p=>p.map(a=>a.id===resizing.id?{...a,duration:newDur}:a));
+    };
+    const onUp=()=>{resizingRef.current=false;setResizing(null);doToast("✓ Duration updated");};
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("mouseup",onUp);
+    return()=>{document.removeEventListener("mousemove",onMove);document.removeEventListener("mouseup",onUp);};
+  },[resizing]);
 
   const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),2200);};
   const isManager=user?.role==="manager"||user?.role==="superadmin";
@@ -4966,7 +4984,8 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                       ].filter(Boolean).join("\n");
                       const urgentColor=appt.type&&(appt.type.toLowerCase().includes("emergency")||appt.type.toLowerCase().includes("pain"))?"#EF4444":null;
                       return(
-                        <div draggable onDragStart={()=>setDragging(appt)} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
+                        <>
+                        <div draggable onDragStart={(e)=>{if(resizingRef.current){e.preventDefault();return;}setDragging(appt);}} onDoubleClick={e=>{e.stopPropagation();openEdit(appt);}}
                           title={tipLines}
                           style={{background:(urgentColor||appt.color)+"20",borderLeft:"4px solid "+(urgentColor||appt.color),borderRadius:6,padding:"5px 8px",fontSize:11,cursor:"pointer",userSelect:"none",color:urgentColor||appt.color,fontWeight:600,height:"100%",minHeight:rowSpanCount*18-4,display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:2,overflow:"hidden",boxShadow:`0 2px 6px ${urgentColor||appt.color}25`}}>
                           <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
@@ -4978,6 +4997,14 @@ const TIMES=[];for(let h=8;h<18;h++)for(let m=0;m<60;m+=5)TIMES.push(`${String(h
                           {appt.reason&&rowSpanCount>2&&<span style={{fontSize:9,opacity:.65,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontStyle:"italic",fontWeight:400}}>{appt.reason}</span>}
                           {rowSpanCount>4&&<span style={{fontSize:9,opacity:.5}}>{appt.duration?""+appt.duration+"m · ":""}{appt.time}</span>}
                         </div>
+                        <div
+                          onMouseDown={e=>{e.stopPropagation();e.preventDefault();resizingRef.current=true;setResizing({id:appt.id,startY:e.clientY,startDuration:appt.duration||30});}}
+                          style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",zIndex:10,display:"flex",alignItems:"center",justifyContent:"center"}}
+                          title="Drag to resize"
+                        >
+                          <div style={{width:22,height:3,borderRadius:2,background:"rgba(255,255,255,0.28)",pointerEvents:"none"}}/>
+                        </div>
+                        </>
                       );
                     })()}
                   </td>
