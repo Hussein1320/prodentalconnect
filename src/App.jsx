@@ -15561,6 +15561,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       renderer.outputColorSpace=THREE.SRGBColorSpace;
       renderer.toneMapping=THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure=1.1;
+      renderer.localClippingEnabled=true;  // required for per-material clipping planes
       renderer.setSize(w,h);
       renderer.domElement.style.cssText="display:block;width:100%;height:100%;";
       mount.appendChild(renderer.domElement);
@@ -15667,7 +15668,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const hasSurf=Object.values(s).some(Boolean);
           if(hasSurf)surfData[pid]=s;
           // Surface-only: apply a faint tint to the whole mesh so tooth is never blank,
-          // then the per-face plane overlay (below) shows the specific surface
+          // Surface-only: faint emissive tint on whole mesh (fallback for edge-on views)
           if(hasSurf&&!data.cond){
             const surfCond=s.o||s.b||s.m||s.d||s.l||null;
             if(surfCond){
@@ -15676,25 +15677,22 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             }
           }
         });
-        // Re-apply mesh colours (only whole-tooth conditions colour the mesh)
+        // Re-apply mesh colours
         R.current.toothMeshes.forEach(mesh=>{
           if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Clean up old surface markers — they may be children of tooth meshes, not scene
-        (R.current.surfMarkers||[]).forEach(m=>{
-          m.removeFromParent?.();
-          m.geometry?.dispose();
-          m.material?.dispose();
-        });
+        // Remove old surface marker children
+        (R.current.surfMarkers||[]).forEach(m=>{m.removeFromParent?.();m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
 
-        // Place flat coloured plane overlays as CHILDREN of each tooth mesh.
-        // depthTest:false ensures they render on top of the tooth face regardless
-        // of depth buffer. Planes are sized from the local geometry bounding box
-        // and positioned just outside each face, so they inherit the correct scale.
-        // Axis convention (detectSurface): Y-up=Occlusal, Z-neg=Buccal, Z-pos=Palatal
+        // Per-surface colouring using clipped mesh clones.
+        // Each surface gets a clone of the tooth mesh with the condition colour material
+        // and per-material THREE.Plane clipping to isolate just that face slab.
+        // Planes are defined in LOCAL geometry space and transformed to camera space
+        // in onBeforeRender — this is the only correct way to clip in local space.
+        // Slab thickness: outer 35% of each face half-extent (~35% of tooth dimension).
         const T=R.current.THREE;
         if(T){
           Object.entries(surfData).forEach(([pid,surfs])=>{
@@ -15706,37 +15704,44 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             bb.getCenter(c);bb.getSize(sz);
             const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            // Push planes 5% outside the bounding box face so they sit above geometry
-            const ox=hx*0.06, oy=hy*0.06, oz=hz*0.06;
 
-            // [position in local space, rotX, rotY, planeWidth, planeHeight]
-            const surfCfg={
-              o:[new T.Vector3(c.x,              c.y+hy+oy, c.z),            -Math.PI/2, 0,                   sz.x*1.05, sz.z*1.05],
-              b:[new T.Vector3(c.x,              c.y,       c.z-hz-oz),      0,           Math.PI,             sz.x*1.05, sz.y*1.05],
-              l:[new T.Vector3(c.x,              c.y,       c.z+hz+oz),      0,           0,                   sz.x*1.05, sz.y*1.05],
-              m:[new T.Vector3(c.x+(isRight?-1:1)*(hx+ox),  c.y, c.z),      0,           (isRight?-1:1)*Math.PI/2, sz.z*1.05, sz.y*1.05],
-              d:[new T.Vector3(c.x+(isRight?1:-1)*(hx+ox),  c.y, c.z),      0,           (isRight?1:-1)*Math.PI/2, sz.z*1.05, sz.y*1.05],
+            // Clip planes in LOCAL space — outer 35% slab of each face
+            // THREE.Plane(normal,d): fragment visible when dot(normal,pos)+d >= 0
+            const surfPlanes={
+              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*0.3))],           // keep y >= c.y+hy*0.3
+              b:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*0.3)],             // keep z <= c.z-hz*0.3
+              l:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*0.3))],           // keep z >= c.z+hz*0.3
+              m:isRight?[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*0.3)]        // keep x <= c.x-hx*0.3
+                       :[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*0.3))],     // keep x >= c.x+hx*0.3
+              d:isRight?[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*0.3))]
+                       :[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*0.3)],
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
-              if(!cond||!surfCfg[s])return;
+              if(!cond||!surfPlanes[s])return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const [pos,rx,ry,pw,ph]=surfCfg[s];
-              const geo=new T.PlaneGeometry(pw,ph);
-              const mat=new T.MeshBasicMaterial({
-                color:new T.Color(hex),
-                transparent:true,opacity:0.75,
-                side:T.DoubleSide,
-                depthTest:false,   // renders on top of tooth face geometry
-                depthWrite:false,
+              const localPlanes=surfPlanes[s];
+
+              const mat=new T.MeshStandardMaterial({
+                color:new T.Color(hex),emissive:new T.Color(hex),
+                emissiveIntensity:0.55,roughness:0.4,metalness:0.0,
+                clippingPlanes:[],clipShadows:false,
               });
-              const plane=new T.Mesh(geo,mat);
-              plane.position.copy(pos);
-              plane.rotation.set(rx,ry,0);
-              plane.renderOrder=10;
-              mesh.add(plane);
-              R.current.surfMarkers.push(plane);
+              const clone=new T.Mesh(mesh.geometry,mat);
+              clone.renderOrder=1;
+
+              // Every frame: transform local clip planes → world → camera space
+              clone.onBeforeRender=(_r,_s,camera)=>{
+                mat.clippingPlanes=localPlanes.map(lp=>
+                  lp.clone()
+                    .applyMatrix4(mesh.matrixWorld)
+                    .applyMatrix4(camera.matrixWorldInverse)
+                );
+              };
+
+              mesh.add(clone);
+              R.current.surfMarkers.push(clone);
             });
           });
         }
