@@ -15512,6 +15512,21 @@ const _COND_3D={
   extraction:0xDC2626,implant:0x16A34A,bridge:0x0D9488,veneer:0xDB2777,
   decay:0x991B1B,fracture:0xEA580C,watch:0xD97706,mobility:0xCA8A04,
 };
+const _COND_3D_HEX={
+  miss:"#475569",filling:"#3B82F6",crown:"#D97706",rct:"#7C3AED",
+  extraction:"#DC2626",implant:"#16A34A",bridge:"#0D9488",veneer:"#DB2777",
+  decay:"#991B1B",fracture:"#EA580C",watch:"#D97706",mobility:"#CA8A04",
+};
+const _COND_3D_LABEL={
+  miss:"Missing",filling:"Filling",crown:"Crown",rct:"Root Canal",
+  extraction:"Extraction",implant:"Implant",bridge:"Bridge",veneer:"Veneer",
+  decay:"Decay",fracture:"Fracture",watch:"Watch",mobility:"Mobility",
+};
+const _COND_3D_ICON={
+  miss:"✕",filling:"◆",crown:"♛",rct:"⬦",
+  extraction:"✕",implant:"⬛",bridge:"⬌",veneer:"◈",
+  decay:"●",fracture:"⚡",watch:"◉",mobility:"↕",
+};
 
 function Tooth3DView({onToothClick,selFDI,teethData}){
   const mountRef=useRef(null);
@@ -15522,6 +15537,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
   const [modelKey,setModelKey]=useState("stained");
   const cbRef=useRef(onToothClick);
   useEffect(()=>{cbRef.current=onToothClick;},[onToothClick]);
+  const [condLabels,setCondLabels]=useState([]);
 
   // Main setup — runs once
   useEffect(()=>{
@@ -15580,23 +15596,40 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
         raycaster.setFromCamera(mouse,camera);
         const hits=raycaster.intersectObjects(R.current.toothMeshes,false);
-        return hits.length?hits[0].object:null;
+        return hits.length?hits[0]:null;
+      };
+      const detectSurface=(mesh,intersection)=>{
+        const T=R.current.THREE;
+        const localPt=mesh.worldToLocal(intersection.point.clone());
+        if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+        const bb=mesh.geometry.boundingBox;
+        const c=new T.Vector3(),s=new T.Vector3();
+        bb.getCenter(c);bb.getSize(s);
+        if(!s.x||!s.y||!s.z)return null;
+        const nx=(localPt.x-c.x)/(s.x*0.5);
+        const ny=(localPt.y-c.y)/(s.y*0.5);
+        const nz=(localPt.z-c.z)/(s.z*0.5);
+        const pid=mesh.userData.palmerID||'';
+        const isRight=pid.startsWith('UR')||pid.startsWith('LR');
+        const ax=Math.abs(nx),ay=Math.abs(ny),az=Math.abs(nz);
+        if(ay>=ax&&ay>=az)return 'o';
+        if(ax>=az)return(isRight?nx<0:nx>0)?'m':'d';
+        return nz<0?'b':'l';
       };
       const getCondBase=(mesh)=>{
         const{origMats,toothConds,THREE:T}=R.current;
         const pid=mesh.userData.palmerID;
-        const hex=toothConds[pid];
+        const entry=toothConds[pid];
         const orig=origMats.get(mesh)||mesh.material;
         const m=orig.clone();
-        if(hex!=null){
-          const col=new T.Color(hex);
-          m.map=null;          // remove texture so solid colour dominates
+        if(entry){
+          const col=new T.Color(entry.hex);
+          m.map=null;
           m.color=col;
           m.emissive=col;
           m.emissiveIntensity=0.45;
           m.roughness=0.55;m.metalness=0.0;
-          // miss=grey(0x475569) and extraction=red(0xDC2626) look "removed"
-          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.28;}
+          if(entry.key==="miss"||entry.key==="extraction"){m.transparent=true;m.opacity=0.28;}
           else{m.transparent=false;m.opacity=1;}
         }
         return m;
@@ -15612,12 +15645,13 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       };
       R.current.syncConditions=(td)=>{
         if(!td||!R.current.toothMap)return;
+        // toothConds maps palmerID → {hex, key}
         R.current.toothConds={};
         Object.entries(td).forEach(([fdi,data])=>{
           if(!data.cond)return;
           const pid=_fdiToPalmer(parseInt(fdi));
           const hex=_COND_3D[data.cond];
-          if(pid&&hex!=null)R.current.toothConds[pid]=hex;
+          if(pid&&hex!=null)R.current.toothConds[pid]={hex,key:data.cond};
         });
         R.current.toothMeshes.forEach(mesh=>{
           if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
@@ -15628,7 +15662,8 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
 
       renderer.domElement.addEventListener("mousemove",e=>{
         if(cancelled)return;
-        const hit=getHit(e);
+        const inter=getHit(e);
+        const hit=inter?.object||null;
         const{hoveredMesh,selectedMesh}=R.current;
         if(hit!==hoveredMesh){
           if(hoveredMesh&&hoveredMesh!==selectedMesh)applyHL(hoveredMesh,"none");
@@ -15645,22 +15680,45 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       });
       renderer.domElement.addEventListener("click",e=>{
         if(cancelled)return;
-        const hit=getHit(e);
+        const inter=getHit(e);
+        const hit=inter?.object||null;
         const{selectedMesh}=R.current;
         if(selectedMesh)applyHL(selectedMesh,"none");
         R.current.selectedMesh=hit;
         if(hit){
           applyHL(hit,"select");
           const fdi=_palmerToFDI(hit.userData.palmerID);
-          if(fdi)cbRef.current?.(fdi);
+          const surf=inter?detectSurface(hit,inter):null;
+          if(fdi)cbRef.current?.(fdi,surf);
         }
       });
 
+      const _tmp3=new THREE.Vector3();
+      const projectMesh=(mesh)=>{
+        mesh.getWorldPosition(_tmp3);
+        _tmp3.project(camera);
+        const w=renderer.domElement.clientWidth||renderer.domElement.width;
+        const h=renderer.domElement.clientHeight||renderer.domElement.height;
+        return{x:(_tmp3.x+1)/2*w,y:(1-_tmp3.y)/2*h,z:_tmp3.z};
+      };
+      let _labelFrame=0;
       const animate=()=>{
         if(cancelled)return;
         R.current.af=requestAnimationFrame(animate);
         controls.update();
         renderer.render(scene,camera);
+        // Update label positions every 3 frames
+        if(++_labelFrame%3===0&&R.current.toothMap){
+          const labels=[];
+          Object.entries(R.current.toothConds||{}).forEach(([pid,entry])=>{
+            const mesh=R.current.toothMap[pid];
+            if(!mesh)return;
+            const p=projectMesh(mesh);
+            if(p.z>1)return;
+            labels.push({pid,key:entry.key,x:p.x,y:p.y});
+          });
+          setCondLabels(labels);
+        }
       };
       animate();
 
@@ -15787,6 +15845,23 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             <span style={{fontSize:10,color:"#64748B"}}>Ensure /public/Teeth_Stained.glb is present</span>
           </div>
         )}
+        {/* Condition label overlays projected from 3D tooth positions */}
+        {status==="ready"&&condLabels.map(({pid,key,x,y})=>{
+          const col=_COND_3D_HEX[key]||"#64748b";
+          const lbl=_COND_3D_LABEL[key]||key;
+          const icon=_COND_3D_ICON[key]||"●";
+          return(
+            <div key={pid} style={{position:"absolute",left:x,top:y-28,transform:"translateX(-50%)",pointerEvents:"none",zIndex:3,
+              display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+              <div style={{background:"rgba(5,10,20,0.88)",border:`1px solid ${col}`,borderRadius:6,padding:"2px 6px",
+                fontSize:9,fontWeight:700,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",
+                backdropFilter:"blur(4px)",lineHeight:1.4,letterSpacing:".03em"}}>
+                {icon} {lbl}
+              </div>
+              <div style={{width:1,height:6,background:col,opacity:0.6}}/>
+            </div>
+          );
+        })}
         {hovered&&status==="ready"&&(
           <div style={{position:"absolute",bottom:14,left:14,background:"rgba(7,14,26,0.94)",border:"1px solid #00c8ff",borderRadius:8,padding:"6px 12px",pointerEvents:"none",zIndex:4,backdropFilter:"blur(8px)"}}>
             <div style={{fontSize:16,fontWeight:600,color:"#00c8ff",fontFamily:"ui-monospace,monospace"}}>{hovered}</div>
@@ -16284,7 +16359,7 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>}
 
-      {chartMode==="3d"&&<Tooth3DView onToothClick={n=>{toggleTooth(n,null);setRightTab("tooth");}} selFDI={selTooth} teethData={teeth}/>}
+      {chartMode==="3d"&&<Tooth3DView onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}} selFDI={selTooth} teethData={teeth}/>}
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
