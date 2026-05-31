@@ -15666,15 +15666,22 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Clean up old surface markers
-        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry?.dispose();m.material?.dispose();});
+        // Clean up old surface markers — they may be children of tooth meshes, not scene
+        (R.current.surfMarkers||[]).forEach(m=>{
+          m.removeFromParent?.();
+          m.geometry?.dispose();
+          m.material?.dispose();
+        });
         R.current.surfMarkers=[];
 
-        // Place per-surface sphere markers at the correct face of each tooth
-        // Axis convention from detectSurface: Y-up=Occlusal, Z-neg=Buccal, Z-pos=Palatal, X=Mesial/Distal
+        // Place flat coloured plane overlays as CHILDREN of each tooth mesh.
+        // Because they are children, they inherit the mesh's world transform (including
+        // the 0.2 group scale) automatically — no world-space sizing errors.
+        // Axis convention from detectSurface (geometry local space):
+        //   Y-up = Occlusal   |  Z-neg = Buccal  |  Z-pos = Palatal
+        //   X-axis = Mesial (toward arch front) / Distal (toward arch back)
         const T=R.current.THREE;
         if(T){
-          const sharedGeos={};
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
@@ -15684,35 +15691,36 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             bb.getCenter(c);bb.getSize(sz);
             const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            // Local-space face centre for each surface (72% toward the face)
-            const facePos={
-              o:new T.Vector3(c.x,         c.y+hy*0.72, c.z),
-              b:new T.Vector3(c.x,         c.y,         c.z-hz*0.72),
-              l:new T.Vector3(c.x,         c.y,         c.z+hz*0.72),
-              m:new T.Vector3(c.x+(isRight?-1:1)*hx*0.72, c.y, c.z),
-              d:new T.Vector3(c.x+(isRight?1:-1)*hx*0.72, c.y, c.z),
+            const EPS=0.02; // tiny outward offset so overlay sits just above surface
+
+            // Plane config per surface: [localPos, eulerX, eulerY, planeW, planeH]
+            const surfCfg={
+              o:[new T.Vector3(c.x, c.y+hy+EPS, c.z), -Math.PI/2, 0,      sz.x, sz.z],
+              b:[new T.Vector3(c.x, c.y, c.z-hz-EPS), 0,           Math.PI, sz.x, sz.y],
+              l:[new T.Vector3(c.x, c.y, c.z+hz+EPS), 0,           0,       sz.x, sz.y],
+              m:[new T.Vector3(c.x+(isRight?-hx:hx)*(1+EPS/hx), c.y, c.z),
+                 0, (isRight?-1:1)*Math.PI/2, sz.z, sz.y],
+              d:[new T.Vector3(c.x+(isRight?hx:-hx)*(1+EPS/hx), c.y, c.z),
+                 0, (isRight?1:-1)*Math.PI/2, sz.z, sz.y],
             };
-            // Sphere radius: ~35% of the smaller horizontal half-extent
-            const r=Math.max(Math.min(hx,hz)*0.38, 0.012);
-            const gk=r.toFixed(5);
-            if(!sharedGeos[gk])sharedGeos[gk]=new T.SphereGeometry(r,10,8);
-            const geo=sharedGeos[gk];
+
             Object.entries(surfs).forEach(([s,cond])=>{
-              if(!cond||!facePos[s])return;
+              if(!cond||!surfCfg[s])return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const wp=mesh.localToWorld(facePos[s].clone());
-              const mat=new T.MeshStandardMaterial({
+              const [pos,rx,ry,pw,ph]=surfCfg[s];
+              const geo=new T.PlaneGeometry(pw,ph);
+              const mat=new T.MeshBasicMaterial({
                 color:new T.Color(hex),
-                emissive:new T.Color(hex),
-                emissiveIntensity:0.7,
-                roughness:0.25,metalness:0.0,
+                transparent:true,opacity:0.72,
+                side:T.DoubleSide,depthWrite:false,
               });
-              const sphere=new T.Mesh(geo,mat);
-              sphere.position.copy(wp);
-              sphere.renderOrder=2;
-              scene.add(sphere);
-              R.current.surfMarkers.push(sphere);
+              const plane=new T.Mesh(geo,mat);
+              plane.position.copy(pos);
+              plane.rotation.set(rx,ry,0);
+              plane.renderOrder=3;
+              mesh.add(plane);          // child of tooth mesh → correct world transform
+              R.current.surfMarkers.push(plane);
             });
           });
         }
