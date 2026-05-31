@@ -15544,9 +15544,10 @@ function Tooth3DView({onToothClick,selFDI}){
       mount.appendChild(renderer.domElement);
 
       const controls=new OrbitControls(camera,renderer.domElement);
-      controls.enableDamping=true;controls.dampingFactor=0.06;
+      controls.enableDamping=true;controls.dampingFactor=0.04;
       controls.minDistance=1;controls.maxDistance=100;
       controls.target.set(0,0,0);
+      controls.autoRotate=true;controls.autoRotateSpeed=0.6;
 
       scene.add(new THREE.AmbientLight(0xffffff,1.2));
       const d1=new THREE.DirectionalLight(0xfff5f0,2.5);d1.position.set(2,4,3);scene.add(d1);
@@ -15617,9 +15618,26 @@ function Tooth3DView({onToothClick,selFDI}){
         }
       });
 
+      // Pause auto-rotate while user is interacting; resume after 3 s idle
+      let idleTimer=null;
+      const stopRotate=()=>{
+        controls.autoRotate=false;
+        clearTimeout(idleTimer);
+        idleTimer=setTimeout(()=>{controls.autoRotate=true;},3000);
+      };
+      renderer.domElement.addEventListener("pointerdown",stopRotate);
+      renderer.domElement.addEventListener("wheel",stopRotate,{passive:true});
+
+      const clock=new THREE.Clock();
       const animate=()=>{
         if(cancelled)return;
         R.current.af=requestAnimationFrame(animate);
+        const t=clock.getElapsedTime();
+        // Subtle float — gentle Y bob + very slight tilt
+        if(R.current.modelGroup){
+          R.current.modelGroup.position.y=Math.sin(t*0.55)*0.025;
+          R.current.modelGroup.rotation.z=Math.sin(t*0.35)*0.008;
+        }
         controls.update();
         renderer.render(scene,camera);
       };
@@ -15687,6 +15705,7 @@ function Tooth3DView({onToothClick,selFDI}){
       await R.current.loadModel("stained");
 
       R.current.cleanup=()=>{
+        clearTimeout(idleTimer);
         ro.disconnect();
         cancelAnimationFrame(R.current.af);
         controls.dispose();
