@@ -16420,30 +16420,70 @@ function DentalWorkspace({patient,user}){
               {selTeeth.length>1&&<div style={{fontSize:10,color:"#2563FF",background:"#2563FF"+"15",padding:"3px 8px",borderRadius:5}}>Multi-select: {selTeeth.join(", ")}</div>}
             </div>
 
-            {/* B. Interactive 5-surface diagram */}
+            {/* B. Interactive 5-surface cross diagram */}
             <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1.6fr 1fr",gridTemplateRows:"80px 80px 80px",gap:4,width:"100%"}}>
-                {surfList.map(s=>{
-                  const cond=recSurfaces[s.id];
-                  const isSel=selSurfaces.has(s.id);
-                  const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
-                  return(
-                    <button key={s.id}
-                      onClick={e=>{e.stopPropagation();toggleSurf(s.id);}}
-                      style={{gridArea:s.gridArea,borderRadius:8,border:`2px solid ${isSel?"#2563FF":col||"rgba(80,140,255,0.2)"}`,background:isSel?"rgba(37,99,255,0.25)":col?col+"22":"#132238",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,position:"relative",transition:"all .15s"}}>
-                      {cond&&<span style={{position:"absolute",top:4,right:4,width:7,height:7,borderRadius:50,background:col||"#64748b"}}/>}
-                      <span style={{fontSize:20,fontWeight:900,color:isSel?"#60A5FA":col||"#64748b",lineHeight:1}}>{s.short}</span>
-                      <span style={{fontSize:9,color:isSel?"#93C5FD":col?"rgba(255,255,255,0.6)":"#64748b",fontWeight:600}}>{s.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{marginTop:8,fontSize:10,color:"#64748b",textAlign:"center",fontStyle:"italic"}}>
-                {selSurfList.length>0
-                  ?`Selected: ${selSurfList.map(s=>surfList.find(x=>x.id===s)?.label||s).join(", ")}`
-                  :"Tap a surface zone above"}
-              </div>
+              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
+              {(()=>{
+                const zones=[
+                  {id:"b",label:"Buccal",   d:"M36,2 L84,2 L84,36 L36,36 Z"},
+                  {id:"m",label:"Mesial",   d:"M2,36 L36,36 L36,84 L2,84 Z"},
+                  {id:"o",label:"Occlusal", d:"M36,36 L84,36 L84,84 L36,84 Z"},
+                  {id:"d",label:"Distal",   d:"M84,36 L118,36 L118,84 L84,84 Z"},
+                  {id:"l",label:"Lingual",  d:"M36,84 L84,84 L84,118 L36,118 Z"},
+                ];
+                const lp={b:[60,19],m:[19,60],o:[60,60],d:[101,60],l:[60,101]};
+                return(
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                    <svg viewBox="0 0 120 120" width="170" height="170" style={{overflow:"visible",display:"block"}}>
+                      <defs>
+                        <filter id="sfglow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                      </defs>
+                      {/* outer dashed outline */}
+                      <rect x="2" y="2" width="116" height="116" rx="6" fill="none" stroke="rgba(80,140,255,0.2)" strokeWidth="1" strokeDasharray="3 3"/>
+                      {zones.map(({id,label,d})=>{
+                        const cond=recSurfaces[id];
+                        const isSel=selSurfaces.has(id);
+                        const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
+                        const fill=isSel?"rgba(37,99,255,0.5)":col?col+"55":"rgba(19,34,56,0.95)";
+                        const stroke=isSel?"#60A5FA":col||"rgba(80,140,255,0.35)";
+                        const [lx,ly]=lp[id];
+                        return(
+                          <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}>
+                            <path d={d} fill={fill} stroke={stroke} strokeWidth={isSel?2.5:1.5}
+                              filter={isSel?"url(#sfglow)":undefined}/>
+                            <text x={lx} y={id==="o"?ly+1:ly-5} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={id==="o"?18:12} fontWeight={800}
+                              fill={isSel?"#93C5FD":col||"#94A3B8"}
+                              style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none"}}>
+                              {label[0]}
+                            </text>
+                            {id!=="o"&&<text x={lx} y={ly+9} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={7.5} fontWeight={500}
+                              fill={isSel?"#60A5FA":col?"rgba(255,255,255,0.6)":"#475569"}
+                              style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
+                              {label}
+                            </text>}
+                            {cond&&<circle cx={lx+(id==="b"?14:id==="l"?14:id==="m"?0:id==="d"?0:14)} cy={ly+(id==="b"?-10:id==="l"?10:id==="m"?-14:id==="d"?-14:0)} r={4.5} fill={col||"#64748b"} opacity={0.9}/>}
+                          </g>
+                        );
+                      })}
+                      {/* center label */}
+                      <text x="60" y="62" textAnchor="middle" dominantBaseline="middle"
+                        fontSize={9} fill={selSurfaces.has("o")?"#93C5FD":"#475569"}
+                        style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
+                        Occlusal
+                      </text>
+                    </svg>
+                    <div style={{fontSize:10,color:"#64748b",textAlign:"center",fontStyle:"italic",marginTop:-4}}>
+                      {selSurfList.length>0
+                        ?`Selected: ${selSurfList.map(s=>zones.find(x=>x.id===s)?.label||s).join(", ")}`
+                        :"Tap a surface zone above"}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* C. Record Findings */}
