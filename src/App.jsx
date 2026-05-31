@@ -15706,13 +15706,20 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         if(T){
           R.current.scene.updateMatrixWorld(true);
 
-          // Arch centre — centroid of all tooth world positions in XZ
-          const archCtr=new T.Vector3();
+          // Arch centres — computed PER ARCH so upper/lower are independent
           const _tmp=new T.Vector3();
-          const toothList=Object.values(R.current.toothMap||{});
-          toothList.forEach(m=>{m.getWorldPosition(_tmp);archCtr.x+=_tmp.x;archCtr.z+=_tmp.z;});
-          if(toothList.length)archCtr.divideScalar(toothList.length);
-          archCtr.y=0;
+          const toothMap=R.current.toothMap||{};
+          const _archCtr=(prefix1,prefix2)=>{
+            const c=new T.Vector3();let n=0;
+            Object.entries(toothMap).forEach(([pid,m])=>{
+              if(!pid.startsWith(prefix1)&&!pid.startsWith(prefix2))return;
+              m.getWorldPosition(_tmp);c.x+=_tmp.x;c.z+=_tmp.z;n++;
+            });
+            if(n)c.divideScalar(n);
+            c.y=0;return c;
+          };
+          const upperCtr=_archCtr('UR','UL');
+          const lowerCtr=_archCtr('LR','LL');
 
           // Build a sub-geometry from triangles whose world normal aligns with targetDir
           const extractSurfGeo=(geometry,matrixWorld,targetDir,threshold)=>{
@@ -15752,7 +15759,9 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             if(!mesh)return;
 
             mesh.getWorldPosition(_tmp);
-            // Buccal direction = outward radial from arch centre
+            // Use the correct per-arch centre so upper/lower teeth get the right radial direction
+            const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
+            const archCtr=isUpper?upperCtr:lowerCtr;
             const radXZ=new T.Vector3(_tmp.x-archCtr.x,0,_tmp.z-archCtr.z);
             if(radXZ.lengthSq()<0.0001)radXZ.set(0,0,1);
             radXZ.normalize();
@@ -15762,11 +15771,11 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
             const surfDirs={
-              o:{dir:new T.Vector3(0,1,0),   thr:0.4},
-              b:{dir:radXZ.clone(),           thr:0.3},
-              l:{dir:radXZ.clone().negate(),  thr:0.3},
-              m:{dir:mesialDir.clone(),       thr:0.3},
-              d:{dir:mesialDir.clone().negate(),thr:0.3},
+              o:{dir:new T.Vector3(0,1,0),   thr:0.5},
+              b:{dir:radXZ.clone(),           thr:0.4},
+              l:{dir:radXZ.clone().negate(),  thr:0.4},
+              m:{dir:mesialDir.clone(),       thr:0.4},
+              d:{dir:mesialDir.clone().negate(),thr:0.4},
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
@@ -15783,7 +15792,6 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
                 polygonOffset:true,
                 polygonOffsetFactor:-4,
                 polygonOffsetUnits:-4,
-                side:T.DoubleSide,
               });
               const clone=new T.Mesh(geo,mat);
               clone.renderOrder=2;
