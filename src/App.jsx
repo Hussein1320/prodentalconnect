@@ -16086,7 +16086,7 @@ function DentalWorkspace({patient,user}){
     setSelSurfaces(new Set());
     setRightTab("tooth");
   };
-  const toggleSurf=s=>setSelSurfaces(p=>{const n=new Set(p);n.has(s)?n.delete(s):n.add(s);return n;});
+  const toggleSurf=s=>setSelSurfaces(p=>{if(p.has(s)&&p.size===1)return new Set();return new Set([s]);});
 
   const addTx=(code)=>{
     if(!hasSel){toast("Select one or more teeth first");return;}
