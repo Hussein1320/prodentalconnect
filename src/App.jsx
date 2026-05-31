@@ -16737,6 +16737,7 @@ function DentalWorkspace({patient,user}){
                               selSurfList.forEach(s=>{newSurfaces[s]=next;});
                               return {...p,[selTooth]:{...cur,surfaces:newSurfaces}};
                             });
+                            setSelSurfaces(new Set()); // clear selection after applying so next click starts fresh
                             toast(next?`✓ ${label} — ${selSurfList.map(s=>s.toUpperCase()).join("+")} surface(s) on ${palmerName(selTooth)}`:`Cleared surface(s) on ${palmerName(selTooth)}`);
                           }else{
                             const next=isActiveWhole?null:k;
