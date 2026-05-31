@@ -15733,28 +15733,19 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
               if(hex==null)return;
               const localPlanes=surfPlanes[s];
 
-              // Pre-compute initial camera-space planes so Three.js compiles the
-              // correct shader variant (with clipping) from the very first draw call
-              const cam=R.current.camera;
-              const initialPlanes=cam?localPlanes.map(lp=>
-                lp.clone().applyMatrix4(mesh.matrixWorld).applyMatrix4(cam.matrixWorldInverse)
-              ):localPlanes.map(lp=>lp.clone());
+              // material.clippingPlanes must be in WORLD space — Three.js
+              // internally multiplies by camera.matrixWorldInverse before uploading
+              // to the shader. Applying the camera transform here would double it,
+              // causing the planes to rotate with the camera instead of the tooth.
+              const worldPlanes=localPlanes.map(lp=>
+                lp.clone().applyMatrix4(mesh.matrixWorld)
+              );
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
                 emissiveIntensity:0.55,roughness:0.4,metalness:0.0,
-                clippingPlanes:initialPlanes,clipShadows:false,
+                clippingPlanes:worldPlanes,clipShadows:false,
               });
               const clone=new T.Mesh(mesh.geometry,mat);
-              clone.renderOrder=1;
-
-              // Every frame: transform local clip planes → world → camera space
-              clone.onBeforeRender=(_r,_s,camera)=>{
-                mat.clippingPlanes=localPlanes.map(lp=>
-                  lp.clone()
-                    .applyMatrix4(mesh.matrixWorld)
-                    .applyMatrix4(camera.matrixWorldInverse)
-                );
-              };
 
               mesh.add(clone);
               R.current.surfMarkers.push(clone);
