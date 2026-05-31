@@ -15645,19 +15645,27 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       };
       R.current.syncConditions=(td)=>{
         if(!td||!R.current.toothMap)return;
-        // toothConds: whole-tooth conditions only (these colour the full mesh)
         R.current.toothConds={};
-        // surfData: per-tooth surface conditions for sphere markers + labels
         const surfData={};
         Object.entries(td).forEach(([fdi,data])=>{
           const pid=_fdiToPalmer(parseInt(fdi));
           if(!pid)return;
+          // Whole-tooth condition takes priority
           if(data.cond){
             const hex=_COND_3D[data.cond];
             if(hex!=null)R.current.toothConds[pid]={hex,key:data.cond};
           }
           const s=data.surfaces||{};
-          if(Object.values(s).some(Boolean))surfData[pid]=s;
+          const hasSurf=Object.values(s).some(Boolean);
+          if(hasSurf)surfData[pid]=s;
+          // Surface conditions also colour the mesh (whole-tooth dominates if both exist)
+          if(hasSurf&&!data.cond){
+            const surfCond=s.o||s.b||s.m||s.d||s.l||null;
+            if(surfCond){
+              const hex=_COND_3D[surfCond];
+              if(hex!=null)R.current.toothConds[pid]={hex,key:surfCond};
+            }
+          }
         });
         // Re-apply mesh colours
         R.current.toothMeshes.forEach(mesh=>{
