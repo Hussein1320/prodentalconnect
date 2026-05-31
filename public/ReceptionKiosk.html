@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ProDentalConnect — iPad Check-In</title>
+<style>
+* {margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body {min-height:100vh;background:linear-gradient(135deg,#071428,#132238);color:#F8FAFC;display:flex;align-items:center;justify-content:center;padding:20px}
+.card {background:#132238;border:1.5px solid rgba(80,140,255,0.25);border-radius:24px;padding:48px;width:100%;max-width:520px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.5)}
+.logo {font-size:32px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#3B82F6,#38BDF8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle {font-size:13px;color:#94A3B8;margin-bottom:32px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700}
+h1 {font-size:24px;font-weight:800;margin-bottom:8px}
+p {font-size:14px;color:#94A3B8;line-height:1.6;margin-bottom:24px}
+input {width:100%;padding:14px 18px;background:#0F1C34;border:1.5px solid rgba(80,140,255,0.25);border-radius:14px;color:#F8FAFC;font-size:16px;outline:none;margin-bottom:12px;font-family:inherit}
+input:focus {border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,0.15)}
+button {width:100%;padding:14px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border:none;border-radius:14px;color:white;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(59,130,246,0.3);font-family:inherit}
+button:hover {opacity:0.92}
+.options {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.opt {padding:18px 12px;background:rgba(80,140,255,0.08);border:1px solid rgba(80,140,255,0.2);border-radius:14px;cursor:pointer;font-size:14px;font-weight:600;text-align:center;color:#F8FAFC}
+.opt:hover {background:rgba(80,140,255,0.15)}
+.foot {margin-top:32px;font-size:11px;color:#64748B}
+.status {display:none;padding:14px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;font-size:13px;color:#22C55E;margin-top:14px}
+.status.show {display:block}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="logo">🦷 ProDentalConnect</div>
+<div class="subtitle">iPad Check-In · Reception Tablet</div>
+<h1>Welcome 👋</h1>
+<p>Please enter your name or appointment reference to check in for your appointment.</p>
+<input id="ref" placeholder="Your name or appointment number" autofocus/>
+<button onclick="checkin()">Check In →</button>
+<div class="status" id="msg"></div>
+<div class="options">
+<div class="opt" onclick="alert('Walk-in registered. A receptionist will be with you shortly.')">📝 Walk-in</div>
+<div class="opt" onclick="alert('Emergency patient noted. The dental team has been alerted.')">🚨 Emergency</div>
+</div>
+<div class="foot">Test mode · This is a demo of the iPad Check-In screen</div>
+</div>
+<script>
+function checkin(){
+  const v=document.getElementById('ref').value.trim();
+  const msg=document.getElementById('msg');
+  if(!v){msg.textContent='Please enter your name or appointment reference';msg.className='status show';msg.style.background='rgba(239,68,68,0.1)';msg.style.borderColor='rgba(239,68,68,0.3)';msg.style.color='#EF4444';return;}
+  msg.textContent='✓ Checked in successfully! Take a seat — '+v+'. You will be called shortly.';
+  msg.className='status show';
+  msg.style.background='rgba(34,197,94,0.1)';
+  msg.style.borderColor='rgba(34,197,94,0.3)';
+  msg.style.color='#22C55E';
+  document.getElementById('ref').value='';
+}
+document.getElementById('ref').addEventListener('keydown',e=>{if(e.key==='Enter')checkin();});
+</script>
+</body>
+</html>
