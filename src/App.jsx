@@ -15668,6 +15668,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         // Remove old surface markers
         (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
         R.current.surfMarkers=[];
+        R.current.surfData=surfData;
         const T2=R.current.THREE;
         const _up=new T2.Vector3(0,0,1);
         scene.updateMatrixWorld(true);
@@ -15694,13 +15695,13 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             const df=surfDefs[s];
             const geo=new T2.PlaneGeometry(df.w,df.h,1,1);
             const mat=new T2.MeshBasicMaterial({
-              color:new T2.Color(hex),transparent:true,opacity:0.78,
-              side:T2.DoubleSide,depthTest:true,depthWrite:false,
+              color:new T2.Color(hex),transparent:true,opacity:0.88,
+              side:T2.DoubleSide,depthTest:false,depthWrite:false,
             });
             const plane=new T2.Mesh(geo,mat);
             plane.position.copy(df.pos);
             plane.quaternion.copy(new T2.Quaternion().setFromUnitVectors(_up,df.norm));
-            plane.renderOrder=3;
+            plane.renderOrder=10;
             scene.add(plane);
             R.current.surfMarkers.push(plane);
           });
@@ -15757,12 +15758,28 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         // Update label positions every 3 frames
         if(++_labelFrame%3===0&&R.current.toothMap){
           const labels=[];
+          const seen=new Set();
+          // Whole-tooth condition labels
           Object.entries(R.current.toothConds||{}).forEach(([pid,entry])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
             const p=projectMesh(mesh);
             if(p.z>1)return;
-            labels.push({pid,key:entry.key,x:p.x,y:p.y});
+            seen.add(pid);
+            labels.push({pid,key:entry.key,x:p.x,y:p.y,surfs:null});
+          });
+          // Surface-only condition labels
+          Object.entries(R.current.surfData||{}).forEach(([pid,surfs])=>{
+            if(seen.has(pid))return; // already labelled by whole-tooth
+            const mesh=R.current.toothMap[pid];
+            if(!mesh)return;
+            const p=projectMesh(mesh);
+            if(p.z>1)return;
+            // pick first surface condition as the label key
+            const firstCond=surfs.o||surfs.b||surfs.m||surfs.d||surfs.l||null;
+            if(!firstCond)return;
+            const surfAbbrs=Object.entries(surfs).filter(([,v])=>v).map(([s])=>s.toUpperCase()).join('+');
+            labels.push({pid,key:firstCond,x:p.x,y:p.y,surfs:surfAbbrs});
           });
           setCondLabels(labels);
         }
@@ -15894,19 +15911,19 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           </div>
         )}
         {/* Condition label overlays projected from 3D tooth positions */}
-        {status==="ready"&&condLabels.map(({pid,key,x,y})=>{
+        {status==="ready"&&condLabels.map(({pid,key,x,y,surfs})=>{
           const col=_COND_3D_HEX[key]||"#64748b";
           const lbl=_COND_3D_LABEL[key]||key;
           const icon=_COND_3D_ICON[key]||"●";
           return(
-            <div key={pid} style={{position:"absolute",left:x,top:y-28,transform:"translateX(-50%)",pointerEvents:"none",zIndex:3,
+            <div key={pid} style={{position:"absolute",left:x,top:y-32,transform:"translateX(-50%)",pointerEvents:"none",zIndex:11,
               display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-              <div style={{background:"rgba(5,10,20,0.88)",border:`1px solid ${col}`,borderRadius:6,padding:"2px 6px",
+              <div style={{background:"rgba(5,10,20,0.92)",border:`1.5px solid ${col}`,borderRadius:6,padding:"3px 7px",
                 fontSize:9,fontWeight:700,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",
-                backdropFilter:"blur(4px)",lineHeight:1.4,letterSpacing:".03em"}}>
-                {icon} {lbl}
+                backdropFilter:"blur(6px)",lineHeight:1.4,letterSpacing:".03em",boxShadow:`0 0 6px ${col}44`}}>
+                {icon} {lbl}{surfs&&<span style={{opacity:0.7}}> — {surfs}</span>}
               </div>
-              <div style={{width:1,height:6,background:col,opacity:0.6}}/>
+              <div style={{width:1,height:8,background:col,opacity:0.7}}/>
             </div>
           );
         })}
