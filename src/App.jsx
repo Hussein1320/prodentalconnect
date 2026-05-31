@@ -15531,8 +15531,8 @@ function Tooth3DView({onToothClick,selFDI}){
 
       const w=mount.clientWidth||700,h=mount.clientHeight||450;
       const scene=new THREE.Scene();
-      const camera=new THREE.PerspectiveCamera(35,w/h,0.01,100);
-      camera.position.set(0,2,8);
+      const camera=new THREE.PerspectiveCamera(35,w/h,0.01,1000);
+      camera.position.set(0,0,10);
 
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
       renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -15545,7 +15545,7 @@ function Tooth3DView({onToothClick,selFDI}){
 
       const controls=new OrbitControls(camera,renderer.domElement);
       controls.enableDamping=true;controls.dampingFactor=0.06;
-      controls.minDistance=2;controls.maxDistance=18;
+      controls.minDistance=1;controls.maxDistance=100;
       controls.target.set(0,0,0);
 
       scene.add(new THREE.AmbientLight(0xffffff,1.2));
@@ -15659,6 +15659,24 @@ function Tooth3DView({onToothClick,selFDI}){
               }
             });
             R.current.toothMeshes=meshes;R.current.origMats=mats;R.current.toothMap=map;
+
+            // Fit camera to model bounding box so it fills the viewport on any screen
+            const sceneBB=new THREE.Box3().setFromObject(group);
+            const sceneCenter=new THREE.Vector3();
+            const sceneSize=new THREE.Vector3();
+            sceneBB.getCenter(sceneCenter);
+            sceneBB.getSize(sceneSize);
+            const maxDim=Math.max(sceneSize.x,sceneSize.y,sceneSize.z);
+            const fovRad=camera.fov*(Math.PI/180);
+            const fitDist=(maxDim/2)/Math.tan(fovRad/2)*1.35;
+            camera.position.set(sceneCenter.x,sceneCenter.y,sceneCenter.z+fitDist);
+            camera.near=fitDist/100;camera.far=fitDist*10;
+            camera.updateProjectionMatrix();
+            controls.target.copy(sceneCenter);
+            controls.minDistance=fitDist*0.3;
+            controls.maxDistance=fitDist*4;
+            controls.update();
+
             if(!cancelled)setStatus("ready");
             resolve();
           },(xhr)=>{if(xhr.total&&!cancelled)setLoadPct(Math.round(xhr.loaded/xhr.total*100));},
