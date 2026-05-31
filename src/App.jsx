@@ -15698,21 +15698,15 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         (R.current.surfMarkers||[]).forEach(m=>{m.removeFromParent?.();m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
 
-        // Per-surface colouring using clipped mesh clones.
-        // Each surface gets a clone of the tooth mesh with the condition colour material
-        // and per-material THREE.Plane clipping to isolate just that face slab.
-        // Planes are defined in LOCAL geometry space and transformed to camera space
-        // in onBeforeRender — this is the only correct way to clip in local space.
-        // Surface clipping — all planes defined directly in WORLD SPACE.
-        // Buccal/Palatal direction is computed radially from the arch centre so
-        // it works for every tooth regardless of its local axis orientation.
+        // Per-surface colouring using vertex-normal-filtered sub-geometries.
+        // For each surface condition we build a new BufferGeometry containing ONLY
+        // the triangles whose world-space face normal points in the surface direction.
+        // This is arch-invariant and handles any mesh orientation correctly.
         const T=R.current.THREE;
         if(T){
-          // Ensure all matrixWorld values are current before reading world positions
           R.current.scene.updateMatrixWorld(true);
 
-          // Compute arch centre as centroid of all tooth world positions in XZ —
-          // more reliable than controls.target which can be anywhere in Y
+          // Arch centre — centroid of all tooth world positions in XZ
           const archCtr=new T.Vector3();
           const _tmp=new T.Vector3();
           const toothList=Object.values(R.current.toothMap||{});
@@ -15720,61 +15714,78 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
           if(toothList.length)archCtr.divideScalar(toothList.length);
           archCtr.y=0;
 
+          // Build a sub-geometry from triangles whose world normal aligns with targetDir
+          const extractSurfGeo=(geometry,matrixWorld,targetDir,threshold)=>{
+            const pos=geometry.attributes.position;
+            const norm=geometry.attributes.normal;
+            if(!norm||!pos)return null;
+            const normalMatrix=new T.Matrix3().getNormalMatrix(matrixWorld);
+            const idx=geometry.index;
+            const count=idx?idx.count:pos.count;
+            const newPos=[],newNorm=[];
+            const wn=new T.Vector3();
+            for(let i=0;i<count;i+=3){
+              const ia=idx?idx.getX(i):i;
+              const ib=idx?idx.getX(i+1):i+1;
+              const ic=idx?idx.getX(i+2):i+2;
+              // average face normal in local space then transform to world
+              wn.set(
+                (norm.getX(ia)+norm.getX(ib)+norm.getX(ic))/3,
+                (norm.getY(ia)+norm.getY(ib)+norm.getY(ic))/3,
+                (norm.getZ(ia)+norm.getZ(ib)+norm.getZ(ic))/3
+              ).applyMatrix3(normalMatrix).normalize();
+              if(wn.dot(targetDir)<threshold)continue;
+              for(const v of[ia,ib,ic]){
+                newPos.push(pos.getX(v),pos.getY(v),pos.getZ(v));
+                newNorm.push(norm.getX(v),norm.getY(v),norm.getZ(v));
+              }
+            }
+            if(!newPos.length)return null;
+            const geo=new T.BufferGeometry();
+            geo.setAttribute('position',new T.BufferAttribute(new Float32Array(newPos),3));
+            geo.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
+            return geo;
+          };
+
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
 
-            // World-space bounding box — accounts for group scale + any mesh rotation
-            const wbb=new T.Box3().setFromObject(mesh);
-            const wc=new T.Vector3();wbb.getCenter(wc);
-            const ws=new T.Vector3();wbb.getSize(ws);
-            const hx=ws.x/2,hy=ws.y/2,hz=ws.z/2;
-
-            // ── Buccal/Palatal: radial outward from arch centre in the XZ plane ──
-            const radXZ=new T.Vector3(wc.x-archCtr.x,0,wc.z-archCtr.z);
+            mesh.getWorldPosition(_tmp);
+            // Buccal direction = outward radial from arch centre
+            const radXZ=new T.Vector3(_tmp.x-archCtr.x,0,_tmp.z-archCtr.z);
             if(radXZ.lengthSq()<0.0001)radXZ.set(0,0,1);
             radXZ.normalize();
-            // AABB half-extent projected onto radial direction (conservative upper bound)
-            const hBP=Math.abs(radXZ.x)*hx+Math.abs(radXZ.z)*hz;
 
-            // ── Occlusal: world Y-up ──
-            // ── Mesial/Distal: world X axis (right-side teeth mirrored) ──
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            const S=0.64; // slab factor  (1-2S = inner-cut fraction, gives ~18% slab)
+            // Mesial direction in world X: right-side mesial faces left (-X), left-side faces right (+X)
+            const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
-            // Helper: build a world-space half-space plane
-            // Keeps fragments where dot(n,x)+d >= 0
-            const wp=(n,d)=>new T.Plane(n.clone(),d);
-
-            const surfPlanes={
-              // Occlusal — keep the top 18% in world Y
-              o:[wp(new T.Vector3(0,1,0),-(wc.y+hy*S))],
-              // Buccal — outer (far from arch centre) 18%
-              b:[wp(radXZ,-(wc.dot(radXZ)+hBP*(2*S-1)))],
-              // Palatal — inner (close to arch centre) 18%
-              l:[wp(radXZ.clone().negate(),wc.dot(radXZ)-hBP*(2*S-1))],
-              // Mesial/Distal — world X axis
-              m:isRight?[wp(new T.Vector3(-1,0,0), wc.x-hx*S)]
-                       :[wp(new T.Vector3( 1,0,0),-(wc.x+hx*S))],
-              d:isRight?[wp(new T.Vector3( 1,0,0),-(wc.x+hx*S))]
-                       :[wp(new T.Vector3(-1,0,0), wc.x-hx*S)],
+            const surfDirs={
+              o:{dir:new T.Vector3(0,1,0),   thr:0.4},
+              b:{dir:radXZ.clone(),           thr:0.3},
+              l:{dir:radXZ.clone().negate(),  thr:0.3},
+              m:{dir:mesialDir.clone(),       thr:0.3},
+              d:{dir:mesialDir.clone().negate(),thr:0.3},
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
-              if(!cond||!surfPlanes[s])return;
+              if(!cond||!surfDirs[s])return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
+              const{dir,thr}=surfDirs[s];
+              const geo=extractSurfGeo(mesh.geometry,mesh.matrixWorld,dir,thr);
+              if(!geo)return;
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
-                emissiveIntensity:0.55,roughness:0.4,metalness:0.0,
-                clippingPlanes:surfPlanes[s], // already world-space
-                clipShadows:false,
+                emissiveIntensity:0.7,roughness:0.4,metalness:0.0,
                 depthWrite:false,
                 polygonOffset:true,
-                polygonOffsetFactor:-2,
-                polygonOffsetUnits:-2,
+                polygonOffsetFactor:-4,
+                polygonOffsetUnits:-4,
+                side:T.DoubleSide,
               });
-              const clone=new T.Mesh(mesh.geometry,mat);
+              const clone=new T.Mesh(geo,mat);
               clone.renderOrder=2;
               mesh.add(clone);
               R.current.surfMarkers.push(clone);
