@@ -15665,31 +15665,27 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Remove old surface markers (stored as {plane, parentMesh})
-        (R.current.surfMarkers||[]).forEach(({plane,parentMesh})=>{
-          parentMesh.remove(plane);
-          plane.geometry.dispose();plane.material.dispose();
-        });
+        // Remove old surface markers
+        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
         R.current.surfMarkers=[];
-        // Add oriented flat-disc markers as children of each tooth mesh
-        // (so they inherit the group scale + rotation automatically)
         const T2=R.current.THREE;
-        const up=new T2.Vector3(0,0,1); // PlaneGeometry default normal is +Z
+        const _up=new T2.Vector3(0,0,1);
+        scene.updateMatrixWorld(true);
         Object.entries(surfData).forEach(([pid,surfs])=>{
           const mesh=R.current.toothMap[pid];
-          if(!mesh||!mesh.geometry)return;
-          if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
-          const bb=mesh.geometry.boundingBox;
-          const cx=(bb.min.x+bb.max.x)/2,cy=(bb.min.y+bb.max.y)/2,cz=(bb.min.z+bb.max.z)/2;
-          const sx=bb.max.x-bb.min.x,sy=bb.max.y-bb.min.y,sz=bb.max.z-bb.min.z;
-          const gap=0.15;
-          // All coords/sizes are in the mesh's LOCAL space
+          if(!mesh)return;
+          // World-space bounding box — correctly accounts for all parent transforms
+          const wbb=new T2.Box3().setFromObject(mesh);
+          const wc=wbb.getCenter(new T2.Vector3());
+          const ws=wbb.getSize(new T2.Vector3());
+          const g=0.004; // tiny gap in world units
+          // surface centre in world space + world normal + plane size in world units
           const surfDefs={
-            o:{pt:[cx,bb.max.y+gap,cz], norm:[0,1,0],  w:sx*0.85,h:sz*0.85},
-            b:{pt:[cx,cy,bb.min.z-gap], norm:[0,0,-1], w:sx*0.75,h:sy*0.65},
-            l:{pt:[cx,cy,bb.max.z+gap], norm:[0,0,1],  w:sx*0.75,h:sy*0.65},
-            m:{pt:[bb.min.x-gap,cy,cz], norm:[-1,0,0], w:sz*0.75,h:sy*0.65},
-            d:{pt:[bb.max.x+gap,cy,cz], norm:[1,0,0],  w:sz*0.75,h:sy*0.65},
+            o:{pos:new T2.Vector3(wc.x,wbb.max.y+g,wc.z), norm:new T2.Vector3(0,1,0),  w:ws.x*0.9,h:ws.z*0.9},
+            b:{pos:new T2.Vector3(wc.x,wc.y,wbb.min.z-g), norm:new T2.Vector3(0,0,-1), w:ws.x*0.8,h:ws.y*0.7},
+            l:{pos:new T2.Vector3(wc.x,wc.y,wbb.max.z+g), norm:new T2.Vector3(0,0,1),  w:ws.x*0.8,h:ws.y*0.7},
+            m:{pos:new T2.Vector3(wbb.min.x-g,wc.y,wc.z), norm:new T2.Vector3(-1,0,0), w:ws.z*0.8,h:ws.y*0.7},
+            d:{pos:new T2.Vector3(wbb.max.x+g,wc.y,wc.z), norm:new T2.Vector3(1,0,0),  w:ws.z*0.8,h:ws.y*0.7},
           };
           Object.entries(surfs).forEach(([s,cond])=>{
             if(!cond||!surfDefs[s])return;
@@ -15698,16 +15694,15 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             const df=surfDefs[s];
             const geo=new T2.PlaneGeometry(df.w,df.h,1,1);
             const mat=new T2.MeshBasicMaterial({
-              color:new T2.Color(hex),transparent:true,opacity:0.80,
-              depthTest:true,side:T2.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,
+              color:new T2.Color(hex),transparent:true,opacity:0.78,
+              side:T2.DoubleSide,depthTest:true,depthWrite:false,
             });
             const plane=new T2.Mesh(geo,mat);
-            plane.position.set(...df.pt);
-            const norm=new T2.Vector3(...df.norm);
-            plane.quaternion.copy(new T2.Quaternion().setFromUnitVectors(up,norm));
+            plane.position.copy(df.pos);
+            plane.quaternion.copy(new T2.Quaternion().setFromUnitVectors(_up,df.norm));
             plane.renderOrder=3;
-            mesh.add(plane); // child of tooth — inherits group scale
-            R.current.surfMarkers.push({plane,parentMesh:mesh});
+            scene.add(plane);
+            R.current.surfMarkers.push(plane);
           });
         });
       };
