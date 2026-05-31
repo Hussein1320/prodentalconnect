@@ -15707,20 +15707,6 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         if(T){
           R.current.scene.updateMatrixWorld(true);
 
-          // Separate arch centroids in XZ so upper/lower are independent
-          const _wp=new T.Vector3();
-          const toothMap=R.current.toothMap||{};
-          const archCentre=(p1,p2)=>{
-            const c=new T.Vector3();let n=0;
-            Object.entries(toothMap).forEach(([id,m])=>{
-              if(!id.startsWith(p1)&&!id.startsWith(p2))return;
-              m.getWorldPosition(_wp);c.x+=_wp.x;c.z+=_wp.z;n++;
-            });
-            if(n)c.divideScalar(n);c.y=0;return c;
-          };
-          const uCtr=archCentre('UR','UL');
-          const lCtr=archCentre('LR','LL');
-
           // Slab extractor: keep triangles whose world centroid is in the
           // outer SLAB fraction of the tooth along axisDir.
           // axisDir must be a unit vector pointing TOWARD the target surface.
@@ -15757,65 +15743,31 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             return g;
           };
 
-          // Auto-detect which Y direction is the occlusal face (has more coverage)
-          const pickOccDir=(geo,mw,wc,hy)=>{
-            let upCount=0,dnCount=0;
-            const pos=geo.attributes.position;const idx=geo.index;
-            if(!pos)return new T.Vector3(0,1,0);
-            const count=idx?idx.count:pos.count;
-            const ct=new T.Vector3();
-            const cutUp=wc.y+(1-2*SLAB)*hy;
-            const cutDn=-wc.y+(1-2*SLAB)*hy; // equiv: -centroid.y >= -wc.y+(1-2S)*hy
-            for(let i=0;i<count;i+=3){
-              const ia=idx?idx.getX(i):i;
-              const ib=idx?idx.getX(i+1):i+1;
-              const ic=idx?idx.getX(i+2):i+2;
-              ct.set(
-                (pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,
-                (pos.getY(ia)+pos.getY(ib)+pos.getY(ic))/3,
-                (pos.getZ(ia)+pos.getZ(ib)+pos.getZ(ic))/3
-              ).applyMatrix4(mw);
-              if(ct.y>=cutUp)upCount++;
-              else if(-ct.y>=cutDn)dnCount++;
-            }
-            return upCount>=dnCount?new T.Vector3(0,1,0):new T.Vector3(0,-1,0);
-          };
-
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
-
-            mesh.getWorldPosition(_wp);
-            const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
-            const archCtr=isUpper?uCtr:lCtr;
-
-            // Buccal = outward radial from arch centre in XZ plane
-            const buccal=new T.Vector3(_wp.x-archCtr.x,0,_wp.z-archCtr.z);
-            if(buccal.lengthSq()<1e-6)buccal.set(0,0,1);
-            buccal.normalize();
-
-            // Mesial faces toward the dental midline
-            // Right-side: midline is to the left (-X), Left-side: midline is to the right (+X)
-            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            const mesial=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
             // World bounding box for half-extents
             const wbb=new T.Box3().setFromObject(mesh);
             const wc=new T.Vector3();wbb.getCenter(wc);
             const ws=new T.Vector3();wbb.getSize(ws);
-            const hBP=(Math.abs(buccal.x)*ws.x+Math.abs(buccal.z)*ws.z)/2;
-            const hMD=ws.x/2;
-            const hY=ws.y/2;
+            const hX=ws.x/2, hY=ws.y/2, hZ=ws.z/2;
 
-            const occDir=pickOccDir(mesh.geometry,mesh.matrixWorld,wc,hY);
+            // M works via fixed world axes — use the same pattern for all surfaces.
+            // Tooth meshes in the GLB are axis-aligned (not rotated to follow arch curvature):
+            //   Mesial/Distal  → world X
+            //   Buccal/Palatal → world Z  (buccal faces camera at +Z)
+            //   Occlusal       → world Y  (upper arch bites downward -Y, lower bites upward +Y)
+            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
+            const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
+            const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
-            // Surface axis map — each entry is {dir: unit Vector3, half: half-extent}
             const axes={
-              b:{dir:buccal.clone(),          half:hBP},
-              l:{dir:buccal.clone().negate(), half:hBP},
-              m:{dir:mesial.clone(),          half:hMD},
-              d:{dir:mesial.clone().negate(), half:hMD},
-              o:{dir:occDir,                  half:hY},
+              b:{dir:new T.Vector3(0,0,1),          half:hZ}, // Buccal  → +Z (toward camera)
+              l:{dir:new T.Vector3(0,0,-1),          half:hZ}, // Palatal → -Z (away from camera)
+              m:{dir:mesialDir.clone(),              half:hX}, // Mesial  → toward midline (±X)
+              d:{dir:mesialDir.clone().negate(),     half:hX}, // Distal  → away from midline
+              o:{dir:new T.Vector3(0,isUpper?-1:1,0),half:hY},// Occlusal→ upper bites -Y, lower +Y
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
