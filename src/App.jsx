@@ -15698,102 +15698,140 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         (R.current.surfMarkers||[]).forEach(m=>{m.removeFromParent?.();m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
 
-        // Per-surface colouring using vertex-normal-filtered sub-geometries.
-        // For each surface condition we build a new BufferGeometry containing ONLY
-        // the triangles whose world-space face normal points in the surface direction.
-        // This is arch-invariant and handles any mesh orientation correctly.
+        // ── Surface markers: vertex-position slab approach ──────────────────────
+        // The diagram layout (B=top, M=left, O=centre, D=right, P=bottom) maps to
+        // world-space axes computed per tooth from the arch geometry.
+        // We slice the tooth's bounding box and keep only the triangles whose
+        // world-space centroid falls inside the corresponding slab.
         const T=R.current.THREE;
         if(T){
           R.current.scene.updateMatrixWorld(true);
 
-          // Arch centres — computed PER ARCH so upper/lower are independent
-          const _tmp=new T.Vector3();
+          // Separate arch centroids in XZ so upper/lower are independent
+          const _wp=new T.Vector3();
           const toothMap=R.current.toothMap||{};
-          const _archCtr=(prefix1,prefix2)=>{
+          const archCentre=(p1,p2)=>{
             const c=new T.Vector3();let n=0;
-            Object.entries(toothMap).forEach(([pid,m])=>{
-              if(!pid.startsWith(prefix1)&&!pid.startsWith(prefix2))return;
-              m.getWorldPosition(_tmp);c.x+=_tmp.x;c.z+=_tmp.z;n++;
+            Object.entries(toothMap).forEach(([id,m])=>{
+              if(!id.startsWith(p1)&&!id.startsWith(p2))return;
+              m.getWorldPosition(_wp);c.x+=_wp.x;c.z+=_wp.z;n++;
             });
-            if(n)c.divideScalar(n);
-            c.y=0;return c;
+            if(n)c.divideScalar(n);c.y=0;return c;
           };
-          const upperCtr=_archCtr('UR','UL');
-          const lowerCtr=_archCtr('LR','LL');
+          const uCtr=archCentre('UR','UL');
+          const lCtr=archCentre('LR','LL');
 
-          // Build a sub-geometry from triangles whose world normal aligns with targetDir
-          const extractSurfGeo=(geometry,matrixWorld,targetDir,threshold)=>{
-            const pos=geometry.attributes.position;
-            const norm=geometry.attributes.normal;
-            if(!norm||!pos)return null;
-            const normalMatrix=new T.Matrix3().getNormalMatrix(matrixWorld);
-            const idx=geometry.index;
+          // Slab extractor: keep triangles whose world centroid is in the
+          // outer SLAB fraction of the tooth along axisDir.
+          // axisDir must be a unit vector pointing TOWARD the target surface.
+          const SLAB=0.4; // outer 40% of each face
+          const slabGeo=(geo,mw,axisDir,wCentre,wHalf)=>{
+            const pos=geo.attributes.position;
+            const nrm=geo.attributes.normal;
+            if(!pos)return null;
+            const idx=geo.index;
             const count=idx?idx.count:pos.count;
             const newPos=[],newNorm=[];
-            const wn=new T.Vector3();
+            const ct=new T.Vector3();
+            const cProj=wCentre.dot(axisDir);
+            const cut=cProj+(1-2*SLAB)*wHalf; // centroid must exceed this
             for(let i=0;i<count;i+=3){
               const ia=idx?idx.getX(i):i;
               const ib=idx?idx.getX(i+1):i+1;
               const ic=idx?idx.getX(i+2):i+2;
-              // average face normal in local space then transform to world
-              wn.set(
-                (norm.getX(ia)+norm.getX(ib)+norm.getX(ic))/3,
-                (norm.getY(ia)+norm.getY(ib)+norm.getY(ic))/3,
-                (norm.getZ(ia)+norm.getZ(ib)+norm.getZ(ic))/3
-              ).applyMatrix3(normalMatrix).normalize();
-              if(wn.dot(targetDir)<threshold)continue;
+              ct.set(
+                (pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,
+                (pos.getY(ia)+pos.getY(ib)+pos.getY(ic))/3,
+                (pos.getZ(ia)+pos.getZ(ib)+pos.getZ(ic))/3
+              ).applyMatrix4(mw);
+              if(ct.dot(axisDir)<cut)continue;
               for(const v of[ia,ib,ic]){
                 newPos.push(pos.getX(v),pos.getY(v),pos.getZ(v));
-                newNorm.push(norm.getX(v),norm.getY(v),norm.getZ(v));
+                if(nrm)newNorm.push(nrm.getX(v),nrm.getY(v),nrm.getZ(v));
               }
             }
             if(!newPos.length)return null;
-            const geo=new T.BufferGeometry();
-            geo.setAttribute('position',new T.BufferAttribute(new Float32Array(newPos),3));
-            geo.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
-            return geo;
+            const g=new T.BufferGeometry();
+            g.setAttribute('position',new T.BufferAttribute(new Float32Array(newPos),3));
+            if(newNorm.length)g.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
+            return g;
+          };
+
+          // Auto-detect which Y direction is the occlusal face (has more coverage)
+          const pickOccDir=(geo,mw,wc,hy)=>{
+            let upCount=0,dnCount=0;
+            const pos=geo.attributes.position;const idx=geo.index;
+            if(!pos)return new T.Vector3(0,1,0);
+            const count=idx?idx.count:pos.count;
+            const ct=new T.Vector3();
+            const cutUp=wc.y+(1-2*SLAB)*hy;
+            const cutDn=-wc.y+(1-2*SLAB)*hy; // equiv: -centroid.y >= -wc.y+(1-2S)*hy
+            for(let i=0;i<count;i+=3){
+              const ia=idx?idx.getX(i):i;
+              const ib=idx?idx.getX(i+1):i+1;
+              const ic=idx?idx.getX(i+2):i+2;
+              ct.set(
+                (pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,
+                (pos.getY(ia)+pos.getY(ib)+pos.getY(ic))/3,
+                (pos.getZ(ia)+pos.getZ(ib)+pos.getZ(ic))/3
+              ).applyMatrix4(mw);
+              if(ct.y>=cutUp)upCount++;
+              else if(-ct.y>=cutDn)dnCount++;
+            }
+            return upCount>=dnCount?new T.Vector3(0,1,0):new T.Vector3(0,-1,0);
           };
 
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
 
-            mesh.getWorldPosition(_tmp);
-            // Use the correct per-arch centre so upper/lower teeth get the right radial direction
+            mesh.getWorldPosition(_wp);
             const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
-            const archCtr=isUpper?upperCtr:lowerCtr;
-            const radXZ=new T.Vector3(_tmp.x-archCtr.x,0,_tmp.z-archCtr.z);
-            if(radXZ.lengthSq()<0.0001)radXZ.set(0,0,1);
-            radXZ.normalize();
+            const archCtr=isUpper?uCtr:lCtr;
 
+            // Buccal = outward radial from arch centre in XZ plane
+            const buccal=new T.Vector3(_wp.x-archCtr.x,0,_wp.z-archCtr.z);
+            if(buccal.lengthSq()<1e-6)buccal.set(0,0,1);
+            buccal.normalize();
+
+            // Mesial faces toward the dental midline
+            // Right-side: midline is to the left (-X), Left-side: midline is to the right (+X)
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            // Mesial direction in world X: right-side mesial faces left (-X), left-side faces right (+X)
-            const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
+            const mesial=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
-            const surfDirs={
-              o:{dir:new T.Vector3(0,1,0),   thr:0.5},
-              b:{dir:radXZ.clone(),           thr:0.4},
-              l:{dir:radXZ.clone().negate(),  thr:0.4},
-              m:{dir:mesialDir.clone(),       thr:0.4},
-              d:{dir:mesialDir.clone().negate(),thr:0.4},
+            // World bounding box for half-extents
+            const wbb=new T.Box3().setFromObject(mesh);
+            const wc=new T.Vector3();wbb.getCenter(wc);
+            const ws=new T.Vector3();wbb.getSize(ws);
+            const hBP=(Math.abs(buccal.x)*ws.x+Math.abs(buccal.z)*ws.z)/2;
+            const hMD=ws.x/2;
+            const hY=ws.y/2;
+
+            const occDir=pickOccDir(mesh.geometry,mesh.matrixWorld,wc,hY);
+
+            // Surface axis map — each entry is {dir: unit Vector3, half: half-extent}
+            const axes={
+              b:{dir:buccal.clone(),          half:hBP},
+              l:{dir:buccal.clone().negate(), half:hBP},
+              m:{dir:mesial.clone(),          half:hMD},
+              d:{dir:mesial.clone().negate(), half:hMD},
+              o:{dir:occDir,                  half:hY},
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
-              if(!cond||!surfDirs[s])return;
+              if(!cond||!axes[s])return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const{dir,thr}=surfDirs[s];
-              const geo=extractSurfGeo(mesh.geometry,mesh.matrixWorld,dir,thr);
-              if(!geo)return;
+              const{dir,half}=axes[s];
+              const g=slabGeo(mesh.geometry,mesh.matrixWorld,dir,wc,half);
+              if(!g)return;
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
-                emissiveIntensity:0.7,roughness:0.4,metalness:0.0,
+                emissiveIntensity:0.8,roughness:0.3,metalness:0.0,
                 depthWrite:false,
-                polygonOffset:true,
-                polygonOffsetFactor:-4,
-                polygonOffsetUnits:-4,
+                polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6,
               });
-              const clone=new T.Mesh(geo,mat);
+              const clone=new T.Mesh(g,mat);
               clone.renderOrder=2;
               mesh.add(clone);
               R.current.surfMarkers.push(clone);
