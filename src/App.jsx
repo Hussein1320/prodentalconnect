@@ -15665,47 +15665,10 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Remove old surface markers
-        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
+        // Clean up any old 3D surface markers
+        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
-        R.current.surfData=surfData;
-        const T2=R.current.THREE;
-        const _up=new T2.Vector3(0,0,1);
-        scene.updateMatrixWorld(true);
-        Object.entries(surfData).forEach(([pid,surfs])=>{
-          const mesh=R.current.toothMap[pid];
-          if(!mesh)return;
-          // World-space bounding box — correctly accounts for all parent transforms
-          const wbb=new T2.Box3().setFromObject(mesh);
-          const wc=wbb.getCenter(new T2.Vector3());
-          const ws=wbb.getSize(new T2.Vector3());
-          const g=0.004; // tiny gap in world units
-          // surface centre in world space + world normal + plane size in world units
-          const surfDefs={
-            o:{pos:new T2.Vector3(wc.x,wbb.max.y+g,wc.z), norm:new T2.Vector3(0,1,0),  w:ws.x*0.9,h:ws.z*0.9},
-            b:{pos:new T2.Vector3(wc.x,wc.y,wbb.min.z-g), norm:new T2.Vector3(0,0,-1), w:ws.x*0.8,h:ws.y*0.7},
-            l:{pos:new T2.Vector3(wc.x,wc.y,wbb.max.z+g), norm:new T2.Vector3(0,0,1),  w:ws.x*0.8,h:ws.y*0.7},
-            m:{pos:new T2.Vector3(wbb.min.x-g,wc.y,wc.z), norm:new T2.Vector3(-1,0,0), w:ws.z*0.8,h:ws.y*0.7},
-            d:{pos:new T2.Vector3(wbb.max.x+g,wc.y,wc.z), norm:new T2.Vector3(1,0,0),  w:ws.z*0.8,h:ws.y*0.7},
-          };
-          Object.entries(surfs).forEach(([s,cond])=>{
-            if(!cond||!surfDefs[s])return;
-            const hex=_COND_3D[cond];
-            if(hex==null)return;
-            const df=surfDefs[s];
-            const geo=new T2.PlaneGeometry(df.w,df.h,1,1);
-            const mat=new T2.MeshBasicMaterial({
-              color:new T2.Color(hex),transparent:true,opacity:0.88,
-              side:T2.DoubleSide,depthTest:false,depthWrite:false,
-            });
-            const plane=new T2.Mesh(geo,mat);
-            plane.position.copy(df.pos);
-            plane.quaternion.copy(new T2.Quaternion().setFromUnitVectors(_up,df.norm));
-            plane.renderOrder=10;
-            scene.add(plane);
-            R.current.surfMarkers.push(plane);
-          });
-        });
+        R.current.surfData=surfData; // used by label overlay system
       };
 
       renderer.domElement.addEventListener("mousemove",e=>{
@@ -15915,15 +15878,29 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const col=_COND_3D_HEX[key]||"#64748b";
           const lbl=_COND_3D_LABEL[key]||key;
           const icon=_COND_3D_ICON[key]||"●";
+          const surfParts=surfs?surfs.split('+'):[];
+          const surfNames={B:"Buccal",M:"Mesial",O:"Occlusal",D:"Distal",L:"Lingual"};
           return(
-            <div key={pid} style={{position:"absolute",left:x,top:y-32,transform:"translateX(-50%)",pointerEvents:"none",zIndex:11,
-              display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-              <div style={{background:"rgba(5,10,20,0.92)",border:`1.5px solid ${col}`,borderRadius:6,padding:"3px 7px",
-                fontSize:9,fontWeight:700,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",
-                backdropFilter:"blur(6px)",lineHeight:1.4,letterSpacing:".03em",boxShadow:`0 0 6px ${col}44`}}>
-                {icon} {lbl}{surfs&&<span style={{opacity:0.7}}> — {surfs}</span>}
+            <div key={pid} style={{position:"absolute",left:x,top:y-36,transform:"translateX(-50%)",pointerEvents:"none",zIndex:11,
+              display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+              <div style={{background:"rgba(4,8,20,0.95)",border:`1.5px solid ${col}`,borderRadius:7,padding:"4px 8px",
+                display:"flex",flexDirection:"column",gap:2,
+                backdropFilter:"blur(8px)",boxShadow:`0 2px 12px ${col}55,0 0 0 1px rgba(0,0,0,0.4)`}}>
+                <div style={{fontSize:10,fontWeight:800,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",letterSpacing:".03em"}}>
+                  {icon} {lbl}
+                </div>
+                {surfParts.length>0&&(
+                  <div style={{display:"flex",gap:3,flexWrap:"wrap",maxWidth:110}}>
+                    {surfParts.map(s=>(
+                      <span key={s} style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,
+                        background:col+"33",border:`1px solid ${col}88`,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap"}}>
+                        {s} {surfNames[s]||""}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{width:1,height:8,background:col,opacity:0.7}}/>
+              <div style={{width:1.5,height:8,background:col,opacity:0.7}}/>
             </div>
           );
         })}
