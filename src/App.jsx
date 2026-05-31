@@ -15625,7 +15625,8 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         const ax=Math.abs(nx),ay=Math.abs(ny),az=Math.abs(nz);
         if(ay>=ax&&ay>=az)return 'o';
         if(ax>=az)return(isRight?nx<0:nx>0)?'m':'d';
-        return nz<0?'b':'l';
+        // Camera is at +Z → buccal surfaces face +Z, palatal face −Z
+        return nz>0?'b':'l';
       };
       const getCondBase=(mesh)=>{
         const{origMats,toothConds,THREE:T}=R.current;
@@ -15720,9 +15721,9 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             // With f=0.18: cut at c+half*0.64. Larger constant = thinner slab.
             const S=0.64; // slab factor — tune to adjust thickness
             const surfPlanes={
-              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*S))],   // top face
-              b:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*S)],     // front/buccal
-              l:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*S))],   // back/palatal
+              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*S))],   // top/occlusal (y+)
+              b:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*S))],   // buccal = +Z (toward camera)
+              l:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*S)],     // palatal = −Z (away from camera)
               m:isRight?[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*S)]
                        :[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))],
               d:isRight?[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))]
