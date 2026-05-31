@@ -15648,10 +15648,21 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         // toothConds maps palmerID → {hex, key}
         R.current.toothConds={};
         Object.entries(td).forEach(([fdi,data])=>{
-          if(!data.cond)return;
           const pid=_fdiToPalmer(parseInt(fdi));
-          const hex=_COND_3D[data.cond];
-          if(pid&&hex!=null)R.current.toothConds[pid]={hex,key:data.cond};
+          if(!pid)return;
+          // Whole-tooth condition takes priority
+          if(data.cond){
+            const hex=_COND_3D[data.cond];
+            if(hex!=null)R.current.toothConds[pid]={hex,key:data.cond};
+            return;
+          }
+          // Surface conditions — use whichever surface has a condition (occlusal priority)
+          const s=data.surfaces||{};
+          const surfCond=s.o||s.b||s.m||s.d||s.l||null;
+          if(surfCond){
+            const hex=_COND_3D[surfCond];
+            if(hex!=null)R.current.toothConds[pid]={hex,key:surfCond};
+          }
         });
         R.current.toothMeshes.forEach(mesh=>{
           if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
