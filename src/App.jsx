@@ -15576,7 +15576,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       const fill=new THREE.PointLight(0xffffff,0.8,30);fill.position.set(0,-3,2);scene.add(fill);
 
       R.current={THREE,GLTFLoader,scene,camera,renderer,controls,
-        toothMeshes:[],origMats:new Map(),toothMap:{},toothConds:{},
+        toothMeshes:[],origMats:new Map(),toothMap:{},toothConds:{},surfMarkers:[],
         hoveredMesh:null,selectedMesh:null,modelGroup:null,af:null};
 
       const onResize=()=>{
@@ -15645,29 +15645,60 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       };
       R.current.syncConditions=(td)=>{
         if(!td||!R.current.toothMap)return;
-        // toothConds maps palmerID → {hex, key}
+        // toothConds: whole-tooth conditions only (these colour the full mesh)
         R.current.toothConds={};
+        // surfData: per-tooth surface conditions for sphere markers + labels
+        const surfData={};
         Object.entries(td).forEach(([fdi,data])=>{
           const pid=_fdiToPalmer(parseInt(fdi));
           if(!pid)return;
-          // Whole-tooth condition takes priority
           if(data.cond){
             const hex=_COND_3D[data.cond];
             if(hex!=null)R.current.toothConds[pid]={hex,key:data.cond};
-            return;
           }
-          // Surface conditions — use whichever surface has a condition (occlusal priority)
           const s=data.surfaces||{};
-          const surfCond=s.o||s.b||s.m||s.d||s.l||null;
-          if(surfCond){
-            const hex=_COND_3D[surfCond];
-            if(hex!=null)R.current.toothConds[pid]={hex,key:surfCond};
-          }
+          if(Object.values(s).some(Boolean))surfData[pid]=s;
         });
+        // Re-apply mesh colours
         R.current.toothMeshes.forEach(mesh=>{
           if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
+        });
+        // Remove old surface markers
+        (R.current.surfMarkers||[]).forEach(m=>scene.remove(m));
+        R.current.surfMarkers=[];
+        // Add sphere markers for surface conditions
+        const T2=R.current.THREE;
+        Object.entries(surfData).forEach(([pid,surfs])=>{
+          const mesh=R.current.toothMap[pid];
+          if(!mesh||!mesh.geometry)return;
+          if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+          const bb=mesh.geometry.boundingBox;
+          const cx=(bb.min.x+bb.max.x)/2,cy=(bb.min.y+bb.max.y)/2,cz=(bb.min.z+bb.max.z)/2;
+          const sx=bb.max.x-bb.min.x,sy=bb.max.y-bb.min.y,sz=bb.max.z-bb.min.z;
+          const r=Math.min(sx,sz)*0.18;
+          // Local surface positions
+          const surfPts={
+            o:new T2.Vector3(cx,bb.max.y+r*0.5,cz),
+            b:new T2.Vector3(cx,cy,bb.min.z-r*0.5),
+            l:new T2.Vector3(cx,cy,bb.max.z+r*0.5),
+            m:new T2.Vector3(bb.min.x-r*0.5,cy,cz),
+            d:new T2.Vector3(bb.max.x+r*0.5,cy,cz),
+          };
+          Object.entries(surfs).forEach(([s,cond])=>{
+            if(!cond||!surfPts[s])return;
+            const hex=_COND_3D[cond];
+            if(hex==null)return;
+            const wp=mesh.localToWorld(surfPts[s].clone());
+            const geo=new T2.SphereGeometry(r,8,6);
+            const mat=new T2.MeshBasicMaterial({color:new T2.Color(hex),transparent:true,opacity:0.92,depthTest:true});
+            const sphere=new T2.Mesh(geo,mat);
+            sphere.position.copy(wp);
+            sphere.renderOrder=2;
+            scene.add(sphere);
+            R.current.surfMarkers.push(sphere);
+          });
         });
       };
 
@@ -15737,7 +15768,8 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       R.current.loadModel=async(key)=>{
         if(!cancelled){setStatus("loading");setLoadPct(0);}
         if(R.current.modelGroup){scene.remove(R.current.modelGroup);R.current.modelGroup=null;}
-        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};R.current.toothConds={};
+        (R.current.surfMarkers||[]).forEach(m=>scene.remove(m));
+        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};R.current.toothConds={};R.current.surfMarkers=[];
         if(R.current.hoveredMesh&&R.current.hoveredMesh!==R.current.selectedMesh)setHovered(null);
         R.current.hoveredMesh=null;R.current.selectedMesh=null;
 
