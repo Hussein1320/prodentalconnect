@@ -15666,10 +15666,11 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           mesh.material=getCondBase(mesh);
         });
         // Remove old surface markers
-        (R.current.surfMarkers||[]).forEach(m=>scene.remove(m));
+        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
         R.current.surfMarkers=[];
-        // Add sphere markers for surface conditions
+        // Build oriented flat-disc surface markers
         const T2=R.current.THREE;
+        scene.updateMatrixWorld(true);
         Object.entries(surfData).forEach(([pid,surfs])=>{
           const mesh=R.current.toothMap[pid];
           if(!mesh||!mesh.geometry)return;
@@ -15677,27 +15678,39 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const bb=mesh.geometry.boundingBox;
           const cx=(bb.min.x+bb.max.x)/2,cy=(bb.min.y+bb.max.y)/2,cz=(bb.min.z+bb.max.z)/2;
           const sx=bb.max.x-bb.min.x,sy=bb.max.y-bb.min.y,sz=bb.max.z-bb.min.z;
-          const r=Math.min(sx,sz)*0.18;
-          // Local surface positions
-          const surfPts={
-            o:new T2.Vector3(cx,bb.max.y+r*0.5,cz),
-            b:new T2.Vector3(cx,cy,bb.min.z-r*0.5),
-            l:new T2.Vector3(cx,cy,bb.max.z+r*0.5),
-            m:new T2.Vector3(bb.min.x-r*0.5,cy,cz),
-            d:new T2.Vector3(bb.max.x+r*0.5,cy,cz),
+          const pad=0.08; // small gap from surface
+          // Each surface: local centre point + normal direction + disc dimensions [w,h]
+          const surfDefs={
+            o:{pt:new T2.Vector3(cx,bb.max.y+pad,cz), norm:new T2.Vector3(0,1,0),  w:sx*0.88,h:sz*0.88},
+            b:{pt:new T2.Vector3(cx,cy,bb.min.z-pad), norm:new T2.Vector3(0,0,-1), w:sx*0.78,h:sy*0.70},
+            l:{pt:new T2.Vector3(cx,cy,bb.max.z+pad), norm:new T2.Vector3(0,0,1),  w:sx*0.78,h:sy*0.70},
+            m:{pt:new T2.Vector3(bb.min.x-pad,cy,cz), norm:new T2.Vector3(-1,0,0), w:sz*0.78,h:sy*0.70},
+            d:{pt:new T2.Vector3(bb.max.x+pad,cy,cz), norm:new T2.Vector3(1,0,0),  w:sz*0.78,h:sy*0.70},
           };
           Object.entries(surfs).forEach(([s,cond])=>{
-            if(!cond||!surfPts[s])return;
+            if(!cond||!surfDefs[s])return;
             const hex=_COND_3D[cond];
             if(hex==null)return;
-            const wp=mesh.localToWorld(surfPts[s].clone());
-            const geo=new T2.SphereGeometry(r,8,6);
-            const mat=new T2.MeshBasicMaterial({color:new T2.Color(hex),transparent:true,opacity:0.92,depthTest:true});
-            const sphere=new T2.Mesh(geo,mat);
-            sphere.position.copy(wp);
-            sphere.renderOrder=2;
-            scene.add(sphere);
-            R.current.surfMarkers.push(sphere);
+            const def=surfDefs[s];
+            // World space centre
+            const wPos=mesh.localToWorld(def.pt.clone());
+            // World space normal: transform direction by mesh's normal matrix
+            const nm=new T2.Matrix3().getNormalMatrix(mesh.matrixWorld);
+            const wNorm=def.norm.clone().applyMatrix3(nm).normalize();
+            // Build plane geo and orient it to face the surface normal
+            const geo=new T2.PlaneGeometry(def.w,def.h,1,1);
+            const mat=new T2.MeshBasicMaterial({
+              color:new T2.Color(hex),transparent:true,opacity:0.82,
+              depthTest:true,side:T2.DoubleSide,
+            });
+            const plane=new T2.Mesh(geo,mat);
+            plane.position.copy(wPos);
+            // Rotate plane so its +Z normal aligns with wNorm
+            const quat=new T2.Quaternion().setFromUnitVectors(new T2.Vector3(0,0,1),wNorm);
+            plane.quaternion.copy(quat);
+            plane.renderOrder=3;
+            scene.add(plane);
+            R.current.surfMarkers.push(plane);
           });
         });
       };
