@@ -15528,7 +15528,7 @@ const _COND_3D_ICON={
   decay:"●",fracture:"⚡",watch:"◉",mobility:"↕",
 };
 
-function Tooth3DView({onToothClick,selFDI,teethData}){
+function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
   const mountRef=useRef(null);
   const R=useRef({});
   const [status,setStatus]=useState("loading");
@@ -15538,6 +15538,16 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
   const cbRef=useRef(onToothClick);
   useEffect(()=>{cbRef.current=onToothClick;},[onToothClick]);
   const [condLabels,setCondLabels]=useState([]);
+  // Refs for animate-loop access without stale closures
+  const selFDIRef=useRef(selFDI);
+  const teethDataRef=useRef(teethData);
+  const surfToolRef=useRef(surfTool||"filling");
+  const onSurfaceSetRef=useRef(onSurfaceSet);
+  const overlayRef=useRef(null);
+  useEffect(()=>{selFDIRef.current=selFDI;},[selFDI]);
+  useEffect(()=>{teethDataRef.current=teethData;},[teethData]);
+  useEffect(()=>{surfToolRef.current=surfTool||"filling";},[surfTool]);
+  useEffect(()=>{onSurfaceSetRef.current=onSurfaceSet;},[onSurfaceSet]);
 
   // Main setup — runs once
   useEffect(()=>{
@@ -15796,6 +15806,24 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         R.current.af=requestAnimationFrame(animate);
         controls.update();
         renderer.render(scene,camera);
+        // Update tooth-overlay position every frame (direct DOM — no React re-render)
+        if(overlayRef.current&&R.current.toothMap){
+          const fdi=selFDIRef.current;
+          const pid=fdi&&_fdiToPalmer(fdi);
+          const mesh=pid&&R.current.toothMap[pid];
+          if(mesh){
+            const p=projectMesh(mesh);
+            if(p.z<=1){
+              overlayRef.current.style.left=`${Math.round(p.x)}px`;
+              overlayRef.current.style.top=`${Math.round(p.y)}px`;
+              overlayRef.current.style.visibility='visible';
+            }else{
+              overlayRef.current.style.visibility='hidden';
+            }
+          }else{
+            overlayRef.current.style.visibility='hidden';
+          }
+        }
         // Update label positions every 3 frames
         if(++_labelFrame%3===0&&R.current.toothMap){
           const labels=[];
@@ -15957,7 +15985,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const lbl=_COND_3D_LABEL[key]||key;
           const icon=_COND_3D_ICON[key]||"●";
           const surfParts=surfs?surfs.split('+'):[];
-          const surfNames={B:"Buccal",M:"Mesial",O:"Occlusal",D:"Distal",L:"Lingual"};
+          const surfNames={B:"Buccal",M:"Mesial",O:"Occlusal",D:"Distal",L:"Palatal"};
           return(
             <div key={pid} style={{position:"absolute",left:x,top:y-36,transform:"translateX(-50%)",pointerEvents:"none",zIndex:11,
               display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
@@ -15982,6 +16010,169 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             </div>
           );
         })}
+
+        {/* ── Floating tooth-surface overlay ─────────────────────────────────
+            Positioned by the animate loop (direct DOM). Renders a 5-zone
+            cross diagram ON the selected tooth; click a zone to mark it with
+            the active surfTool condition. Hover shows tooltip with date.       */}
+        {(()=>{
+          const SURF_TOOLS=[
+            {k:"filling",  label:"Filling",   hex:"#3B82F6",icon:"◆"},
+            {k:"decay",    label:"Decay",      hex:"#DC2626",icon:"●"},
+            {k:"crown",    label:"Crown",      hex:"#D97706",icon:"♛"},
+            {k:"rct",      label:"Root Canal", hex:"#7C3AED",icon:"⬦"},
+            {k:"fracture", label:"Fracture",   hex:"#F97316",icon:"⚡"},
+            {k:null,       label:"Clear",      hex:"#64748B",icon:"✕"},
+          ];
+          const activeCond=surfTool||"filling";
+          const activeHex=_COND_3D_HEX[activeCond]||"#3B82F6";
+          const fdi=selFDI;
+          const td=fdi?teethData[fdi]:null;
+          const surfs=td?.surfaces||{};
+          const dates=td?.surfaceDates||{};
+
+          // 5 zone definitions for the cross diagram
+          // viewBox 0 0 148 134
+          const zones=[
+            {id:"b",label:"Buccal",  short:"B", x:44,y:2, w:60,h:36, cx:74,cy:20},
+            {id:"m",label:"Mesial",  short:"M", x:2, y:40,w:40,h:52, cx:22,cy:66},
+            {id:"o",label:"Occlusal",short:"O", x:44,y:40,w:60,h:52, cx:74,cy:66},
+            {id:"d",label:"Distal",  short:"D", x:106,y:40,w:40,h:52,cx:126,cy:66},
+            {id:"l",label:"Palatal", short:"P", x:44,y:94,w:60,h:38, cx:74,cy:113},
+          ];
+
+          return(
+            <div ref={overlayRef}
+              style={{position:"absolute",left:0,top:0,
+                transform:"translate(-50%,-60%)",
+                visibility: fdi?"visible":"hidden",
+                zIndex:25,pointerEvents:fdi?"auto":"none",
+                userSelect:"none"}}>
+              <div style={{background:"rgba(4,10,26,0.97)",border:"1px solid rgba(80,140,255,0.35)",
+                borderRadius:14,padding:"10px 10px 8px",
+                boxShadow:"0 8px 32px rgba(0,0,0,0.7),0 0 0 1px rgba(80,140,255,0.1)",
+                backdropFilter:"blur(12px)",minWidth:170}}>
+
+                {/* Header */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"#60A5FA",fontFamily:"ui-monospace,monospace",letterSpacing:".04em"}}>
+                    {fdi} · Surface Select
+                  </div>
+                  <button onClick={()=>{if(cbRef.current)cbRef.current(null,null);}}
+                    style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px"}}>✕</button>
+                </div>
+
+                {/* 5-zone cross SVG */}
+                <svg viewBox="0 0 148 134" width="148" height="134" style={{display:"block",overflow:"visible"}}>
+                  <defs>
+                    <filter id="oz-glow" x="-30%" y="-30%" width="160%" height="160%">
+                      <feGaussianBlur stdDeviation="3" result="g"/>
+                      <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                  </defs>
+                  {/* Connector lines */}
+                  <line x1="74" y1="38" x2="74" y2="40" stroke="rgba(80,140,255,0.3)" strokeWidth="1"/>
+                  <line x1="42" y1="66" x2="44" y2="66" stroke="rgba(80,140,255,0.3)" strokeWidth="1"/>
+                  <line x1="104" y1="66" x2="106" y2="66" stroke="rgba(80,140,255,0.3)" strokeWidth="1"/>
+                  <line x1="74" y1="92" x2="74" y2="94" stroke="rgba(80,140,255,0.3)" strokeWidth="1"/>
+
+                  {zones.map(({id,label,short,x,y,w,h,cx,cy})=>{
+                    const cond=surfs[id];
+                    const col=cond?(_COND_3D_HEX[cond]||"#64748b"):null;
+                    const isActive=(activeCond&&activeCond===cond);
+                    const baseFill=col?col+"cc":"rgba(15,25,50,0.85)";
+                    const borderCol=col||"rgba(80,140,255,0.3)";
+                    const dateStr=dates[id]?new Date(dates[id]).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):null;
+
+                    return(
+                      <g key={id} style={{cursor:"pointer"}}
+                        onClick={e=>{
+                          e.stopPropagation();
+                          if(onSurfaceSetRef.current&&fdi){
+                            const nextCond=activeCond===cond?null:activeCond;
+                            onSurfaceSetRef.current(fdi,id,nextCond||null);
+                          }
+                        }}>
+                        {/* Shadow */}
+                        <rect x={x+0.5} y={y+1.5} width={w} height={h} rx={6} fill="rgba(0,0,0,0.4)"/>
+                        {/* Base fill */}
+                        <rect x={x} y={y} width={w} height={h} rx={6} fill={baseFill}
+                          filter={col?"url(#oz-glow)":undefined}/>
+                        {/* Top sheen */}
+                        <rect x={x} y={y} width={w} height={h/2} rx={6}
+                          fill="rgba(255,255,255,0.06)"/>
+                        {/* Border */}
+                        <rect x={x} y={y} width={w} height={h} rx={6} fill="none"
+                          stroke={borderCol} strokeWidth={col?2:1.5}/>
+                        {/* Short letter */}
+                        <text x={cx} y={cy-(dateStr?7:4)} textAnchor="middle" dominantBaseline="middle"
+                          fontSize={id==="o"?18:12} fontWeight={900}
+                          fill={col?"#fff":"rgba(148,163,184,0.6)"}
+                          style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace"}}>
+                          {short}
+                        </text>
+                        {/* Full label or condition name */}
+                        <text x={cx} y={cy+(dateStr?4:7)} textAnchor="middle" dominantBaseline="middle"
+                          fontSize={7} fontWeight={600}
+                          fill={col?"rgba(255,255,255,0.75)":"rgba(71,85,105,0.8)"}
+                          style={{pointerEvents:"none",fontFamily:"sans-serif"}}>
+                          {cond?(_COND_3D_LABEL[cond]||cond):label}
+                        </text>
+                        {/* Date badge */}
+                        {dateStr&&(
+                          <text x={cx} y={cy+14} textAnchor="middle" dominantBaseline="middle"
+                            fontSize={6} fill="rgba(255,255,255,0.45)"
+                            style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace"}}>
+                            {dateStr}
+                          </text>
+                        )}
+                        {/* Condition dot */}
+                        {col&&<circle cx={x+w-8} cy={y+8} r={4} fill={col}
+                          stroke="rgba(0,0,0,0.5)" strokeWidth="1"/>}
+                        {/* Active-tool hover ring */}
+                        {!cond&&<rect x={x+1} y={y+1} width={w-2} height={h-2} rx={5} fill="none"
+                          stroke={activeHex+"44"} strokeWidth="1" strokeDasharray="3 2"/>}
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Active condition tool bar */}
+                <div style={{marginTop:8,borderTop:"1px solid rgba(80,140,255,0.12)",paddingTop:7}}>
+                  <div style={{fontSize:8,color:"#475569",fontWeight:700,marginBottom:5,letterSpacing:".06em",textTransform:"uppercase"}}>
+                    Active Tool
+                  </div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {SURF_TOOLS.map(({k,label,hex,icon})=>{
+                      const isAct=activeCond===k||(k===null&&!activeCond);
+                      return(
+                        <button key={k||"clear"}
+                          title={label}
+                          onClick={e=>{e.stopPropagation();if(onSurfaceSetRef.current)onSurfaceSetRef.current(null,null,k);}}
+                          style={{
+                            padding:"3px 6px",borderRadius:6,border:`1.5px solid ${isAct?hex+"cc":"rgba(255,255,255,0.1)"}`,
+                            background:isAct?hex+"22":"rgba(255,255,255,0.04)",
+                            color:isAct?hex:"#64748b",
+                            cursor:"pointer",fontSize:10,fontWeight:isAct?800:500,
+                            display:"flex",alignItems:"center",gap:3,
+                            transition:"all .12s",whiteSpace:"nowrap",
+                          }}>
+                          <span>{icon}</span>
+                          <span style={{fontSize:8}}>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+              {/* Tail pointer */}
+              <div style={{width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",
+                borderTop:"8px solid rgba(80,140,255,0.35)",margin:"0 auto"}}/>
+            </div>
+          );
+        })()}
+
         {hovered&&status==="ready"&&(
           <div style={{position:"absolute",bottom:14,left:14,background:"rgba(7,14,26,0.94)",border:"1px solid #00c8ff",borderRadius:8,padding:"6px 12px",pointerEvents:"none",zIndex:4,backdropFilter:"blur(8px)"}}>
             <div style={{fontSize:16,fontWeight:600,color:"#00c8ff",fontFamily:"ui-monospace,monospace"}}>{hovered}</div>
@@ -15996,7 +16187,8 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
 
 function DentalWorkspace({patient,user}){
   // ── State ─────────────────────────────────────────────────────
-  const [teeth,setTeeth]=useState(()=>{const d={};[...Array(32)].forEach((_,i)=>{const n=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38][i];d[n]={cond:null,surfaces:{b:null,l:null,m:null,d:null,o:null},planned:[],completed:[]};});return d;});
+  const [teeth,setTeeth]=useState(()=>{const d={};[...Array(32)].forEach((_,i)=>{const n=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38][i];d[n]={cond:null,surfaces:{b:null,l:null,m:null,d:null,o:null},surfaceDates:{},planned:[],completed:[]};});return d;});
+  const [surfTool,setSurfTool]=useState("filling"); // active surface condition tool
   const [selTeeth,setSelTeeth]=useState([]); // multi-select
   const [activeTool,setActiveTool]=useState("exam");
   const [txPlan,setTxPlan]=useState([
@@ -16020,6 +16212,23 @@ function DentalWorkspace({patient,user}){
   const M=60000;
 
   const toast=m=>{setToastMsg(m);setTimeout(()=>setToastMsg(null),2200);};
+
+  // Called by the 3D overlay when a zone is clicked — marks or clears a surface
+  // Special: fdi===null means "change active tool only" (k = new tool key or null)
+  const handleSurfaceSet=(fdi,surf,cond)=>{
+    if(!fdi){if(cond!==undefined)setSurfTool(cond);return;}
+    const ts=new Date().toISOString();
+    setTeeth(p=>{
+      const cur=p[fdi]||{cond:null,surfaces:{},surfaceDates:{},planned:[],completed:[]};
+      return{...p,[fdi]:{...cur,
+        surfaces:{...cur.surfaces,[surf]:cond||null},
+        surfaceDates:{...(cur.surfaceDates||{}),[surf]:cond?ts:null},
+      }};
+    });
+    const surfName={b:"Buccal",m:"Mesial",o:"Occlusal",d:"Distal",l:"Palatal"}[surf]||surf.toUpperCase();
+    if(cond)toast(`✓ ${_COND_3D_LABEL[cond]||cond} → ${surfName} on ${fdi}`);
+    else toast(`Cleared ${surfName} on ${fdi}`);
+  };
   const allCodes=UK_TX.flatMap(g=>g.codes.map(c=>({...c,group:g.group,icon:g.icon})));
   const favCodes=allCodes.filter(c=>favs.has(c.c));
   const searchCodes=searchQ.length>1?allCodes.filter(c=>c.l.toLowerCase().includes(searchQ.toLowerCase())||c.c.includes(searchQ)):[];
@@ -16479,7 +16688,12 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>}
 
-      {chartMode==="3d"&&<Tooth3DView onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}} selFDI={selTooth} teethData={teeth}/>}
+      {chartMode==="3d"&&<Tooth3DView
+        onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}}
+        selFDI={selTooth}
+        teethData={teeth}
+        onSurfaceSet={handleSurfaceSet}
+        surfTool={surfTool}/>}
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
