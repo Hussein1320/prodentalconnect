@@ -16474,57 +16474,79 @@ function DentalWorkspace({patient,user}){
             <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
               {(()=>{
-                // 2px gap between zones prevents overlapping strokes
-                const G=2;
+                // Professional 5-surface dental cross diagram
+                // Each zone is an independent rounded rect with proper gaps
                 const zones=[
-                  {id:"b",label:"Buccal",   d:`M${38},${2} L${82},${2} L${82},${36-G} L${38},${36-G} Z`},
-                  {id:"m",label:"Mesial",   d:`M${2},${38} L${36-G},${38} L${36-G},${82} L${2},${82} Z`},
-                  {id:"o",label:"Occlusal", d:`M${38},${38} L${82},${38} L${82},${82} L${38},${82} Z`},
-                  {id:"d",label:"Distal",   d:`M${84+G},${38} L${118},${38} L${118},${82} L${84+G},${82} Z`},
-                  {id:"l",label:"Lingual",  d:`M${38},${84+G} L${82},${84+G} L${82},${118} L${38},${118} Z`},
+                  {id:"b",label:"Buccal",   x:44,y:2, w:72,h:42, cx:80,cy:23},
+                  {id:"m",label:"Mesial",   x:2, y:48,w:40,h:64, cx:22,cy:80},
+                  {id:"o",label:"Occlusal", x:46,y:48,w:68,h:64, cx:80,cy:80},
+                  {id:"d",label:"Distal",   x:118,y:48,w:40,h:64,cx:138,cy:80},
+                  {id:"l",label:"Lingual",  x:44,y:116,w:72,h:42,cx:80,cy:137},
                 ];
-                const lp={b:[60,18],m:[18,60],o:[60,60],d:[102,60],l:[60,102]};
                 return(
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-                    <svg viewBox="0 0 120 120" width="170" height="170" style={{overflow:"visible",display:"block"}}>
+                    <svg viewBox="0 0 160 160" width="190" height="190" style={{overflow:"visible",display:"block"}}>
                       <defs>
-                        <filter id="sfglow" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        <filter id="sfglow" x="-40%" y="-40%" width="180%" height="180%">
+                          <feGaussianBlur stdDeviation="3" result="b"/>
+                          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
                         </filter>
+                        <filter id="sfshadow" x="-10%" y="-10%" width="120%" height="130%">
+                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.4"/>
+                        </filter>
+                        {zones.map(({id})=>(
+                          <linearGradient key={id} id={`sfg-${id}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="rgba(255,255,255,0.07)"/>
+                            <stop offset="100%" stopColor="rgba(0,0,0,0.12)"/>
+                          </linearGradient>
+                        ))}
                       </defs>
-                      {zones.map(({id,label,d})=>{
+                      {zones.map(({id,label,x,y,w,h,cx,cy})=>{
                         const cond=recSurfaces[id];
                         const isSel=selSurfaces.has(id);
                         const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
-                        const fill=isSel?"rgba(37,99,255,0.55)":col?col+"55":"rgba(19,34,56,0.9)";
-                        const stroke=isSel?"#60A5FA":col||"rgba(80,140,255,0.3)";
-                        const [lx,ly]=lp[id];
+                        const baseFill=isSel?"#1d4ed8":col||"#0f1c34";
+                        const borderCol=isSel?"#60A5FA":col||(id==="o"?"rgba(100,160,255,0.5)":"rgba(80,140,255,0.25)");
+                        const isOcc=id==="o";
                         return(
-                          <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}>
-                            <path d={d} fill={fill} stroke={stroke} strokeWidth={isSel?2:1.5} rx="4"
-                              filter={isSel?"url(#sfglow)":undefined}/>
-                            <text x={lx} y={id==="o"?ly+1:ly-5} textAnchor="middle" dominantBaseline="middle"
-                              fontSize={id==="o"?17:12} fontWeight={800}
-                              fill={isSel?"#93C5FD":col||"#94A3B8"}
-                              style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none"}}>
+                          <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}
+                             filter={isSel?"url(#sfglow)":undefined}>
+                            {/* Shadow layer */}
+                            <rect x={x+0.5} y={y+1.5} width={w} height={h} rx={7} fill="rgba(0,0,0,0.35)"/>
+                            {/* Base fill */}
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill={baseFill}/>
+                            {/* Gradient sheen */}
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill={`url(#sfg-${id})`}/>
+                            {/* Border */}
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill="none"
+                              stroke={borderCol} strokeWidth={isSel?2.5:1.5}/>
+                            {/* Condition colour overlay when recorded */}
+                            {col&&!isSel&&<rect x={x} y={y} width={w} height={h} rx={7} fill={col} opacity={0.22}/>}
+                            {/* Letter label */}
+                            <text x={cx} y={isOcc?cy-6:cy-5} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={isOcc?20:13} fontWeight={900}
+                              fill={isSel?"#ffffff":col||"#94A3B8"}
+                              style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none",
+                                textShadow:isSel?"0 1px 4px rgba(0,0,0,0.6)":"none"}}>
                               {label[0]}
                             </text>
-                            {id!=="o"&&<text x={lx} y={ly+9} textAnchor="middle" dominantBaseline="middle"
-                              fontSize={7} fontWeight={500}
-                              fill={isSel?"#60A5FA":col?"rgba(255,255,255,0.6)":"#475569"}
+                            {/* Full name label */}
+                            <text x={cx} y={cy+(isOcc?10:8)} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={isOcc?8.5:7.5} fontWeight={500}
+                              fill={isSel?"rgba(255,255,255,0.85)":col?"rgba(255,255,255,0.55)":"#4a5f7a"}
                               style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
                               {label}
-                            </text>}
-                            {cond&&<circle cx={lx+(id==="m"||id==="d"?10:0)} cy={ly-(id==="b"?8:id==="l"?-8:0)} r={4} fill={col||"#64748b"} opacity={0.95}/>}
+                            </text>
+                            {/* Condition dot */}
+                            {col&&<circle cx={x+w-9} cy={y+9} r={4.5} fill={col} stroke="rgba(0,0,0,0.3)" strokeWidth={1}/>}
                           </g>
                         );
                       })}
-                      {/* Occlusal sub-label */}
-                      <text x="60" y="71" textAnchor="middle" dominantBaseline="middle"
-                        fontSize={8} fill={selSurfaces.has("o")?"#93C5FD":"#3f5070"}
-                        style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
-                        Occlusal
-                      </text>
+                      {/* Connector lines between zones */}
+                      <line x1="80" y1="44" x2="80" y2="48" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="42" y1="80" x2="46" y2="80" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="114" y1="80" x2="118" y2="80" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="80" y1="112" x2="80" y2="116" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
                     </svg>
                     <div style={{fontSize:10,color:"#64748b",textAlign:"center",fontStyle:"italic",marginTop:-4}}>
                       {selSurfList.length>0
