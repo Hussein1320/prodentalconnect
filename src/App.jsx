@@ -15658,24 +15658,65 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const s=data.surfaces||{};
           const hasSurf=Object.values(s).some(Boolean);
           if(hasSurf)surfData[pid]=s;
-          // Surface conditions also colour the mesh (whole-tooth dominates if both exist)
-          if(hasSurf&&!data.cond){
-            const surfCond=s.o||s.b||s.m||s.d||s.l||null;
-            if(surfCond){
-              const hex=_COND_3D[surfCond];
-              if(hex!=null)R.current.toothConds[pid]={hex,key:surfCond};
-            }
-          }
+          // Surface-only conditions do NOT colour the whole mesh — sphere markers show them instead
         });
-        // Re-apply mesh colours
+        // Re-apply mesh colours (only whole-tooth conditions colour the mesh)
         R.current.toothMeshes.forEach(mesh=>{
           if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Clean up any old 3D surface markers
+        // Clean up old surface markers
         (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
+
+        // Place per-surface sphere markers at the correct face of each tooth
+        // Axis convention from detectSurface: Y-up=Occlusal, Z-neg=Buccal, Z-pos=Palatal, X=Mesial/Distal
+        const T=R.current.THREE;
+        if(T){
+          const sharedGeos={};
+          Object.entries(surfData).forEach(([pid,surfs])=>{
+            const mesh=R.current.toothMap[pid];
+            if(!mesh)return;
+            if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+            const bb=mesh.geometry.boundingBox;
+            const c=new T.Vector3(),sz=new T.Vector3();
+            bb.getCenter(c);bb.getSize(sz);
+            const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
+            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
+            // Local-space face centre for each surface (72% toward the face)
+            const facePos={
+              o:new T.Vector3(c.x,         c.y+hy*0.72, c.z),
+              b:new T.Vector3(c.x,         c.y,         c.z-hz*0.72),
+              l:new T.Vector3(c.x,         c.y,         c.z+hz*0.72),
+              m:new T.Vector3(c.x+(isRight?-1:1)*hx*0.72, c.y, c.z),
+              d:new T.Vector3(c.x+(isRight?1:-1)*hx*0.72, c.y, c.z),
+            };
+            // Sphere radius: ~35% of the smaller horizontal half-extent
+            const r=Math.max(Math.min(hx,hz)*0.38, 0.012);
+            const gk=r.toFixed(5);
+            if(!sharedGeos[gk])sharedGeos[gk]=new T.SphereGeometry(r,10,8);
+            const geo=sharedGeos[gk];
+            Object.entries(surfs).forEach(([s,cond])=>{
+              if(!cond||!facePos[s])return;
+              const hex=_COND_3D[cond];
+              if(hex==null)return;
+              const wp=mesh.localToWorld(facePos[s].clone());
+              const mat=new T.MeshStandardMaterial({
+                color:new T.Color(hex),
+                emissive:new T.Color(hex),
+                emissiveIntensity:0.7,
+                roughness:0.25,metalness:0.0,
+              });
+              const sphere=new T.Mesh(geo,mat);
+              sphere.position.copy(wp);
+              sphere.renderOrder=2;
+              scene.add(sphere);
+              R.current.surfMarkers.push(sphere);
+            });
+          });
+        }
+
         R.current.surfData=surfData; // used by label overlay system
       };
 
