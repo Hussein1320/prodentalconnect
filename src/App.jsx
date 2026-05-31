@@ -15744,8 +15744,13 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
                 color:new T.Color(hex),emissive:new T.Color(hex),
                 emissiveIntensity:0.55,roughness:0.4,metalness:0.0,
                 clippingPlanes:worldPlanes,clipShadows:false,
+                depthWrite:false,       // don't write depth so multiple surface clones don't block each other
+                polygonOffset:true,     // push slightly toward camera to avoid z-fighting with parent tooth
+                polygonOffsetFactor:-2,
+                polygonOffsetUnits:-2,
               });
               const clone=new T.Mesh(mesh.geometry,mat);
+              clone.renderOrder=2;      // render after all teeth (renderOrder 0) and their default children
 
               mesh.add(clone);
               R.current.surfMarkers.push(clone);
