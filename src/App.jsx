@@ -15507,6 +15507,12 @@ const _fdiToPalmer=fdi=>{
   return ({1:"UR",2:"UL",3:"LL",4:"LR"}[q]||"")+n;
 };
 
+const _COND_3D={
+  missing:0x475569,filling:0x3B82F6,crown:0xD97706,rct:0x7C3AED,
+  extraction:0xDC2626,implant:0x16A34A,bridge:0x0D9488,veneer:0xDB2777,
+  decay:0x991B1B,fracture:0xEA580C,watch:0xD97706,mobility:0xCA8A04,
+};
+
 function Tooth3DView({onToothClick,selFDI,teethData}){
   const mountRef=useRef(null);
   const R=useRef({});
@@ -15554,7 +15560,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       const fill=new THREE.PointLight(0xffffff,0.8,30);fill.position.set(0,-3,2);scene.add(fill);
 
       R.current={THREE,GLTFLoader,scene,camera,renderer,controls,
-        toothMeshes:[],origMats:new Map(),toothMap:{},
+        toothMeshes:[],origMats:new Map(),toothMap:{},toothConds:{},
         hoveredMesh:null,selectedMesh:null,modelGroup:null,af:null};
 
       const onResize=()=>{
@@ -15576,15 +15582,41 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         const hits=raycaster.intersectObjects(R.current.toothMeshes,false);
         return hits.length?hits[0].object:null;
       };
+      const getCondBase=(mesh)=>{
+        const{origMats,toothConds,THREE:T}=R.current;
+        const pid=mesh.userData.palmerID;
+        const hex=toothConds[pid];
+        const orig=origMats.get(mesh)||mesh.material;
+        const m=orig.clone();
+        if(hex!=null){
+          m.emissive=new T.Color(hex);
+          m.emissiveIntensity=0.72;
+          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.32;}
+        }
+        return m;
+      };
       const applyHL=(mesh,mode)=>{
         if(!mesh)return;
-        const{origMats,THREE:T}=R.current;
-        if(mode==="none"){const o=origMats.get(mesh);if(o)mesh.material=o.clone();return;}
-        const base=origMats.get(mesh)||mesh.material;
-        const m=base.clone();
-        m.emissive=new T.Color(mode==="hover"?0x003355:0x0044aa);
-        m.emissiveIntensity=mode==="hover"?0.55:0.95;
+        const{THREE:T}=R.current;
+        if(mode==="none"){mesh.material=getCondBase(mesh);return;}
+        const m=getCondBase(mesh);
+        m.emissive=new T.Color(mode==="hover"?0x004477:0x0055cc);
+        m.emissiveIntensity=mode==="hover"?0.6:1.0;
         mesh.material=m;
+      };
+      R.current.syncConditions=(td)=>{
+        if(!td||!R.current.toothMap)return;
+        R.current.toothConds={};
+        Object.entries(td).forEach(([fdi,data])=>{
+          if(!data.cond)return;
+          const pid=_fdiToPalmer(parseInt(fdi));
+          const hex=_COND_3D[data.cond];
+          if(pid&&hex!=null)R.current.toothConds[pid]=hex;
+        });
+        R.current.toothMeshes.forEach(mesh=>{
+          if(mesh===R.current.hoveredMesh||mesh===R.current.selectedMesh)return;
+          mesh.material=getCondBase(mesh);
+        });
       };
 
       renderer.domElement.addEventListener("mousemove",e=>{
@@ -15629,7 +15661,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       R.current.loadModel=async(key)=>{
         if(!cancelled){setStatus("loading");setLoadPct(0);}
         if(R.current.modelGroup){scene.remove(R.current.modelGroup);R.current.modelGroup=null;}
-        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};
+        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};R.current.toothConds={};
         if(R.current.hoveredMesh&&R.current.hoveredMesh!==R.current.selectedMesh)setHovered(null);
         R.current.hoveredMesh=null;R.current.selectedMesh=null;
 
@@ -15677,6 +15709,7 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             controls.maxDistance=fitDist*4;
             controls.update();
 
+            R.current.syncConditions?.(R.current._latestTeethData);
             if(!cancelled)setStatus("ready");
             resolve();
           },(xhr)=>{if(xhr.total&&!cancelled)setLoadPct(Math.round(xhr.loaded/xhr.total*100));},
@@ -15712,6 +15745,10 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
     }else{R.current.selectedMesh=null;}
   },[selFDI]);
 
+  // Keep latest teethData accessible to model-load callback
+  useEffect(()=>{R.current._latestTeethData=teethData;},[teethData]);
+  // Sync condition colours onto 3D meshes whenever panel recordings change
+  useEffect(()=>{R.current.syncConditions?.(teethData);},[teethData]);
 
   const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
 
