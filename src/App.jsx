@@ -15544,10 +15544,9 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       mount.appendChild(renderer.domElement);
 
       const controls=new OrbitControls(camera,renderer.domElement);
-      controls.enableDamping=true;controls.dampingFactor=0.04;
+      controls.enableDamping=true;controls.dampingFactor=0.08;
       controls.minDistance=1;controls.maxDistance=100;
       controls.target.set(0,0,0);
-      controls.autoRotate=true;controls.autoRotateSpeed=0.6;
 
       scene.add(new THREE.AmbientLight(0xffffff,1.2));
       const d1=new THREE.DirectionalLight(0xfff5f0,2.5);d1.position.set(2,4,3);scene.add(d1);
@@ -15618,26 +15617,9 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         }
       });
 
-      // Pause auto-rotate while user is interacting; resume after 3 s idle
-      let idleTimer=null;
-      const stopRotate=()=>{
-        controls.autoRotate=false;
-        clearTimeout(idleTimer);
-        idleTimer=setTimeout(()=>{controls.autoRotate=true;},3000);
-      };
-      renderer.domElement.addEventListener("pointerdown",stopRotate);
-      renderer.domElement.addEventListener("wheel",stopRotate,{passive:true});
-
-      const clock=new THREE.Clock();
       const animate=()=>{
         if(cancelled)return;
         R.current.af=requestAnimationFrame(animate);
-        const t=clock.getElapsedTime();
-        // Subtle float — gentle Y bob + very slight tilt
-        if(R.current.modelGroup){
-          R.current.modelGroup.position.y=Math.sin(t*0.55)*0.025;
-          R.current.modelGroup.rotation.z=Math.sin(t*0.35)*0.008;
-        }
         controls.update();
         renderer.render(scene,camera);
       };
@@ -15705,7 +15687,6 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
       await R.current.loadModel("stained");
 
       R.current.cleanup=()=>{
-        clearTimeout(idleTimer);
         ro.disconnect();
         cancelAnimationFrame(R.current.af);
         controls.dispose();
@@ -15731,49 +15712,6 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
     }else{R.current.selectedMesh=null;}
   },[selFDI]);
 
-  // Sync tooth condition colours to 3D materials
-  useEffect(()=>{
-    const{toothMap,origMats,selectedMesh,THREE:T}=R.current;
-    if(!toothMap||!T||!teethData)return;
-    const CMAP={
-      miss:{col:0x888888,intensity:0,opacity:0.22,grey:true},
-      filling:{col:0x0033bb,intensity:0.45},
-      crown:{col:0x664400,intensity:0.55},
-      rct:{col:0x330066,intensity:0.5},
-      decay:{col:0x550000,intensity:0.5},
-      extraction:{col:0x661100,intensity:0.4,opacity:0.35},
-      implant:{col:0x003322,intensity:0.4},
-      bridge:{col:0x002233,intensity:0.4},
-      veneer:{col:0x330022,intensity:0.4},
-      fracture:{col:0x442200,intensity:0.4},
-      mobility:{col:0x332200,intensity:0.35},
-      watch:{col:0x332200,intensity:0.3},
-    };
-    Object.entries(toothMap).forEach(([palmerID,mesh])=>{
-      if(mesh===selectedMesh)return; // selection highlight takes priority
-      const fdi=_palmerToFDI(palmerID);
-      const td=fdi?teethData[fdi]:null;
-      const orig=origMats.get(mesh);
-      if(!orig)return;
-      // Determine effective condition: whole-tooth cond OR any surface cond
-      const wholeCond=td?.cond||null;
-      const hasSurfCond=td?.surfaces?Object.values(td.surfaces).some(Boolean):false;
-      const effectiveCond=wholeCond||(hasSurfCond?"filling":null);
-      if(!effectiveCond){
-        mesh.material=orig.clone();
-        return;
-      }
-      const cfg=CMAP[effectiveCond];
-      if(!cfg){mesh.material=orig.clone();return;}
-      const m=orig.clone();
-      if(cfg.grey)m.color&&m.color.set&&m.color.set(cfg.col);
-      m.emissive=new T.Color(cfg.col);
-      m.emissiveIntensity=cfg.intensity||0;
-      if(cfg.opacity!=null){m.transparent=true;m.opacity=cfg.opacity;}
-      else{m.transparent=false;m.opacity=1;}
-      mesh.material=m;
-    });
-  },[teethData]);
 
   const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
 
