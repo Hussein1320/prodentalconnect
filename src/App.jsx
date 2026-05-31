@@ -15953,7 +15953,10 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
   useLayoutEffect(()=>{R.current.syncConditions?.(teethData);},[teethData]);
 
   const [showGum,setShowGum]=useState(true);
-  const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
+  const switchModel=key=>{
+    setModelKey(key);
+    R.current.loadModel?.(key);
+  };
   const toggleGum=()=>{
     setShowGum(v=>{
       const next=!v;
@@ -15967,14 +15970,15 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
       {/* Toolbar */}
       <div style={{display:"flex",gap:6,padding:"7px 12px",background:"rgba(7,20,40,0.95)",borderBottom:"1px solid rgba(80,140,255,0.15)",alignItems:"center",flexShrink:0}}>
         <span style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:".06em"}}>MODEL</span>
-        {[["stained","Stained"],["nostain","No Stain"]].map(([k,l])=>(
-          <button key={k} onClick={()=>switchModel(k)} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:modelKey===k?"#00c8ff":"rgba(255,255,255,0.07)",color:modelKey===k?"#000":"#94A3B8",transition:"all .15s"}}>{l}</button>
-        ))}
-        <div style={{width:1,height:16,background:"rgba(255,255,255,0.1)",margin:"0 2px"}}/>
-        <button onClick={toggleGum} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,transition:"all .15s",
-          background:showGum?"rgba(239,68,68,0.15)":"rgba(34,197,94,0.15)",
-          color:showGum?"#F87171":"#4ADE80"}}>
-          {showGum?"Hide Gum":"Show Gum"}
+        <button onClick={()=>switchModel("stained")} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:modelKey==="stained"?"#00c8ff":"rgba(255,255,255,0.07)",color:modelKey==="stained"?"#000":"#94A3B8",transition:"all .15s"}}>Stained</button>
+        <button onClick={()=>switchModel("nostain")} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:modelKey==="nostain"?"#00c8ff":"rgba(255,255,255,0.07)",color:modelKey==="nostain"?"#000":"#94A3B8",transition:"all .15s"}}>No Stain</button>
+        <div style={{width:1,height:16,background:"rgba(255,255,255,0.12)",margin:"0 4px"}}/>
+        <button onClick={toggleGum}
+          style={{padding:"3px 14px",borderRadius:6,border:`1.5px solid ${showGum?"rgba(239,68,68,0.4)":"rgba(34,197,94,0.4)"}`,
+            cursor:"pointer",fontSize:11,fontWeight:700,transition:"all .15s",
+            background:showGum?"rgba(239,68,68,0.18)":"rgba(34,197,94,0.18)",
+            color:showGum?"#F87171":"#4ADE80",whiteSpace:"nowrap"}}>
+          {showGum?"🫦 Hide Gum":"🦷 Show Gum"}
         </button>
         {status==="ready"&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(34,197,94,0.12)",color:"#22C55E",border:"1px solid rgba(34,197,94,0.25)",fontFamily:"ui-monospace,monospace",fontWeight:700}}>LIVE</span>}
         <div style={{flex:1}}/>
