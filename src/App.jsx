@@ -16474,54 +16474,54 @@ function DentalWorkspace({patient,user}){
             <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
               {(()=>{
+                // 2px gap between zones prevents overlapping strokes
+                const G=2;
                 const zones=[
-                  {id:"b",label:"Buccal",   d:"M36,2 L84,2 L84,36 L36,36 Z"},
-                  {id:"m",label:"Mesial",   d:"M2,36 L36,36 L36,84 L2,84 Z"},
-                  {id:"o",label:"Occlusal", d:"M36,36 L84,36 L84,84 L36,84 Z"},
-                  {id:"d",label:"Distal",   d:"M84,36 L118,36 L118,84 L84,84 Z"},
-                  {id:"l",label:"Lingual",  d:"M36,84 L84,84 L84,118 L36,118 Z"},
+                  {id:"b",label:"Buccal",   d:`M${38},${2} L${82},${2} L${82},${36-G} L${38},${36-G} Z`},
+                  {id:"m",label:"Mesial",   d:`M${2},${38} L${36-G},${38} L${36-G},${82} L${2},${82} Z`},
+                  {id:"o",label:"Occlusal", d:`M${38},${38} L${82},${38} L${82},${82} L${38},${82} Z`},
+                  {id:"d",label:"Distal",   d:`M${84+G},${38} L${118},${38} L${118},${82} L${84+G},${82} Z`},
+                  {id:"l",label:"Lingual",  d:`M${38},${84+G} L${82},${84+G} L${82},${118} L${38},${118} Z`},
                 ];
-                const lp={b:[60,19],m:[19,60],o:[60,60],d:[101,60],l:[60,101]};
+                const lp={b:[60,18],m:[18,60],o:[60,60],d:[102,60],l:[60,102]};
                 return(
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
                     <svg viewBox="0 0 120 120" width="170" height="170" style={{overflow:"visible",display:"block"}}>
                       <defs>
-                        <filter id="sfglow" x="-20%" y="-20%" width="140%" height="140%">
+                        <filter id="sfglow" x="-30%" y="-30%" width="160%" height="160%">
                           <feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
                         </filter>
                       </defs>
-                      {/* outer dashed outline */}
-                      <rect x="2" y="2" width="116" height="116" rx="6" fill="none" stroke="rgba(80,140,255,0.2)" strokeWidth="1" strokeDasharray="3 3"/>
                       {zones.map(({id,label,d})=>{
                         const cond=recSurfaces[id];
                         const isSel=selSurfaces.has(id);
                         const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
-                        const fill=isSel?"rgba(37,99,255,0.5)":col?col+"55":"rgba(19,34,56,0.95)";
-                        const stroke=isSel?"#60A5FA":col||"rgba(80,140,255,0.35)";
+                        const fill=isSel?"rgba(37,99,255,0.55)":col?col+"55":"rgba(19,34,56,0.9)";
+                        const stroke=isSel?"#60A5FA":col||"rgba(80,140,255,0.3)";
                         const [lx,ly]=lp[id];
                         return(
                           <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}>
-                            <path d={d} fill={fill} stroke={stroke} strokeWidth={isSel?2.5:1.5}
+                            <path d={d} fill={fill} stroke={stroke} strokeWidth={isSel?2:1.5} rx="4"
                               filter={isSel?"url(#sfglow)":undefined}/>
                             <text x={lx} y={id==="o"?ly+1:ly-5} textAnchor="middle" dominantBaseline="middle"
-                              fontSize={id==="o"?18:12} fontWeight={800}
+                              fontSize={id==="o"?17:12} fontWeight={800}
                               fill={isSel?"#93C5FD":col||"#94A3B8"}
                               style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none"}}>
                               {label[0]}
                             </text>
                             {id!=="o"&&<text x={lx} y={ly+9} textAnchor="middle" dominantBaseline="middle"
-                              fontSize={7.5} fontWeight={500}
+                              fontSize={7} fontWeight={500}
                               fill={isSel?"#60A5FA":col?"rgba(255,255,255,0.6)":"#475569"}
                               style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
                               {label}
                             </text>}
-                            {cond&&<circle cx={lx+(id==="b"?14:id==="l"?14:id==="m"?0:id==="d"?0:14)} cy={ly+(id==="b"?-10:id==="l"?10:id==="m"?-14:id==="d"?-14:0)} r={4.5} fill={col||"#64748b"} opacity={0.9}/>}
+                            {cond&&<circle cx={lx+(id==="m"||id==="d"?10:0)} cy={ly-(id==="b"?8:id==="l"?-8:0)} r={4} fill={col||"#64748b"} opacity={0.95}/>}
                           </g>
                         );
                       })}
-                      {/* center label */}
-                      <text x="60" y="62" textAnchor="middle" dominantBaseline="middle"
-                        fontSize={9} fill={selSurfaces.has("o")?"#93C5FD":"#475569"}
+                      {/* Occlusal sub-label */}
+                      <text x="60" y="71" textAnchor="middle" dominantBaseline="middle"
+                        fontSize={8} fill={selSurfaces.has("o")?"#93C5FD":"#3f5070"}
                         style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
                         Occlusal
                       </text>
