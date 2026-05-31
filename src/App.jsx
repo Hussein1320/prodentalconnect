@@ -15708,8 +15708,17 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         // it works for every tooth regardless of its local axis orientation.
         const T=R.current.THREE;
         if(T){
-          // Arch centre: use controls.target set after model load
-          const archCtr=R.current.controls?.target?.clone()||new T.Vector3();
+          // Ensure all matrixWorld values are current before reading world positions
+          R.current.scene.updateMatrixWorld(true);
+
+          // Compute arch centre as centroid of all tooth world positions in XZ —
+          // more reliable than controls.target which can be anywhere in Y
+          const archCtr=new T.Vector3();
+          const _tmp=new T.Vector3();
+          const toothList=Object.values(R.current.toothMap||{});
+          toothList.forEach(m=>{m.getWorldPosition(_tmp);archCtr.x+=_tmp.x;archCtr.z+=_tmp.z;});
+          if(toothList.length)archCtr.divideScalar(toothList.length);
+          archCtr.y=0;
 
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
