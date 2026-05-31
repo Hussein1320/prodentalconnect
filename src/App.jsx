@@ -15508,7 +15508,7 @@ const _fdiToPalmer=fdi=>{
 };
 
 const _COND_3D={
-  missing:0x475569,filling:0x3B82F6,crown:0xD97706,rct:0x7C3AED,
+  miss:0x475569,filling:0x3B82F6,crown:0xD97706,rct:0x7C3AED,
   extraction:0xDC2626,implant:0x16A34A,bridge:0x0D9488,veneer:0xDB2777,
   decay:0x991B1B,fracture:0xEA580C,watch:0xD97706,mobility:0xCA8A04,
 };
@@ -15595,7 +15595,8 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           m.emissive=col;
           m.emissiveIntensity=0.45;
           m.roughness=0.55;m.metalness=0.0;
-          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.35;}
+          // miss=grey(0x475569) and extraction=red(0xDC2626) look "removed"
+          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.28;}
           else{m.transparent=false;m.opacity=1;}
         }
         return m;
@@ -15751,9 +15752,9 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
   },[selFDI]);
 
   // Keep latest teethData accessible to model-load callback
-  useEffect(()=>{R.current._latestTeethData=teethData;},[teethData]);
-  // Sync condition colours onto 3D meshes whenever panel recordings change
-  useEffect(()=>{R.current.syncConditions?.(teethData);},[teethData]);
+  useLayoutEffect(()=>{R.current._latestTeethData=teethData;},[teethData]);
+  // Sync condition colours onto 3D meshes — useLayoutEffect fires before paint → no visible delay
+  useLayoutEffect(()=>{R.current.syncConditions?.(teethData);},[teethData]);
 
   const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
 
