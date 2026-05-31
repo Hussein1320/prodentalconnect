@@ -16516,114 +16516,72 @@ function DentalWorkspace({patient,user}){
             <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
               {(()=>{
-                // Top-down tooth cross-section — 5 clickable surface zones
-                // Layout: Buccal (top full-width) | Mesial+Occlusal+Distal (middle row) | Palatal (bottom full-width)
-                // All zones clipped to outer tooth rounded-rect boundary
-                const SURF=[
-                  {id:"b",label:"Buccal",  short:"B", x:8,  y:8,  w:236,h:68,  tcx:122,tcy:42},
-                  {id:"m",label:"Mesial",  short:"M", x:8,  y:76, w:68, h:100, tcx:42, tcy:126},
-                  {id:"o",label:"Occlusal",short:"O", x:76, y:76, w:92, h:100, tcx:122,tcy:126},
-                  {id:"d",label:"Distal",  short:"D", x:168,y:76, w:76, h:100, tcx:206,tcy:126},
-                  {id:"l",label:"Palatal", short:"P", x:8,  y:176,w:236,h:68,  tcx:122,tcy:210},
+                const zones=[
+                  {id:"b",label:"Buccal",   x:44,y:2, w:72,h:42, cx:80,cy:23},
+                  {id:"m",label:"Mesial",   x:2, y:48,w:40,h:64, cx:22,cy:80},
+                  {id:"o",label:"Occlusal", x:46,y:48,w:68,h:64, cx:80,cy:80},
+                  {id:"d",label:"Distal",   x:118,y:48,w:40,h:64,cx:138,cy:80},
+                  {id:"l",label:"Palatal",  x:44,y:116,w:72,h:42,cx:80,cy:137},
                 ];
-                const anySelected=selSurfList.length>0;
                 return(
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-                    <svg viewBox="0 0 252 252" style={{width:"100%",maxWidth:252,height:"auto",display:"block",overflow:"visible"}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                    <svg viewBox="0 0 160 160" width="190" height="190" style={{overflow:"visible",display:"block"}}>
                       <defs>
-                        <clipPath id="tc2025">
-                          <rect x="8" y="8" width="236" height="236" rx="32"/>
-                        </clipPath>
-                        <linearGradient id="tbg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#162540"/>
-                          <stop offset="100%" stopColor="#0b1826"/>
-                        </linearGradient>
-                        <linearGradient id="tsheen" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="rgba(255,255,255,0.06)"/>
-                          <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
-                        </linearGradient>
-                        <filter id="tselglow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="5" result="g"/>
-                          <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        <filter id="sfglow" x="-40%" y="-40%" width="180%" height="180%">
+                          <feGaussianBlur stdDeviation="3" result="b"/>
+                          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
                         </filter>
+                        <filter id="sfshadow" x="-10%" y="-10%" width="120%" height="130%">
+                          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.4"/>
+                        </filter>
+                        {zones.map(({id})=>(
+                          <linearGradient key={id} id={`sfg-${id}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="rgba(255,255,255,0.07)"/>
+                            <stop offset="100%" stopColor="rgba(0,0,0,0.12)"/>
+                          </linearGradient>
+                        ))}
                       </defs>
-
-                      {/* Tooth base background */}
-                      <rect x="8" y="8" width="236" height="236" rx="32" fill="url(#tbg)"/>
-
-                      {/* Zone fills — clipped to tooth outline */}
-                      <g clipPath="url(#tc2025)">
-                        {SURF.map(({id,x,y,w,h,tcx,tcy,label,short})=>{
-                          const cond=recSurfaces[id];
-                          const isSel=selSurfaces.has(id);
-                          const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
-                          const zoneFill=isSel
-                            ?"rgba(29,78,216,0.88)"
-                            :col
-                              ?col+"bb"
-                              :"rgba(255,255,255,0.03)";
-                          const txtFill=isSel?"#fff":col?"#fff":"rgba(100,116,139,0.85)";
-                          return(
-                            <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}
-                               filter={isSel?"url(#tselglow)":undefined}>
-                              {/* Zone base */}
-                              <rect x={x} y={y} width={w} height={h} fill={zoneFill}/>
-                              {/* Top-half sheen for 3-D feel */}
-                              <rect x={x} y={y} width={w} height={Math.floor(h/2)} fill="url(#tsheen)"/>
-                              {/* Selection dashed inner ring */}
-                              {isSel&&<rect x={x+3} y={y+3} width={w-6} height={h-6} fill="none"
-                                stroke="rgba(147,197,253,0.55)" strokeWidth="1.5" strokeDasharray="5 3" rx="3"/>}
-                              {/* Initial letter */}
-                              <text x={tcx} y={tcy-8} textAnchor="middle" dominantBaseline="middle"
-                                fontSize={id==="o"?26:18} fontWeight={900} fill={txtFill}
-                                style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none",letterSpacing:"-0.02em"}}>
-                                {short}
-                              </text>
-                              {/* Full name */}
-                              <text x={tcx} y={tcy+12} textAnchor="middle" dominantBaseline="middle"
-                                fontSize={id==="o"?10:9} fontWeight={600}
-                                fill={isSel?"rgba(255,255,255,0.9)":col?"rgba(255,255,255,0.65)":"rgba(71,85,105,0.8)"}
-                                style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none",textTransform:"uppercase",letterSpacing:"0.05em"}}>
-                                {label}
-                              </text>
-                              {/* Condition colour dot badge */}
-                              {col&&<circle cx={x+w-12} cy={y+12} r={6} fill={col} stroke="rgba(0,0,0,0.5)" strokeWidth="1.5"/>}
-                            </g>
-                          );
-                        })}
-
-                        {/* Dividing lines between zones (drawn on top of fills) */}
-                        {/* Buccal / middle row */}
-                        <line x1="8" y1="76" x2="244" y2="76" stroke="rgba(15,28,52,0.9)" strokeWidth="2"/>
-                        {/* Middle row / Palatal */}
-                        <line x1="8" y1="176" x2="244" y2="176" stroke="rgba(15,28,52,0.9)" strokeWidth="2"/>
-                        {/* Mesial | Occlusal */}
-                        <line x1="76" y1="76" x2="76" y2="176" stroke="rgba(15,28,52,0.9)" strokeWidth="2"/>
-                        {/* Occlusal | Distal */}
-                        <line x1="168" y1="76" x2="168" y2="176" stroke="rgba(15,28,52,0.9)" strokeWidth="2"/>
-
-                        {/* Subtle inner highlight lines (top edges) */}
-                        <line x1="8" y1="77" x2="244" y2="77" stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
-                        <line x1="8" y1="177" x2="244" y2="177" stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
-                        <line x1="77" y1="76" x2="77" y2="176" stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
-                        <line x1="169" y1="76" x2="169" y2="176" stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
-                      </g>
-
-                      {/* Outer tooth border */}
-                      <rect x="8" y="8" width="236" height="236" rx="32" fill="none"
-                        stroke={anySelected?"rgba(96,165,250,0.55)":"rgba(80,140,255,0.22)"} strokeWidth="2"/>
-                      {/* Inner bevel highlight */}
-                      <rect x="10" y="10" width="232" height="232" rx="30" fill="none"
-                        stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+                      {zones.map(({id,label,x,y,w,h,cx,cy})=>{
+                        const cond=recSurfaces[id];
+                        const isSel=selSurfaces.has(id);
+                        const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
+                        const baseFill=isSel?"#1d4ed8":col||"#0f1c34";
+                        const borderCol=isSel?"#60A5FA":col||(id==="o"?"rgba(100,160,255,0.5)":"rgba(80,140,255,0.25)");
+                        const isOcc=id==="o";
+                        return(
+                          <g key={id} onClick={e=>{e.stopPropagation();toggleSurf(id);}} style={{cursor:"pointer"}}
+                             filter={isSel?"url(#sfglow)":undefined}>
+                            <rect x={x+0.5} y={y+1.5} width={w} height={h} rx={7} fill="rgba(0,0,0,0.35)"/>
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill={baseFill}/>
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill={`url(#sfg-${id})`}/>
+                            <rect x={x} y={y} width={w} height={h} rx={7} fill="none"
+                              stroke={borderCol} strokeWidth={isSel?2.5:1.5}/>
+                            {col&&!isSel&&<rect x={x} y={y} width={w} height={h} rx={7} fill={col} opacity={0.22}/>}
+                            <text x={cx} y={isOcc?cy-6:cy-5} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={isOcc?20:13} fontWeight={900}
+                              fill={isSel?"#ffffff":col||"#94A3B8"}
+                              style={{pointerEvents:"none",fontFamily:"ui-monospace,monospace",userSelect:"none"}}>
+                              {label[0]}
+                            </text>
+                            <text x={cx} y={cy+(isOcc?10:8)} textAnchor="middle" dominantBaseline="middle"
+                              fontSize={isOcc?8.5:7.5} fontWeight={500}
+                              fill={isSel?"rgba(255,255,255,0.85)":col?"rgba(255,255,255,0.55)":"#4a5f7a"}
+                              style={{pointerEvents:"none",fontFamily:"sans-serif",userSelect:"none"}}>
+                              {label}
+                            </text>
+                            {col&&<circle cx={x+w-9} cy={y+9} r={4.5} fill={col} stroke="rgba(0,0,0,0.3)" strokeWidth={1}/>}
+                          </g>
+                        );
+                      })}
+                      <line x1="80" y1="44" x2="80" y2="48" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="42" y1="80" x2="46" y2="80" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="114" y1="80" x2="118" y2="80" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
+                      <line x1="80" y1="112" x2="80" y2="116" stroke="rgba(80,140,255,0.2)" strokeWidth="1"/>
                     </svg>
-
-                    {/* Selected surfaces status */}
-                    <div style={{fontSize:10,textAlign:"center",lineHeight:1.5}}>
-                      {anySelected
-                        ?<span style={{color:"#60A5FA",fontWeight:700}}>
-                            ✓ {selSurfList.map(s=>SURF.find(z=>z.id===s)?.label||s).join(" + ")} selected
-                          </span>
-                        :<span style={{color:"#475569",fontStyle:"italic"}}>Tap a surface zone to select it</span>}
+                    <div style={{fontSize:10,color:"#64748b",textAlign:"center",fontStyle:"italic",marginTop:-4}}>
+                      {selSurfList.length>0
+                        ?`Selected: ${selSurfList.map(s=>zones.find(z=>z.id===s)?.label||s).join(", ")}`
+                        :"Tap a surface zone above"}
                     </div>
                   </div>
                 );
