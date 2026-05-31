@@ -15834,14 +15834,16 @@ function DentalWorkspace({patient,user}){
   const COND_COLORS={miss:"#64748B",filling:"#2563FF",crown:"#D97706",rct:"#7C3AED",decay:"#DC2626",implant:"#16A34A",extraction:"#EA580C",bridge:"#0891B2",veneer:"#DB2777",fracture:"#F97316",mobility:"#F59E0B",watch:"#CA8A04",planned:"#6366F1",completed:"#16A34A"};
   const COND_LABELS={miss:"Missing",filling:"Filling",crown:"Crown",rct:"Root Canal",decay:"Decay",implant:"Implant",extraction:"Extraction",bridge:"Bridge",veneer:"Veneer",fracture:"Fracture",mobility:"Mobility",watch:"Watch",planned:"Planned",completed:"Completed"};
 
-  // Tooth SVG — Dentally style: clear 5-zone with rounded corners
+  // Tooth SVG — condition-coded with distinctive per-treatment visuals
   const ToothSVG=({num,selected,active})=>{
     const W=38;const H=38;const OX=11;const OY=11;
     const td=teeth[num]||{cond:null,surfaces:{},planned:[],completed:[]};
-    const isMiss=td.cond==="miss";
+    const c=td.cond;
+    const isMiss=c==="miss";
     const hasPlanned=td.planned.length>0;
     const hasComplete=td.completed.length>0;
     const isSel=selected;
+    const col=c&&COND_COLORS[c]||null;
 
     const zones=[
       {id:"b",d:`M0,0 L${W},0 L${W-OX},${OY} L${OX},${OY} Z`},
@@ -15851,39 +15853,113 @@ function DentalWorkspace({patient,user}){
       {id:"o",d:`M${OX},${OY} L${W-OX},${OY} L${W-OX},${H-OY} L${OX},${H-OY} Z`},
     ];
 
+    // Abbreviations shown inside tooth for text-readable conditions
+    const ABBR={crown:"CR",rct:"RCT",implant:"IMP",bridge:"BR",veneer:"V",decay:"DC",watch:"W",mobility:"MOB"};
+
     return(
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{display:"block",cursor:"pointer",borderRadius:4}}
         onClick={e=>toggleTooth(num,e)}>
-        {/* Base */}
+
+        {/* ── Base fill ── */}
         <rect x={0} y={0} width={W} height={H} rx={3}
-          fill={isMiss?"rgba(100,116,139,0.45)":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]+"99":"#132238"}
-          stroke={isSel?"#60A5FA":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]:isMiss?"#64748B":"rgba(80,140,255,0.18)"}
-          strokeWidth={isSel?2.5:td.cond?2:1}/>
-        {isMiss&&<><line x1={8} y1={8} x2={W-8} y2={H-8} stroke="#94A3B8" strokeWidth={2.5} strokeLinecap="round"/><line x1={W-8} y1={8} x2={8} y2={H-8} stroke="#94A3B8" strokeWidth={2.5} strokeLinecap="round"/></>}
-        {td.cond&&!isMiss&&<circle cx={W-5} cy={5} r={4} fill={COND_COLORS[td.cond]} opacity={1}/>}
-        {/* Surface zones */}
-        {!isMiss&&zones.map(z=>{
-          const cond=td.surfaces[z.id];
+          fill={isMiss?"#475569":col?col+"cc":"#132238"}
+          stroke={isSel?"#60A5FA":col||"rgba(80,140,255,0.18)"}
+          strokeWidth={isSel?2.5:col?2:1}/>
+
+        {/* ── Surface zones (only when no whole-tooth cond) ── */}
+        {!c&&zones.map(z=>{
+          const sc=td.surfaces[z.id];
           const isSelSurf=active&&selSurfaces.has(z.id);
-          const fill=cond?COND_COLORS[cond]||"#64748b":isSelSurf?"#2563FF":hasPlanned?"rgba(99,102,241,0.08)":"transparent";
           return(
-            <path key={z.id} d={z.d} fill={fill} fillOpacity={cond?0.8:isSelSurf?0.5:hasPlanned?0.6:0}
-              stroke={cond?COND_COLORS[cond]:"rgba(80,140,255,0.18)"} strokeWidth={0.8}
+            <path key={z.id} d={z.d}
+              fill={sc?COND_COLORS[sc]||"#64748b":isSelSurf?"#2563FF":"transparent"}
+              fillOpacity={sc?0.9:isSelSurf?0.55:0}
+              stroke={sc?COND_COLORS[sc]:"rgba(80,140,255,0.18)"} strokeWidth={0.8}
               style={{cursor:active?"crosshair":"pointer"}}
               onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}
-              onMouseEnter={e=>{if(!cond&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0.3");}}
-              onMouseLeave={e=>{if(!cond&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0");}}/>
+              onMouseEnter={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0.3");}}
+              onMouseLeave={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0");}}/>
           );
         })}
-        {/* Missing X */}
-        {isMiss&&<><line x1={5} y1={5} x2={W-5} y2={H-5} stroke="#fca5a5" strokeWidth={2} strokeLinecap="round"/>
-          <line x1={W-5} y1={5} x2={5} y2={H-5} stroke="#fca5a5" strokeWidth={2} strokeLinecap="round"/></>}
-        {/* Planned dot */}
-        {hasPlanned&&!isMiss&&<circle cx={W-5} cy={5} r={3.5} fill="#f59e0b" stroke="#132238" strokeWidth={0.8}/>}
-        {/* Completed dot */}
-        {hasComplete&&!isMiss&&<circle cx={5} cy={5} r={3.5} fill="#16a34a" stroke="#132238" strokeWidth={0.8}/>}
+        {/* Surface zones overlay when whole-tooth cond also exists */}
+        {c&&zones.map(z=>{
+          const sc=td.surfaces[z.id];
+          const isSelSurf=active&&selSurfaces.has(z.id);
+          if(!sc&&!isSelSurf)return null;
+          return(
+            <path key={z.id} d={z.d}
+              fill={sc?COND_COLORS[sc]||"#64748b":isSelSurf?"#60A5FA":"transparent"}
+              fillOpacity={sc?0.9:0.5}
+              stroke="rgba(255,255,255,0.4)" strokeWidth={0.8}
+              style={{cursor:active?"crosshair":"pointer"}}
+              onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}/>
+          );
+        })}
+
+        {/* ── Condition-specific overlays ── */}
+
+        {/* Missing — bold white X */}
+        {isMiss&&<>
+          <line x1={6} y1={6} x2={W-6} y2={H-6} stroke="#F1F5F9" strokeWidth={3.5} strokeLinecap="round"/>
+          <line x1={W-6} y1={6} x2={6} y2={H-6} stroke="#F1F5F9" strokeWidth={3.5} strokeLinecap="round"/>
+        </>}
+
+        {/* Extraction — orange X with thinner lines (distinct from missing) */}
+        {c==="extraction"&&<>
+          <line x1={7} y1={7} x2={W-7} y2={H-7} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
+          <line x1={W-7} y1={7} x2={7} y2={H-7} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
+          <text x={W/2} y={H-4} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">EX</text>
+        </>}
+
+        {/* Crown — gold crown shape at top */}
+        {c==="crown"&&<>
+          <polygon points={`3,15 3,7 9,12 19,4 29,12 35,7 35,15`} fill="#D97706" opacity={0.95} stroke="#fff" strokeWidth={0.6}/>
+          <text x={W/2} y={H-3} textAnchor="middle" fontSize={8} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">CR</text>
+        </>}
+
+        {/* RCT — purple + three root canal lines */}
+        {c==="rct"&&<>
+          <line x1={13} y1={14} x2={11} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
+          <line x1={19} y1={14} x2={19} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
+          <line x1={25} y1={14} x2={27} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
+          <text x={W/2} y={13} textAnchor="middle" fontSize={7} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">RCT</text>
+        </>}
+
+        {/* Implant — green + screw body */}
+        {c==="implant"&&<>
+          <rect x={14} y={9} width={10} height={20} rx={3} fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.85}/>
+          {[13,17,21,25].map(y=><line key={y} x1={14} y1={y} x2={24} y2={y} stroke="#fff" strokeWidth={1} opacity={0.6}/>)}
+          <text x={W/2} y={H-2} textAnchor="middle" fontSize={6} fontWeight={900} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">IMP</text>
+        </>}
+
+        {/* Bridge — teal + horizontal bridge bars */}
+        {c==="bridge"&&<>
+          <rect x={1} y={2} width={W-2} height={6} rx={2} fill="#fff" opacity={0.2}/>
+          <rect x={1} y={H-8} width={W-2} height={6} rx={2} fill="#fff" opacity={0.2}/>
+          <text x={W/2} y={H/2+4} textAnchor="middle" fontSize={9} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">BR</text>
+        </>}
+
+        {/* Fracture — orange + zigzag crack */}
+        {c==="fracture"&&<>
+          <polyline points={`${W/2},3 ${W/2-5},${H/3} ${W/2+5},${H*2/3} ${W/2},${H-3}`} fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.95}/>
+          <text x={W/2} y={H-2} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">FR</text>
+        </>}
+
+        {/* Veneer, decay, watch, mobility — colour fill + label */}
+        {c&&ABBR[c]&&!["crown","rct","implant","bridge","fracture","extraction"].includes(c)&&(
+          <text x={W/2} y={H/2+4} textAnchor="middle"
+            fontSize={ABBR[c].length>2?8:10} fontWeight={900}
+            fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">
+            {ABBR[c]}
+          </text>
+        )}
+
+        {/* Planned / completed corner dots */}
+        {hasPlanned&&!isMiss&&<circle cx={4} cy={4} r={3.5} fill="#f59e0b" stroke="#132238" strokeWidth={0.8}/>}
+        {hasComplete&&!isMiss&&<circle cx={4} cy={H-4} r={3.5} fill="#16a34a" stroke="#132238" strokeWidth={0.8}/>}
+
         {/* Selection ring */}
-        {isSel&&<rect x={0.5} y={0.5} width={W-1} height={H-1} rx={3} fill="none" stroke="#2563FF" strokeWidth={2} strokeDasharray="4,2"/>}
+        {isSel&&<rect x={0.5} y={0.5} width={W-1} height={H-1} rx={3} fill="none" stroke="#60A5FA" strokeWidth={2} strokeDasharray="4,2"/>}
       </svg>
     );
   };
