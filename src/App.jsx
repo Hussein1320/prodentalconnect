@@ -15589,9 +15589,14 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         const orig=origMats.get(mesh)||mesh.material;
         const m=orig.clone();
         if(hex!=null){
-          m.emissive=new T.Color(hex);
-          m.emissiveIntensity=0.72;
-          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.32;}
+          const col=new T.Color(hex);
+          m.map=null;          // remove texture so solid colour dominates
+          m.color=col;
+          m.emissive=col;
+          m.emissiveIntensity=0.45;
+          m.roughness=0.55;m.metalness=0.0;
+          if(hex===0x475569||hex===0xDC2626){m.transparent=true;m.opacity=0.35;}
+          else{m.transparent=false;m.opacity=1;}
         }
         return m;
       };
