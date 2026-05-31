@@ -15665,12 +15665,16 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
-        // Remove old surface markers
-        (R.current.surfMarkers||[]).forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
+        // Remove old surface markers (stored as {plane, parentMesh})
+        (R.current.surfMarkers||[]).forEach(({plane,parentMesh})=>{
+          parentMesh.remove(plane);
+          plane.geometry.dispose();plane.material.dispose();
+        });
         R.current.surfMarkers=[];
-        // Build oriented flat-disc surface markers
+        // Add oriented flat-disc markers as children of each tooth mesh
+        // (so they inherit the group scale + rotation automatically)
         const T2=R.current.THREE;
-        scene.updateMatrixWorld(true);
+        const up=new T2.Vector3(0,0,1); // PlaneGeometry default normal is +Z
         Object.entries(surfData).forEach(([pid,surfs])=>{
           const mesh=R.current.toothMap[pid];
           if(!mesh||!mesh.geometry)return;
@@ -15678,39 +15682,32 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const bb=mesh.geometry.boundingBox;
           const cx=(bb.min.x+bb.max.x)/2,cy=(bb.min.y+bb.max.y)/2,cz=(bb.min.z+bb.max.z)/2;
           const sx=bb.max.x-bb.min.x,sy=bb.max.y-bb.min.y,sz=bb.max.z-bb.min.z;
-          const pad=0.08; // small gap from surface
-          // Each surface: local centre point + normal direction + disc dimensions [w,h]
+          const gap=0.15;
+          // All coords/sizes are in the mesh's LOCAL space
           const surfDefs={
-            o:{pt:new T2.Vector3(cx,bb.max.y+pad,cz), norm:new T2.Vector3(0,1,0),  w:sx*0.88,h:sz*0.88},
-            b:{pt:new T2.Vector3(cx,cy,bb.min.z-pad), norm:new T2.Vector3(0,0,-1), w:sx*0.78,h:sy*0.70},
-            l:{pt:new T2.Vector3(cx,cy,bb.max.z+pad), norm:new T2.Vector3(0,0,1),  w:sx*0.78,h:sy*0.70},
-            m:{pt:new T2.Vector3(bb.min.x-pad,cy,cz), norm:new T2.Vector3(-1,0,0), w:sz*0.78,h:sy*0.70},
-            d:{pt:new T2.Vector3(bb.max.x+pad,cy,cz), norm:new T2.Vector3(1,0,0),  w:sz*0.78,h:sy*0.70},
+            o:{pt:[cx,bb.max.y+gap,cz], norm:[0,1,0],  w:sx*0.85,h:sz*0.85},
+            b:{pt:[cx,cy,bb.min.z-gap], norm:[0,0,-1], w:sx*0.75,h:sy*0.65},
+            l:{pt:[cx,cy,bb.max.z+gap], norm:[0,0,1],  w:sx*0.75,h:sy*0.65},
+            m:{pt:[bb.min.x-gap,cy,cz], norm:[-1,0,0], w:sz*0.75,h:sy*0.65},
+            d:{pt:[bb.max.x+gap,cy,cz], norm:[1,0,0],  w:sz*0.75,h:sy*0.65},
           };
           Object.entries(surfs).forEach(([s,cond])=>{
             if(!cond||!surfDefs[s])return;
             const hex=_COND_3D[cond];
             if(hex==null)return;
-            const def=surfDefs[s];
-            // World space centre
-            const wPos=mesh.localToWorld(def.pt.clone());
-            // World space normal: transform direction by mesh's normal matrix
-            const nm=new T2.Matrix3().getNormalMatrix(mesh.matrixWorld);
-            const wNorm=def.norm.clone().applyMatrix3(nm).normalize();
-            // Build plane geo and orient it to face the surface normal
-            const geo=new T2.PlaneGeometry(def.w,def.h,1,1);
+            const df=surfDefs[s];
+            const geo=new T2.PlaneGeometry(df.w,df.h,1,1);
             const mat=new T2.MeshBasicMaterial({
-              color:new T2.Color(hex),transparent:true,opacity:0.82,
-              depthTest:true,side:T2.DoubleSide,
+              color:new T2.Color(hex),transparent:true,opacity:0.80,
+              depthTest:true,side:T2.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,
             });
             const plane=new T2.Mesh(geo,mat);
-            plane.position.copy(wPos);
-            // Rotate plane so its +Z normal aligns with wNorm
-            const quat=new T2.Quaternion().setFromUnitVectors(new T2.Vector3(0,0,1),wNorm);
-            plane.quaternion.copy(quat);
+            plane.position.set(...df.pt);
+            const norm=new T2.Vector3(...df.norm);
+            plane.quaternion.copy(new T2.Quaternion().setFromUnitVectors(up,norm));
             plane.renderOrder=3;
-            scene.add(plane);
-            R.current.surfMarkers.push(plane);
+            mesh.add(plane); // child of tooth — inherits group scale
+            R.current.surfMarkers.push({plane,parentMesh:mesh});
           });
         });
       };
