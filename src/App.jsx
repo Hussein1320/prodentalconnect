@@ -15625,12 +15625,20 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         if(entry){
           const col=new T.Color(entry.hex);
           m.map=null;
-          m.color=col;
-          m.emissive=col;
-          m.emissiveIntensity=0.45;
-          m.roughness=0.55;m.metalness=0.0;
-          if(entry.key==="miss"||entry.key==="extraction"){m.transparent=true;m.opacity=0.28;}
-          else{m.transparent=false;m.opacity=1;}
+          if(entry.surfOnly){
+            // Surface-only: keep original tooth look, just a very faint tint
+            m.emissive=col;
+            m.emissiveIntensity=0.18;
+            m.transparent=false;m.opacity=1;
+          }else{
+            // Whole-tooth condition: full colour like the purple root canal
+            m.color=col;
+            m.emissive=col;
+            m.emissiveIntensity=0.45;
+            m.roughness=0.55;m.metalness=0.0;
+            if(entry.key==="miss"||entry.key==="extraction"){m.transparent=true;m.opacity=0.28;}
+            else{m.transparent=false;m.opacity=1;}
+          }
         }
         return m;
       };
@@ -15658,7 +15666,15 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           const s=data.surfaces||{};
           const hasSurf=Object.values(s).some(Boolean);
           if(hasSurf)surfData[pid]=s;
-          // Surface-only conditions do NOT colour the whole mesh — sphere markers show them instead
+          // Surface-only: apply a faint tint to the whole mesh so tooth is never blank,
+          // then the per-face plane overlay (below) shows the specific surface
+          if(hasSurf&&!data.cond){
+            const surfCond=s.o||s.b||s.m||s.d||s.l||null;
+            if(surfCond){
+              const hex=_COND_3D[surfCond];
+              if(hex!=null)R.current.toothConds[pid]={hex,key:surfCond,surfOnly:true};
+            }
+          }
         });
         // Re-apply mesh colours (only whole-tooth conditions colour the mesh)
         R.current.toothMeshes.forEach(mesh=>{
@@ -15675,11 +15691,10 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
         R.current.surfMarkers=[];
 
         // Place flat coloured plane overlays as CHILDREN of each tooth mesh.
-        // Because they are children, they inherit the mesh's world transform (including
-        // the 0.2 group scale) automatically — no world-space sizing errors.
-        // Axis convention from detectSurface (geometry local space):
-        //   Y-up = Occlusal   |  Z-neg = Buccal  |  Z-pos = Palatal
-        //   X-axis = Mesial (toward arch front) / Distal (toward arch back)
+        // depthTest:false ensures they render on top of the tooth face regardless
+        // of depth buffer. Planes are sized from the local geometry bounding box
+        // and positioned just outside each face, so they inherit the correct scale.
+        // Axis convention (detectSurface): Y-up=Occlusal, Z-neg=Buccal, Z-pos=Palatal
         const T=R.current.THREE;
         if(T){
           Object.entries(surfData).forEach(([pid,surfs])=>{
@@ -15691,17 +15706,16 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
             bb.getCenter(c);bb.getSize(sz);
             const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            const EPS=0.02; // tiny outward offset so overlay sits just above surface
+            // Push planes 5% outside the bounding box face so they sit above geometry
+            const ox=hx*0.06, oy=hy*0.06, oz=hz*0.06;
 
-            // Plane config per surface: [localPos, eulerX, eulerY, planeW, planeH]
+            // [position in local space, rotX, rotY, planeWidth, planeHeight]
             const surfCfg={
-              o:[new T.Vector3(c.x, c.y+hy+EPS, c.z), -Math.PI/2, 0,      sz.x, sz.z],
-              b:[new T.Vector3(c.x, c.y, c.z-hz-EPS), 0,           Math.PI, sz.x, sz.y],
-              l:[new T.Vector3(c.x, c.y, c.z+hz+EPS), 0,           0,       sz.x, sz.y],
-              m:[new T.Vector3(c.x+(isRight?-hx:hx)*(1+EPS/hx), c.y, c.z),
-                 0, (isRight?-1:1)*Math.PI/2, sz.z, sz.y],
-              d:[new T.Vector3(c.x+(isRight?hx:-hx)*(1+EPS/hx), c.y, c.z),
-                 0, (isRight?1:-1)*Math.PI/2, sz.z, sz.y],
+              o:[new T.Vector3(c.x,              c.y+hy+oy, c.z),            -Math.PI/2, 0,                   sz.x*1.05, sz.z*1.05],
+              b:[new T.Vector3(c.x,              c.y,       c.z-hz-oz),      0,           Math.PI,             sz.x*1.05, sz.y*1.05],
+              l:[new T.Vector3(c.x,              c.y,       c.z+hz+oz),      0,           0,                   sz.x*1.05, sz.y*1.05],
+              m:[new T.Vector3(c.x+(isRight?-1:1)*(hx+ox),  c.y, c.z),      0,           (isRight?-1:1)*Math.PI/2, sz.z*1.05, sz.y*1.05],
+              d:[new T.Vector3(c.x+(isRight?1:-1)*(hx+ox),  c.y, c.z),      0,           (isRight?1:-1)*Math.PI/2, sz.z*1.05, sz.y*1.05],
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
@@ -15712,14 +15726,16 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
               const geo=new T.PlaneGeometry(pw,ph);
               const mat=new T.MeshBasicMaterial({
                 color:new T.Color(hex),
-                transparent:true,opacity:0.72,
-                side:T.DoubleSide,depthWrite:false,
+                transparent:true,opacity:0.75,
+                side:T.DoubleSide,
+                depthTest:false,   // renders on top of tooth face geometry
+                depthWrite:false,
               });
               const plane=new T.Mesh(geo,mat);
               plane.position.copy(pos);
               plane.rotation.set(rx,ry,0);
-              plane.renderOrder=3;
-              mesh.add(plane);          // child of tooth mesh → correct world transform
+              plane.renderOrder=10;
+              mesh.add(plane);
               R.current.surfMarkers.push(plane);
             });
           });
