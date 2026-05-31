@@ -15856,11 +15856,11 @@ function DentalWorkspace({patient,user}){
         onClick={e=>toggleTooth(num,e)}>
         {/* Base */}
         <rect x={0} y={0} width={W} height={H} rx={3}
-          fill={isMiss?"rgba(100,116,139,0.12)":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]+"18":"#132238"}
-          stroke={isSel?"#2563FF":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]:isMiss?"#64748B":"rgba(80,140,255,0.18)"}
-          strokeWidth={isSel?2.5:td.cond?1.8:1}/>
-        {isMiss&&<><line x1={8} y1={8} x2={W-8} y2={H-8} stroke="#64748B" strokeWidth={2} strokeLinecap="round"/><line x1={W-8} y1={8} x2={8} y2={H-8} stroke="#64748B" strokeWidth={2} strokeLinecap="round"/></>}
-        {td.cond&&!isMiss&&<circle cx={W-5} cy={5} r={4} fill={COND_COLORS[td.cond]} opacity={0.95}/>}
+          fill={isMiss?"rgba(100,116,139,0.45)":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]+"99":"#132238"}
+          stroke={isSel?"#60A5FA":td.cond&&COND_COLORS[td.cond]?COND_COLORS[td.cond]:isMiss?"#64748B":"rgba(80,140,255,0.18)"}
+          strokeWidth={isSel?2.5:td.cond?2:1}/>
+        {isMiss&&<><line x1={8} y1={8} x2={W-8} y2={H-8} stroke="#94A3B8" strokeWidth={2.5} strokeLinecap="round"/><line x1={W-8} y1={8} x2={8} y2={H-8} stroke="#94A3B8" strokeWidth={2.5} strokeLinecap="round"/></>}
+        {td.cond&&!isMiss&&<circle cx={W-5} cy={5} r={4} fill={COND_COLORS[td.cond]} opacity={1}/>}
         {/* Surface zones */}
         {!isMiss&&zones.map(z=>{
           const cond=td.surfaces[z.id];
@@ -16270,14 +16270,26 @@ function DentalWorkspace({patient,user}){
                         onClick={()=>{
                           if(!selTooth)return;
                           if(selSurfList.length>0){
-                            setTeeth(p=>({...p,[selTooth]:{...p[selTooth],surfaces:{...p[selTooth]?.surfaces,...Object.fromEntries(selSurfList.map(s=>[s,p[selTooth]?.surfaces?.[s]===k?null:k]))}}}));
+                            const next=isActiveSurf?null:k;
+                            setTeeth(p=>{
+                              const cur=p[selTooth]||{cond:null,surfaces:{},planned:[],completed:[]};
+                              const newSurfaces={...cur.surfaces};
+                              selSurfList.forEach(s=>{newSurfaces[s]=next;});
+                              return {...p,[selTooth]:{...cur,surfaces:newSurfaces}};
+                            });
+                            toast(next?`✓ ${label} — ${selSurfList.map(s=>s.toUpperCase()).join("+")} surface(s) on ${palmerName(selTooth)}`:`Cleared surface(s) on ${palmerName(selTooth)}`);
                           }else{
-                            setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:p[selTooth]?.cond===k?null:k}}));
+                            const next=isActiveWhole?null:k;
+                            setTeeth(p=>{
+                              const cur=p[selTooth]||{cond:null,surfaces:{},planned:[],completed:[]};
+                              return {...p,[selTooth]:{...cur,cond:next}};
+                            });
+                            toast(next?`✓ ${label} recorded on ${palmerName(selTooth)}`:`Cleared condition on ${palmerName(selTooth)}`);
                           }
                         }}
-                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"22":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
+                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"44":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
                         <span style={{width:8,height:8,borderRadius:2,background:color,flexShrink:0,display:"inline-block"}}/>
-                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?color:"#CBD5E1"}}>{label}</span>
+                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?"#F8FAFC":"#CBD5E1"}}>{label}</span>
                       </button>
                     );
                   })}
@@ -16292,10 +16304,18 @@ function DentalWorkspace({patient,user}){
                     const isActive=selToothData?.cond===k;
                     return(
                       <button key={k}
-                        onClick={()=>{if(selTooth)setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:p[selTooth]?.cond===k?null:k}}));}}
-                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"22":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
+                        onClick={()=>{
+                          if(!selTooth)return;
+                          const next=isActive?null:k;
+                          setTeeth(p=>{
+                            const cur=p[selTooth]||{cond:null,surfaces:{},planned:[],completed:[]};
+                            return {...p,[selTooth]:{...cur,cond:next}};
+                          });
+                          toast(next?`✓ ${label} recorded on ${palmerName(selTooth)}`:`Cleared condition on ${palmerName(selTooth)}`);
+                        }}
+                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"44":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
                         <span style={{width:8,height:8,borderRadius:50,background:color,flexShrink:0,display:"inline-block"}}/>
-                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?color:"#CBD5E1"}}>{label}</span>
+                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?"#F8FAFC":"#CBD5E1"}}>{label}</span>
                       </button>
                     );
                   })}
