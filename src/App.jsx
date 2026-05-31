@@ -15484,6 +15484,258 @@ function VoiceChartingPanel({teeth, setTeeth, onConfirm, onClose}) {
 
 
 
+// ── GLB mesh name → Palmer notation lookup ────────────────────────────────
+const _GLB_TO_PALMER={
+  "U1":"UL1","U1_copy1":"UR1","U2":"UL2","U2_copy1":"UR2",
+  "U3":"UL3","U3_copy1":"UR3","U4":"UL4","U4_copy1":"UR4",
+  "U5":"UL5","U5_copy1":"UR5","U6":"UL6","U6_copy1":"UR6",
+  "U7":"UL7","U7_copy1":"UR7","U8":"UR8","U8_copy1":"UL8",
+  "L1":"LR1","L1_copy1":"LL1","L2":"LR2","L2_copy1":"LL2",
+  "L3":"LL3","L3_copy1":"LR3","L4":"LL4","L4_copy1":"LR4",
+  "L5":"LL5","L5_copy1":"LR5","L6":"LR6","L6_copy1":"LL6",
+  "L7":"LL7","L7_copy1":"LR7","L8":"LL8","L8_copy1":"LR8",
+};
+const _palmerToFDI=pid=>{
+  if(!pid)return null;
+  const m=pid.match(/^(UR|UL|LL|LR)(\d)$/);
+  if(!m)return null;
+  return {UR:1,UL:2,LL:3,LR:4}[m[1]]*10+parseInt(m[2]);
+};
+const _fdiToPalmer=fdi=>{
+  if(!fdi)return null;
+  const q=Math.floor(fdi/10),n=fdi%10;
+  return ({1:"UR",2:"UL",3:"LL",4:"LR"}[q]||"")+n;
+};
+
+function Tooth3DView({onToothClick,selFDI}){
+  const mountRef=useRef(null);
+  const R=useRef({});
+  const [status,setStatus]=useState("loading");
+  const [loadPct,setLoadPct]=useState(0);
+  const [hovered,setHovered]=useState(null);
+  const [modelKey,setModelKey]=useState("stained");
+  const cbRef=useRef(onToothClick);
+  useEffect(()=>{cbRef.current=onToothClick;},[onToothClick]);
+
+  // Main setup — runs once
+  useEffect(()=>{
+    let cancelled=false;
+    const mount=mountRef.current;
+    if(!mount)return;
+
+    (async()=>{
+      const THREE=await import("three");
+      const {GLTFLoader}=await import("three/examples/jsm/loaders/GLTFLoader.js");
+      const {OrbitControls}=await import("three/examples/jsm/controls/OrbitControls.js");
+      if(cancelled)return;
+
+      const w=mount.clientWidth||700,h=mount.clientHeight||450;
+      const scene=new THREE.Scene();
+      const camera=new THREE.PerspectiveCamera(35,w/h,0.01,100);
+      camera.position.set(0,2,8);
+
+      const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+      renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+      renderer.outputColorSpace=THREE.SRGBColorSpace;
+      renderer.toneMapping=THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure=1.1;
+      renderer.setSize(w,h);
+      renderer.domElement.style.cssText="display:block;width:100%;height:100%;";
+      mount.appendChild(renderer.domElement);
+
+      const controls=new OrbitControls(camera,renderer.domElement);
+      controls.enableDamping=true;controls.dampingFactor=0.06;
+      controls.minDistance=2;controls.maxDistance=18;
+      controls.target.set(0,0,0);
+
+      scene.add(new THREE.AmbientLight(0xffffff,1.2));
+      const d1=new THREE.DirectionalLight(0xfff5f0,2.5);d1.position.set(2,4,3);scene.add(d1);
+      const d2=new THREE.DirectionalLight(0xf0f8ff,1.0);d2.position.set(-3,2,-2);scene.add(d2);
+      const fill=new THREE.PointLight(0xffffff,0.8,30);fill.position.set(0,-3,2);scene.add(fill);
+
+      R.current={THREE,GLTFLoader,scene,camera,renderer,controls,
+        toothMeshes:[],origMats:new Map(),toothMap:{},
+        hoveredMesh:null,selectedMesh:null,modelGroup:null,af:null};
+
+      const onResize=()=>{
+        const w2=mount.clientWidth,h2=mount.clientHeight;
+        if(!w2||!h2)return;
+        renderer.setSize(w2,h2,false);
+        camera.aspect=w2/h2;camera.updateProjectionMatrix();
+      };
+      const ro=new ResizeObserver(onResize);
+      ro.observe(mount);
+
+      const raycaster=new THREE.Raycaster();
+      const mouse=new THREE.Vector2();
+      const getHit=e=>{
+        const rect=renderer.domElement.getBoundingClientRect();
+        mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+        mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+        raycaster.setFromCamera(mouse,camera);
+        const hits=raycaster.intersectObjects(R.current.toothMeshes,false);
+        return hits.length?hits[0].object:null;
+      };
+      const applyHL=(mesh,mode)=>{
+        if(!mesh)return;
+        const{origMats,THREE:T}=R.current;
+        if(mode==="none"){const o=origMats.get(mesh);if(o)mesh.material=o.clone();return;}
+        const base=origMats.get(mesh)||mesh.material;
+        const m=base.clone();
+        m.emissive=new T.Color(mode==="hover"?0x003355:0x0044aa);
+        m.emissiveIntensity=mode==="hover"?0.55:0.95;
+        mesh.material=m;
+      };
+
+      renderer.domElement.addEventListener("mousemove",e=>{
+        if(cancelled)return;
+        const hit=getHit(e);
+        const{hoveredMesh,selectedMesh}=R.current;
+        if(hit!==hoveredMesh){
+          if(hoveredMesh&&hoveredMesh!==selectedMesh)applyHL(hoveredMesh,"none");
+          R.current.hoveredMesh=hit;
+          if(hit&&hit!==selectedMesh)applyHL(hit,"hover");
+          setHovered(hit?hit.userData.palmerID:null);
+        }
+      });
+      renderer.domElement.addEventListener("mouseleave",()=>{
+        const{hoveredMesh,selectedMesh}=R.current;
+        if(hoveredMesh&&hoveredMesh!==selectedMesh)applyHL(hoveredMesh,"none");
+        R.current.hoveredMesh=null;
+        setHovered(null);
+      });
+      renderer.domElement.addEventListener("click",e=>{
+        if(cancelled)return;
+        const hit=getHit(e);
+        const{selectedMesh}=R.current;
+        if(selectedMesh)applyHL(selectedMesh,"none");
+        R.current.selectedMesh=hit;
+        if(hit){
+          applyHL(hit,"select");
+          const fdi=_palmerToFDI(hit.userData.palmerID);
+          if(fdi)cbRef.current?.(fdi);
+        }
+      });
+
+      const animate=()=>{
+        if(cancelled)return;
+        R.current.af=requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene,camera);
+      };
+      animate();
+
+      // GLB loader fn — stored so model toggle can reuse it
+      R.current.loadModel=async(key)=>{
+        if(!cancelled){setStatus("loading");setLoadPct(0);}
+        if(R.current.modelGroup){scene.remove(R.current.modelGroup);R.current.modelGroup=null;}
+        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};
+        if(R.current.hoveredMesh&&R.current.hoveredMesh!==R.current.selectedMesh)setHovered(null);
+        R.current.hoveredMesh=null;R.current.selectedMesh=null;
+
+        const url=key==="stained"?"/Teeth_Stained.glb":"/Teeth_NoStain.glb";
+        await new Promise((resolve,reject)=>{
+          new GLTFLoader().load(url,gltf=>{
+            const group=new THREE.Group();
+            group.scale.setScalar(0.2);group.rotation.x=-0.15;
+            group.add(gltf.scene);scene.add(group);R.current.modelGroup=group;
+            const meshes=[],mats=new Map(),map={};
+            const box=new THREE.Box3(),ctr=new THREE.Vector3();
+            gltf.scene.traverse(obj=>{
+              if(!(obj instanceof THREE.Mesh))return;
+              const nm=obj.name,isGum=nm.startsWith("gum");
+              let pid=_GLB_TO_PALMER[nm];
+              if(!pid){
+                obj.geometry.computeBoundingBox();
+                box.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+                box.getCenter(ctr);
+                const mx=nm.match(/^([UL])(\d+)/i);
+                pid=mx?`${mx[1].toUpperCase()}${ctr.x>=0?"R":"L"}${mx[2]}`:`UNKNOWN_${nm}`;
+              }
+              obj.userData.palmerID=pid;
+              if(!isGum){
+                meshes.push(obj);mats.set(obj,obj.material.clone());
+                if(!pid.startsWith("UNKNOWN"))map[pid]=obj;
+              }
+            });
+            R.current.toothMeshes=meshes;R.current.origMats=mats;R.current.toothMap=map;
+            if(!cancelled)setStatus("ready");
+            resolve();
+          },(xhr)=>{if(xhr.total&&!cancelled)setLoadPct(Math.round(xhr.loaded/xhr.total*100));},
+          err=>{if(!cancelled)setStatus("error");reject(err);});
+        }).catch(()=>{});
+      };
+
+      await R.current.loadModel("stained");
+
+      R.current.cleanup=()=>{
+        ro.disconnect();
+        cancelAnimationFrame(R.current.af);
+        controls.dispose();
+        renderer.dispose();
+        if(mount.contains(renderer.domElement))mount.removeChild(renderer.domElement);
+      };
+    })();
+    return()=>{cancelled=true;R.current.cleanup?.();};
+  },[]);
+
+  // Sync external selection highlight (when user clicks 2D chart)
+  useEffect(()=>{
+    const{toothMap,origMats,selectedMesh,THREE:T}=R.current;
+    if(!toothMap||!T)return;
+    if(selectedMesh){const o=origMats.get(selectedMesh);if(o)selectedMesh.material=o.clone();}
+    if(!selFDI){R.current.selectedMesh=null;return;}
+    const pid=_fdiToPalmer(selFDI);
+    const mesh=pid?toothMap[pid]:null;
+    if(mesh){
+      const m=(origMats.get(mesh)||mesh.material).clone();
+      m.emissive=new T.Color(0x0044aa);m.emissiveIntensity=0.95;
+      mesh.material=m;R.current.selectedMesh=mesh;
+    }else{R.current.selectedMesh=null;}
+  },[selFDI]);
+
+  const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"radial-gradient(ellipse at 40% 30%,#0d1829 0%,#080b10 70%)"}}>
+      {/* Toolbar */}
+      <div style={{display:"flex",gap:6,padding:"7px 12px",background:"rgba(7,20,40,0.95)",borderBottom:"1px solid rgba(80,140,255,0.15)",alignItems:"center",flexShrink:0}}>
+        <span style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:".06em"}}>MODEL</span>
+        {[["stained","Stained"],["nostain","No Stain"]].map(([k,l])=>(
+          <button key={k} onClick={()=>switchModel(k)} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:modelKey===k?"#00c8ff":"rgba(255,255,255,0.07)",color:modelKey===k?"#000":"#94A3B8",transition:"all .15s"}}>{l}</button>
+        ))}
+        {status==="ready"&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(34,197,94,0.12)",color:"#22C55E",border:"1px solid rgba(34,197,94,0.25)",fontFamily:"ui-monospace,monospace",fontWeight:700}}>LIVE</span>}
+        <div style={{flex:1}}/>
+        <span style={{fontSize:10,color:"#64748B",fontFamily:"ui-monospace,monospace"}}>Drag · Scroll · Click tooth</span>
+      </div>
+      {/* Canvas container */}
+      <div ref={mountRef} style={{flex:1,position:"relative",overflow:"hidden"}}>
+        {status==="loading"&&(
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,background:"#080b10",zIndex:5}}>
+            <div style={{width:32,height:32,border:"2px solid #1e2535",borderTopColor:"#00c8ff",borderRadius:"50%",animation:"_3dspin .8s linear infinite"}}/>
+            <span style={{fontSize:22,fontWeight:500,color:"#00c8ff",fontFamily:"ui-monospace,monospace"}}>{loadPct}%</span>
+            <span style={{fontSize:11,color:"#64748B",fontFamily:"ui-monospace,monospace"}}>Loading 3D model…</span>
+          </div>
+        )}
+        {status==="error"&&(
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,background:"#080b10"}}>
+            <span style={{fontSize:28}}>⚠️</span>
+            <span style={{fontSize:12,color:"#EF4444"}}>Failed to load 3D model</span>
+            <span style={{fontSize:10,color:"#64748B"}}>Ensure /public/Teeth_Stained.glb is present</span>
+          </div>
+        )}
+        {hovered&&status==="ready"&&(
+          <div style={{position:"absolute",bottom:14,left:14,background:"rgba(7,14,26,0.94)",border:"1px solid #00c8ff",borderRadius:8,padding:"6px 12px",pointerEvents:"none",zIndex:4,backdropFilter:"blur(8px)"}}>
+            <div style={{fontSize:16,fontWeight:600,color:"#00c8ff",fontFamily:"ui-monospace,monospace"}}>{hovered}</div>
+            <div style={{fontSize:9,color:"#64748B",fontFamily:"ui-monospace,monospace",marginTop:2}}>Click to open findings</div>
+          </div>
+        )}
+      </div>
+      <style>{`@keyframes _3dspin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
 function DentalWorkspace({patient,user}){
   // ── State ─────────────────────────────────────────────────────
   const [teeth,setTeeth]=useState(()=>{const d={};[...Array(32)].forEach((_,i)=>{const n=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38][i];d[n]={cond:null,surfaces:{b:null,l:null,m:null,d:null,o:null},planned:[],completed:[]};});return d;});
@@ -15746,7 +15998,7 @@ function DentalWorkspace({patient,user}){
       {/* Chart mode toolbar */}
       <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.12)",padding:"0 12px",display:"flex",gap:0,alignItems:"center",flexShrink:0,height:40}}>
         <div style={{display:"flex",gap:0,flex:1}}>
-          {[{id:"chart",l:"🦷 Dental Chart"},{id:"perio",l:"📊 Perio"},{id:"softtissue",l:"🫦 Soft Tissue & Pathology"}].map(m=>(
+          {[{id:"chart",l:"🦷 Dental Chart"},{id:"perio",l:"📊 Perio"},{id:"softtissue",l:"🫦 Soft Tissue & Pathology"},{id:"3d",l:"🔮 3D View"}].map(m=>(
             <button key={m.id} onClick={()=>setChartMode(m.id)} style={{padding:"0 14px",height:40,border:"none",borderBottom:`2px solid ${chartMode===m.id?"#2563FF":"transparent"}`,background:"transparent",cursor:"pointer",fontSize:11,fontWeight:chartMode===m.id?700:400,color:chartMode===m.id?"#2563FF":"#64748b",whiteSpace:"nowrap"}}>
               {m.l}
             </button>
@@ -15892,6 +16144,8 @@ function DentalWorkspace({patient,user}){
           ))}
         </div>
       </div>}
+
+      {chartMode==="3d"&&<Tooth3DView onToothClick={n=>{toggleTooth(n,null);setRightTab("tooth");}} selFDI={selTooth}/>}
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
