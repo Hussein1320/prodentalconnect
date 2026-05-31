@@ -15620,7 +15620,8 @@ function Tooth3DView({onToothClick,selFDI,teethData}){
           if(pid&&hex!=null)R.current.toothConds[pid]=hex;
         });
         R.current.toothMeshes.forEach(mesh=>{
-          if(mesh===R.current.hoveredMesh||mesh===R.current.selectedMesh)return;
+          if(mesh===R.current.selectedMesh){applyHL(mesh,"select");return;}
+          if(mesh===R.current.hoveredMesh){applyHL(mesh,"hover");return;}
           mesh.material=getCondBase(mesh);
         });
       };
