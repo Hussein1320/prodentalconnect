@@ -15715,16 +15715,18 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
 
-            // Clip planes in LOCAL space — outer 35% slab of each face
-            // THREE.Plane(normal,d): fragment visible when dot(normal,pos)+d >= 0
+            // Clip planes in LOCAL space — thin ~18% slab at each surface face.
+            // Formula: inner cut at c+half*(1-2f) where f=slab fraction.
+            // With f=0.18: cut at c+half*0.64. Larger constant = thinner slab.
+            const S=0.64; // slab factor — tune to adjust thickness
             const surfPlanes={
-              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*0.3))],           // keep y >= c.y+hy*0.3
-              b:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*0.3)],             // keep z <= c.z-hz*0.3
-              l:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*0.3))],           // keep z >= c.z+hz*0.3
-              m:isRight?[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*0.3)]        // keep x <= c.x-hx*0.3
-                       :[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*0.3))],     // keep x >= c.x+hx*0.3
-              d:isRight?[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*0.3))]
-                       :[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*0.3)],
+              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*S))],   // top face
+              b:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*S)],     // front/buccal
+              l:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*S))],   // back/palatal
+              m:isRight?[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*S)]
+                       :[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))],
+              d:isRight?[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))]
+                       :[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*S)],
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
