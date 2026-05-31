@@ -15507,7 +15507,7 @@ const _fdiToPalmer=fdi=>{
   return ({1:"UR",2:"UL",3:"LL",4:"LR"}[q]||"")+n;
 };
 
-function Tooth3DView({onToothClick,selFDI}){
+function Tooth3DView({onToothClick,selFDI,teethData}){
   const mountRef=useRef(null);
   const R=useRef({});
   const [status,setStatus]=useState("loading");
@@ -15730,6 +15730,50 @@ function Tooth3DView({onToothClick,selFDI}){
       mesh.material=m;R.current.selectedMesh=mesh;
     }else{R.current.selectedMesh=null;}
   },[selFDI]);
+
+  // Sync tooth condition colours to 3D materials
+  useEffect(()=>{
+    const{toothMap,origMats,selectedMesh,THREE:T}=R.current;
+    if(!toothMap||!T||!teethData)return;
+    const CMAP={
+      miss:{col:0x888888,intensity:0,opacity:0.22,grey:true},
+      filling:{col:0x0033bb,intensity:0.45},
+      crown:{col:0x664400,intensity:0.55},
+      rct:{col:0x330066,intensity:0.5},
+      decay:{col:0x550000,intensity:0.5},
+      extraction:{col:0x661100,intensity:0.4,opacity:0.35},
+      implant:{col:0x003322,intensity:0.4},
+      bridge:{col:0x002233,intensity:0.4},
+      veneer:{col:0x330022,intensity:0.4},
+      fracture:{col:0x442200,intensity:0.4},
+      mobility:{col:0x332200,intensity:0.35},
+      watch:{col:0x332200,intensity:0.3},
+    };
+    Object.entries(toothMap).forEach(([palmerID,mesh])=>{
+      if(mesh===selectedMesh)return; // selection highlight takes priority
+      const fdi=_palmerToFDI(palmerID);
+      const td=fdi?teethData[fdi]:null;
+      const orig=origMats.get(mesh);
+      if(!orig)return;
+      // Determine effective condition: whole-tooth cond OR any surface cond
+      const wholeCond=td?.cond||null;
+      const hasSurfCond=td?.surfaces?Object.values(td.surfaces).some(Boolean):false;
+      const effectiveCond=wholeCond||(hasSurfCond?"filling":null);
+      if(!effectiveCond){
+        mesh.material=orig.clone();
+        return;
+      }
+      const cfg=CMAP[effectiveCond];
+      if(!cfg){mesh.material=orig.clone();return;}
+      const m=orig.clone();
+      if(cfg.grey)m.color&&m.color.set&&m.color.set(cfg.col);
+      m.emissive=new T.Color(cfg.col);
+      m.emissiveIntensity=cfg.intensity||0;
+      if(cfg.opacity!=null){m.transparent=true;m.opacity=cfg.opacity;}
+      else{m.transparent=false;m.opacity=1;}
+      mesh.material=m;
+    });
+  },[teethData]);
 
   const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
 
@@ -16182,7 +16226,7 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>}
 
-      {chartMode==="3d"&&<Tooth3DView onToothClick={n=>{toggleTooth(n,null);setRightTab("tooth");}} selFDI={selTooth}/>}
+      {chartMode==="3d"&&<Tooth3DView onToothClick={n=>{toggleTooth(n,null);setRightTab("tooth");}} selFDI={selTooth} teethData={teeth}/>}
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
@@ -16203,70 +16247,166 @@ function DentalWorkspace({patient,user}){
           <div style={{fontSize:12,fontWeight:600,marginBottom:4}}>No tooth selected</div>
           <div style={{fontSize:11}}>Click a tooth on the chart to view details and add treatments</div>
         </div>}
-        {selTooth&&<>
-          <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)",background:"rgba(80,140,255,0.06)"}}>
-            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
-              <div style={{width:36,height:36,borderRadius:9,background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#132238",fontFamily:"ui-monospace,monospace"}}>{selTooth}</div>
-              <div>
-                <div style={{fontSize:13,fontWeight:800,color:"#2563FF"}}>{palmerName(selTooth)}</div>
-                <div style={{fontSize:10,color:"#CBD5E1",textTransform:"capitalize"}}>{toothType(selTooth)} · FDI {selTooth}</div>
+        {selTooth&&(()=>{
+          const surfList=[
+            {id:"b",label:"Buccal",short:"B",gridArea:"1/2/2/3"},
+            {id:"m",label:"Mesial",short:"M",gridArea:"2/1/3/2"},
+            {id:"o",label:"Occlusal",short:"O",gridArea:"2/2/3/3"},
+            {id:"d",label:"Distal",short:"D",gridArea:"2/3/3/4"},
+            {id:"l",label:"Lingual",short:"L",gridArea:"3/2/4/3"},
+          ];
+          const surfCondBtns=[
+            {k:"filling",label:"Filling",color:"#2563FF"},
+            {k:"decay",label:"Decay",color:"#DC2626"},
+            {k:"fracture",label:"Fracture",color:"#F97316"},
+            {k:"watch",label:"Watch",color:"#CA8A04"},
+          ];
+          const wholeBtns=[
+            {k:"miss",label:"Missing",color:"#64748B"},
+            {k:"crown",label:"Crown",color:"#D97706"},
+            {k:"rct",label:"Root Canal",color:"#7C3AED"},
+            {k:"extraction",label:"Extraction",color:"#EA580C"},
+            {k:"implant",label:"Implant",color:"#16A34A"},
+            {k:"bridge",label:"Bridge",color:"#0891B2"},
+            {k:"veneer",label:"Veneer",color:"#DB2777"},
+            {k:"mobility",label:"Mobility",color:"#F59E0B"},
+          ];
+          const selSurfList=[...selSurfaces];
+          const recSurfaces=selToothData?.surfaces||{};
+          const surfSummary=["b","m","o","d","l"].filter(s=>recSurfaces[s]).map(s=>`${s.toUpperCase()}: ${COND_LABELS?.[recSurfaces[s]]||recSurfaces[s]}`).join(" · ");
+          return(<>
+            {/* A. Tooth header */}
+            <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)",background:"rgba(80,140,255,0.06)"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                <div style={{width:36,height:36,borderRadius:9,background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#132238",fontFamily:"ui-monospace,monospace"}}>{selTooth}</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800,color:"#2563FF"}}>{palmerName(selTooth)}</div>
+                  <div style={{fontSize:10,color:"#CBD5E1",textTransform:"capitalize"}}>{toothType(selTooth)} · FDI {selTooth}</div>
+                </div>
+              </div>
+              {selTeeth.length>1&&<div style={{fontSize:10,color:"#2563FF",background:"#2563FF"+"15",padding:"3px 8px",borderRadius:5}}>Multi-select: {selTeeth.join(", ")}</div>}
+            </div>
+
+            {/* B. Interactive 5-surface diagram */}
+            <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Surface Diagram</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1.6fr 1fr",gridTemplateRows:"80px 80px 80px",gap:4,width:"100%"}}>
+                {surfList.map(s=>{
+                  const cond=recSurfaces[s.id];
+                  const isSel=selSurfaces.has(s.id);
+                  const col=cond?(COND_COLORS?.[cond]||"#64748b"):null;
+                  return(
+                    <button key={s.id}
+                      onClick={e=>{e.stopPropagation();toggleSurf(s.id);}}
+                      style={{gridArea:s.gridArea,borderRadius:8,border:`2px solid ${isSel?"#2563FF":col||"rgba(80,140,255,0.2)"}`,background:isSel?"rgba(37,99,255,0.25)":col?col+"22":"#132238",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,position:"relative",transition:"all .15s"}}>
+                      {cond&&<span style={{position:"absolute",top:4,right:4,width:7,height:7,borderRadius:50,background:col||"#64748b"}}/>}
+                      <span style={{fontSize:20,fontWeight:900,color:isSel?"#60A5FA":col||"#64748b",lineHeight:1}}>{s.short}</span>
+                      <span style={{fontSize:9,color:isSel?"#93C5FD":col?"rgba(255,255,255,0.6)":"#64748b",fontWeight:600}}>{s.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{marginTop:8,fontSize:10,color:"#64748b",textAlign:"center",fontStyle:"italic"}}>
+                {selSurfList.length>0
+                  ?`Selected: ${selSurfList.map(s=>surfList.find(x=>x.id===s)?.label||s).join(", ")}`
+                  :"Tap a surface zone above"}
               </div>
             </div>
-            {selTeeth.length>1&&<div style={{fontSize:10,color:"#2563FF",background:"#2563FF"+"15",padding:"3px 8px",borderRadius:5}}>Multi-select: {selTeeth.join(", ")}</div>}
-          </div>
 
-          {/* Surface selector */}
-          <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Surfaces</div>
-            <div style={{display:"flex",gap:5}}>
-              {["b","l","m","d","o"].map(s=>{
-                const cond=selToothData?.surfaces?.[s];
-                const isSel=selSurfaces.has(s);
-                const col=cond?COND_COLORS[cond]||"#64748b":null;
-                return(
-                  <button key={s} onClick={()=>toggleSurf(s)}
-                    style={{flex:1,padding:"8px 4px",borderRadius:7,border:`1.5px solid ${isSel?"#2563FF":col||"rgba(80,140,255,0.2)"}`,background:isSel?"#2563FF":col?col+"20":"#132238",cursor:"pointer",textAlign:"center"}}>
-                    <div style={{fontSize:11,fontWeight:800,color:isSel?"#132238":col||"#64748b"}}>{s.toUpperCase()}</div>
-                    <div style={{fontSize:8,color:isSel?"rgba(255,255,255,.7)":col?"rgba(0,0,0,.5)":"#64748b"}}>{surfaceLabel[s].slice(0,3)}</div>
-                  </button>
-                );
-              })}
+            {/* C. Record Findings */}
+            <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Record Finding</div>
+
+              {/* Surface conditions */}
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:9,fontWeight:600,color:"#64748b",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>
+                  Surface Conditions {selSurfList.length>0?`(→ ${selSurfList.map(s=>s.toUpperCase()).join(",")})`:"(whole tooth if no surface selected)"}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                  {surfCondBtns.map(({k,label,color})=>{
+                    const isActiveWhole=selSurfList.length===0&&selToothData?.cond===k;
+                    const isActiveSurf=selSurfList.length>0&&selSurfList.every(s=>recSurfaces[s]===k);
+                    const isActive=isActiveWhole||isActiveSurf;
+                    return(
+                      <button key={k}
+                        onClick={()=>{
+                          if(!selTooth)return;
+                          if(selSurfList.length>0){
+                            setTeeth(p=>({...p,[selTooth]:{...p[selTooth],surfaces:{...p[selTooth]?.surfaces,...Object.fromEntries(selSurfList.map(s=>[s,p[selTooth]?.surfaces?.[s]===k?null:k]))}}}));
+                          }else{
+                            setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:p[selTooth]?.cond===k?null:k}}));
+                          }
+                        }}
+                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"22":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
+                        <span style={{width:8,height:8,borderRadius:2,background:color,flexShrink:0,display:"inline-block"}}/>
+                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?color:"#CBD5E1"}}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Whole-tooth conditions */}
+              <div>
+                <div style={{fontSize:9,fontWeight:600,color:"#64748b",marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>Whole-Tooth Conditions</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                  {wholeBtns.map(({k,label,color})=>{
+                    const isActive=selToothData?.cond===k;
+                    return(
+                      <button key={k}
+                        onClick={()=>{if(selTooth)setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:p[selTooth]?.cond===k?null:k}}));}}
+                        style={{padding:"7px 8px",borderRadius:8,border:`1.5px solid ${isActive?color:"rgba(80,140,255,0.18)"}`,background:isActive?color+"22":"#0F1C34",cursor:"pointer",display:"flex",alignItems:"center",gap:6,textAlign:"left"}}>
+                        <span style={{width:8,height:8,borderRadius:50,background:color,flexShrink:0,display:"inline-block"}}/>
+                        <span style={{fontSize:11,fontWeight:isActive?700:500,color:isActive?color:"#CBD5E1"}}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Existing conditions */}
-          <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Conditions</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-              {Object.entries(COND_LABELS||COND_COLORS).map(([k,label])=>{const c=COND_COLORS[k]||"#64748B";const isActive=selToothData?.cond===k;return(<button key={k} onClick={()=>{if(selTooth)setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:p[selTooth]?.cond===k?null:k}}));}} style={{padding:"3px 9px",borderRadius:8,border:`1.5px solid ${isActive?c:"rgba(80,140,255,0.2)"}`,background:isActive?c+"22":"#0F1C34",cursor:selTooth?"pointer":"not-allowed",fontSize:10,fontWeight:isActive?700:500,color:isActive?c:"#CBD5E1",display:"flex",alignItems:"center",gap:4,opacity:selTooth?1:0.6}}><span style={{width:7,height:7,borderRadius:2,background:c,display:"inline-block",flexShrink:0}}/>{label}</button>);})}
+            {/* D. Current status summary */}
+            <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(80,140,255,0.15)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Current Status</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                {selToothData?.cond&&(()=>{const c=COND_COLORS?.[selToothData.cond]||"#64748b";return(<span style={{padding:"2px 8px",borderRadius:6,background:c+"22",border:`1px solid ${c}`,fontSize:10,fontWeight:700,color:c}}>{COND_LABELS?.[selToothData.cond]||selToothData.cond}</span>);})()}
+                {surfSummary&&<span style={{fontSize:10,color:"#94A3B8"}}>{surfSummary}</span>}
+                {!selToothData?.cond&&!surfSummary&&<span style={{fontSize:10,color:"#475569",fontStyle:"italic"}}>No findings recorded</span>}
+              </div>
+              {(selToothData?.cond||surfSummary)&&(
+                <button onClick={()=>{if(selTooth)setTeeth(p=>({...p,[selTooth]:{...p[selTooth],cond:null,surfaces:{b:null,l:null,m:null,d:null,o:null}}}));}}
+                  style={{marginTop:6,padding:"4px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.07)",cursor:"pointer",fontSize:10,color:"#F87171",fontWeight:600}}>
+                  Clear all
+                </button>
+              )}
             </div>
-          </div>
 
-          {/* Quick add treatments */}
-          <div style={{padding:"10px 14px"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Quick Add Treatment</div>
-            {favCodes.slice(0,6).map(c=>(
-              <button key={c.c} onClick={()=>{addTx(c);toast("✓ "+c.l+(selTooth?" — tooth "+selTooth:""));}}
-                style={{width:"100%",display:"flex",gap:8,alignItems:"center",padding:"7px 9px",marginBottom:4,borderRadius:12,border:"1px solid rgba(80,140,255,0.16)",background:"#132238",cursor:"pointer",textAlign:"left",transition:"all .1s"}}
-                onMouseEnter={e=>{e.currentTarget.style.background="rgba(80,140,255,0.06)";e.currentTarget.style.borderColor="#2563FF";e.currentTarget.style.transform="translateX(2px)";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="#132238";e.currentTarget.style.borderColor="rgba(80,140,255,0.2)";e.currentTarget.style.transform="none";}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
-                  <div style={{display:"flex",gap:5,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontSize:9,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
-                    {c.nhs&&c.band&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(80,140,255,0.08)",color:"#38BDF8"}}>Band {c.band}</span>}
-                    {!c.nhs&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(139,92,246,0.08)",color:"#8B5CF6"}}>Private</span>}
-                    <span style={{fontSize:9,fontWeight:700,color:"#2563FF",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
-                    {DEFAULT_SNOMED[c.c]&&<span style={{fontSize:8,fontFamily:"ui-monospace,monospace",color:"#2563FF",background:"rgba(80,140,255,0.06)",padding:"0 4px",borderRadius:3,border:"1px solid rgba(56,189,248,0.25)"}}>{DEFAULT_SNOMED[c.c]}</span>}
+            {/* E. Quick add treatments */}
+            <div style={{padding:"10px 14px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Quick Add Treatment</div>
+              {favCodes.slice(0,6).map(c=>(
+                <button key={c.c} onClick={()=>{addTx(c);toast("✓ "+c.l+(selTooth?" — tooth "+selTooth:""));}}
+                  style={{width:"100%",display:"flex",gap:8,alignItems:"center",padding:"7px 9px",marginBottom:4,borderRadius:12,border:"1px solid rgba(80,140,255,0.16)",background:"#132238",cursor:"pointer",textAlign:"left",transition:"all .1s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.background="rgba(80,140,255,0.06)";e.currentTarget.style.borderColor="#2563FF";e.currentTarget.style.transform="translateX(2px)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="#132238";e.currentTarget.style.borderColor="rgba(80,140,255,0.2)";e.currentTarget.style.transform="none";}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
+                    <div style={{display:"flex",gap:5,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontSize:9,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
+                      {c.nhs&&c.band&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(80,140,255,0.08)",color:"#38BDF8"}}>Band {c.band}</span>}
+                      {!c.nhs&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(139,92,246,0.08)",color:"#8B5CF6"}}>Private</span>}
+                      <span style={{fontSize:9,fontWeight:700,color:"#2563FF",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
+                      {DEFAULT_SNOMED[c.c]&&<span style={{fontSize:8,fontFamily:"ui-monospace,monospace",color:"#2563FF",background:"rgba(80,140,255,0.06)",padding:"0 4px",borderRadius:3,border:"1px solid rgba(56,189,248,0.25)"}}>{DEFAULT_SNOMED[c.c]}</span>}
+                    </div>
                   </div>
-                </div>
-                <div style={{width:24,height:24,borderRadius:8,background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <span style={{fontSize:16,color:"#132238",fontWeight:800,lineHeight:1}}>+</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </>}
+                  <div style={{width:24,height:24,borderRadius:8,background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <span style={{fontSize:16,color:"#132238",fontWeight:800,lineHeight:1}}>+</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>);
+        })()}
       </div>}
 
       {/* Notes — modern panel */}
