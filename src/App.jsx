@@ -15860,7 +15860,7 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         if(!cancelled){setStatus("loading");setLoadPct(0);}
         if(R.current.modelGroup){scene.remove(R.current.modelGroup);R.current.modelGroup=null;}
         (R.current.surfMarkers||[]).forEach(m=>scene.remove(m));
-        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};R.current.toothConds={};R.current.surfMarkers=[];
+        R.current.toothMeshes=[];R.current.origMats=new Map();R.current.toothMap={};R.current.toothConds={};R.current.surfMarkers=[];R.current.gumMeshes=[];
         if(R.current.hoveredMesh&&R.current.hoveredMesh!==R.current.selectedMesh)setHovered(null);
         R.current.hoveredMesh=null;R.current.selectedMesh=null;
 
@@ -15887,6 +15887,9 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
               if(!isGum){
                 meshes.push(obj);mats.set(obj,obj.material.clone());
                 if(!pid.startsWith("UNKNOWN"))map[pid]=obj;
+              }else{
+                R.current.gumMeshes=(R.current.gumMeshes||[]);
+                R.current.gumMeshes.push(obj);
               }
             });
             R.current.toothMeshes=meshes;R.current.origMats=mats;R.current.toothMap=map;
@@ -15949,7 +15952,15 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
   // Sync condition colours onto 3D meshes — useLayoutEffect fires before paint → no visible delay
   useLayoutEffect(()=>{R.current.syncConditions?.(teethData);},[teethData]);
 
+  const [showGum,setShowGum]=useState(true);
   const switchModel=key=>{setModelKey(key);R.current.loadModel?.(key);};
+  const toggleGum=()=>{
+    setShowGum(v=>{
+      const next=!v;
+      (R.current.gumMeshes||[]).forEach(m=>{m.visible=next;});
+      return next;
+    });
+  };
 
   return(
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"radial-gradient(ellipse at 40% 30%,#0d1829 0%,#080b10 70%)"}}>
@@ -15959,6 +15970,12 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         {[["stained","Stained"],["nostain","No Stain"]].map(([k,l])=>(
           <button key={k} onClick={()=>switchModel(k)} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,background:modelKey===k?"#00c8ff":"rgba(255,255,255,0.07)",color:modelKey===k?"#000":"#94A3B8",transition:"all .15s"}}>{l}</button>
         ))}
+        <div style={{width:1,height:16,background:"rgba(255,255,255,0.1)",margin:"0 2px"}}/>
+        <button onClick={toggleGum} style={{padding:"3px 12px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,transition:"all .15s",
+          background:showGum?"rgba(239,68,68,0.15)":"rgba(34,197,94,0.15)",
+          color:showGum?"#F87171":"#4ADE80"}}>
+          {showGum?"Hide Gum":"Show Gum"}
+        </button>
         {status==="ready"&&<span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(34,197,94,0.12)",color:"#22C55E",border:"1px solid rgba(34,197,94,0.25)",fontFamily:"ui-monospace,monospace",fontWeight:700}}>LIVE</span>}
         <div style={{flex:1}}/>
         <span style={{fontSize:10,color:"#64748B",fontFamily:"ui-monospace,monospace"}}>Drag · Scroll · Click tooth</span>
