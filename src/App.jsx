@@ -15703,58 +15703,70 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         // and per-material THREE.Plane clipping to isolate just that face slab.
         // Planes are defined in LOCAL geometry space and transformed to camera space
         // in onBeforeRender — this is the only correct way to clip in local space.
-        // Slab thickness: outer 35% of each face half-extent (~35% of tooth dimension).
+        // Surface clipping — all planes defined directly in WORLD SPACE.
+        // Buccal/Palatal direction is computed radially from the arch centre so
+        // it works for every tooth regardless of its local axis orientation.
         const T=R.current.THREE;
         if(T){
+          // Arch centre: use controls.target set after model load
+          const archCtr=R.current.controls?.target?.clone()||new T.Vector3();
+
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
-            if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
-            const bb=mesh.geometry.boundingBox;
-            const c=new T.Vector3(),sz=new T.Vector3();
-            bb.getCenter(c);bb.getSize(sz);
-            const hx=sz.x*0.5,hy=sz.y*0.5,hz=sz.z*0.5;
-            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
 
-            // Clip planes in LOCAL space — thin ~18% slab at each surface face.
-            // Formula: inner cut at c+half*(1-2f) where f=slab fraction.
-            // With f=0.18: cut at c+half*0.64. Larger constant = thinner slab.
-            const S=0.64; // slab factor — tune to adjust thickness
+            // World-space bounding box — accounts for group scale + any mesh rotation
+            const wbb=new T.Box3().setFromObject(mesh);
+            const wc=new T.Vector3();wbb.getCenter(wc);
+            const ws=new T.Vector3();wbb.getSize(ws);
+            const hx=ws.x/2,hy=ws.y/2,hz=ws.z/2;
+
+            // ── Buccal/Palatal: radial outward from arch centre in the XZ plane ──
+            const radXZ=new T.Vector3(wc.x-archCtr.x,0,wc.z-archCtr.z);
+            if(radXZ.lengthSq()<0.0001)radXZ.set(0,0,1);
+            radXZ.normalize();
+            // AABB half-extent projected onto radial direction (conservative upper bound)
+            const hBP=Math.abs(radXZ.x)*hx+Math.abs(radXZ.z)*hz;
+
+            // ── Occlusal: world Y-up ──
+            // ── Mesial/Distal: world X axis (right-side teeth mirrored) ──
+            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
+            const S=0.64; // slab factor  (1-2S = inner-cut fraction, gives ~18% slab)
+
+            // Helper: build a world-space half-space plane
+            // Keeps fragments where dot(n,x)+d >= 0
+            const wp=(n,d)=>new T.Plane(n.clone(),d);
+
             const surfPlanes={
-              o:[new T.Plane(new T.Vector3(0, 1,0), -(c.y+hy*S))],   // top/occlusal (y+)
-              b:[new T.Plane(new T.Vector3(0, 0, 1), -(c.z+hz*S))],   // buccal = +Z (toward camera)
-              l:[new T.Plane(new T.Vector3(0, 0,-1),  c.z-hz*S)],     // palatal = −Z (away from camera)
-              m:isRight?[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*S)]
-                       :[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))],
-              d:isRight?[new T.Plane(new T.Vector3(1, 0,0),-(c.x+hx*S))]
-                       :[new T.Plane(new T.Vector3(-1,0,0), c.x-hx*S)],
+              // Occlusal — keep the top 18% in world Y
+              o:[wp(new T.Vector3(0,1,0),-(wc.y+hy*S))],
+              // Buccal — outer (far from arch centre) 18%
+              b:[wp(radXZ,-(wc.dot(radXZ)+hBP*(2*S-1)))],
+              // Palatal — inner (close to arch centre) 18%
+              l:[wp(radXZ.clone().negate(),wc.dot(radXZ)-hBP*(2*S-1))],
+              // Mesial/Distal — world X axis
+              m:isRight?[wp(new T.Vector3(-1,0,0), wc.x-hx*S)]
+                       :[wp(new T.Vector3( 1,0,0),-(wc.x+hx*S))],
+              d:isRight?[wp(new T.Vector3( 1,0,0),-(wc.x+hx*S))]
+                       :[wp(new T.Vector3(-1,0,0), wc.x-hx*S)],
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
               if(!cond||!surfPlanes[s])return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const localPlanes=surfPlanes[s];
-
-              // material.clippingPlanes must be in WORLD space — Three.js
-              // internally multiplies by camera.matrixWorldInverse before uploading
-              // to the shader. Applying the camera transform here would double it,
-              // causing the planes to rotate with the camera instead of the tooth.
-              const worldPlanes=localPlanes.map(lp=>
-                lp.clone().applyMatrix4(mesh.matrixWorld)
-              );
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
                 emissiveIntensity:0.55,roughness:0.4,metalness:0.0,
-                clippingPlanes:worldPlanes,clipShadows:false,
-                depthWrite:false,       // don't write depth so multiple surface clones don't block each other
-                polygonOffset:true,     // push slightly toward camera to avoid z-fighting with parent tooth
+                clippingPlanes:surfPlanes[s], // already world-space
+                clipShadows:false,
+                depthWrite:false,
+                polygonOffset:true,
                 polygonOffsetFactor:-2,
                 polygonOffsetUnits:-2,
               });
               const clone=new T.Mesh(mesh.geometry,mat);
-              clone.renderOrder=2;      // render after all teeth (renderOrder 0) and their default children
-
+              clone.renderOrder=2;
               mesh.add(clone);
               R.current.surfMarkers.push(clone);
             });
