@@ -16587,7 +16587,6 @@ function DentalWorkspace({patient,user}){
             {k:"filling",label:"Filling",color:"#2563FF"},
             {k:"decay",label:"Decay",color:"#DC2626"},
             {k:"fracture",label:"Fracture",color:"#F97316"},
-            {k:"watch",label:"Watch",color:"#CA8A04"},
           ];
           const wholeBtns=[
             {k:"miss",label:"Missing",color:"#64748B"},
