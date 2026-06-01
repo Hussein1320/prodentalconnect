@@ -16313,6 +16313,8 @@ function DentalWorkspace({patient,user}){
   const [noteText,setNoteText]=useState("");
   const [noteTemplate,setNoteTemplate]=useState("");
   const [chartMode,setChartMode]=useState("chart"); // chart | perio | softtissue
+  const [chartLayers,setChartLayers]=useState({conditions:true,treatments:true,lab:false,financial:false,risk:false});
+  const [badgeHover,setBadgeHover]=useState(null); // {toothFdi, txId, rect}
   const [toastMsg,setToastMsg]=useState(null);
   const [selSurfaces,setSelSurfaces]=useState(new Set());
   const [showFavs,setShowFavs]=useState(true);
@@ -16363,7 +16365,7 @@ function DentalWorkspace({patient,user}){
   const addTx=(code)=>{
     if(!hasSel){toast("Select one or more teeth first");return;}
     const surfaces=selSurfaces.size>0?[...selSurfaces]:[];
-    const newTx={id:"T"+Date.now(),teeth:selTeeth.map(String),surfaces,code:code.c,label:code.l,status:"planned",nhs:code.nhs,fee:code.fee||0,by:user?.name||"Dr. S. Patel",date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})};
+    const newTx={id:"T"+Date.now(),teeth:selTeeth.map(String),surfaces,code:code.c,label:code.l,icon:code.icon||"tooth",status:"planned",nhs:code.nhs,fee:code.fee||0,by:user?.name||"Dr. S. Patel",date:new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})};
     setTxPlan(p=>[...p,newTx]);
     // Mark condition on teeth
     selTeeth.forEach(n=>setTeeth(p=>({...p,[n]:{...p[n],planned:[...p[n].planned,code.c]}})));
@@ -16397,6 +16399,7 @@ function DentalWorkspace({patient,user}){
     const W=38;const H=38;const OX=11;const OY=11;
     const td=teeth[num]||{cond:null,surfaces:{},planned:[],completed:[]};
     const c=td.cond;
+    const toothTxItems=chartLayers.treatments?txPlan.filter(t=>t.teeth.includes(String(num))):[];
     const isMiss=c==="miss";
     const hasPlanned=td.planned.length>0;
     const hasComplete=td.completed.length>0;
@@ -16414,7 +16417,34 @@ function DentalWorkspace({patient,user}){
     // Abbreviations shown inside tooth for text-readable conditions
     const ABBR={crown:"CR",rct:"RCT",implant:"IMP",bridge:"BR",veneer:"V",decay:"DC",watch:"W",mobility:"MOB"};
 
+    // Badge abbreviations for on-tooth display
+    const TX_BADGE={crown:"CR",rct:"RCT",implant:"IMP",bridge:"BR",veneer:"V",filling:"F",extraction:"EX",bonegraft:"BG",whiten:"WH",braces:"BR",retainer:"RT",occlusion:"OCC",perio:"PER"};
+    const getBadgeLabel=(icon,label)=>{
+      if(TX_BADGE[icon])return TX_BADGE[icon];
+      return(label||"TX").replace(/[^A-Z]/g,"").slice(0,3)||"TX";
+    };
+    const BADGE_COLORS={crown:"#D97706",rct:"#7C3AED",implant:"#16A34A",bridge:"#0891B2",veneer:"#DB2777",filling:"#2563FF",extraction:"#EA580C",bonegraft:"#92400E",whiten:"#0284C7",braces:"#6366F1",retainer:"#8B5CF6",occlusion:"#0F766E",planned:"#6366F1",completed:"#16A34A"};
+    const getBadgeColor=(tx)=>tx.status==="completed"?"#16A34A":(BADGE_COLORS[tx.icon]||BADGE_COLORS.planned);
     return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+      {/* Treatment badges — above the tooth (planned/in-progress) */}
+      {toothTxItems.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:1,justifyContent:"center",maxWidth:W,marginBottom:1}}>
+        {toothTxItems.map(tx=>{
+          const bCol=getBadgeColor(tx);
+          const blabel=getBadgeLabel(tx.icon,tx.label);
+          return(
+          <div key={tx.id}
+            style={{fontSize:6,fontWeight:900,fontFamily:"ui-monospace,monospace",padding:"1px 3px",borderRadius:3,background:bCol+"dd",color:"#fff",cursor:"pointer",position:"relative",lineHeight:1.4,letterSpacing:".02em",border:tx.status==="completed"?"1px solid #bbf7d0":"1px solid rgba(255,255,255,0.3)",textDecoration:tx.status==="completed"?"line-through":"none",opacity:tx.status==="completed"?0.7:1}}
+            onMouseEnter={e=>{
+              const r=e.currentTarget.getBoundingClientRect();
+              setBadgeHover({txId:tx.id,tx,rect:r});
+            }}
+            onMouseLeave={()=>setBadgeHover(null)}
+            onClick={e=>{e.stopPropagation();}}
+          >{blabel}</div>
+          );
+        })}
+      </div>}
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{display:"block",cursor:"pointer",borderRadius:4}}
         onClick={e=>toggleTooth(num,e)}>
 
@@ -16519,6 +16549,7 @@ function DentalWorkspace({patient,user}){
         {/* Selection ring */}
         {isSel&&<rect x={0.5} y={0.5} width={W-1} height={H-1} rx={3} fill="none" stroke="#60A5FA" strokeWidth={2} strokeDasharray="4,2"/>}
       </svg>
+    </div>
     );
   };
 
@@ -16826,6 +16857,59 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>
 
+      {/* ── Layer toggles bar ── */}
+      {chartMode==="chart"&&<div style={{background:"#0F1C34",borderBottom:"1px solid rgba(80,140,255,0.1)",padding:"5px 14px",display:"flex",gap:6,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
+        <span style={{fontSize:9,fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em",marginRight:4}}>Layers</span>
+        {[
+          {k:"conditions",l:"Conditions",col:"#2563FF"},
+          {k:"treatments",l:"Treatments",col:"#D97706"},
+          {k:"lab",l:"Lab",col:"#0891B2"},
+          {k:"financial",l:"Financial",col:"#16A34A"},
+          {k:"risk",l:"Risk",col:"#DC2626"},
+        ].map(({k,l,col})=>{
+          const on=chartLayers[k];
+          return(
+          <button key={k} onClick={()=>setChartLayers(p=>({...p,[k]:!p[k]}))}
+            style={{padding:"2px 10px",borderRadius:10,border:`1px solid ${on?col:"rgba(255,255,255,0.1)"}`,background:on?col+"22":"transparent",color:on?col:"#475569",fontSize:9,fontWeight:700,cursor:"pointer",transition:"all .12s",textTransform:"uppercase",letterSpacing:".05em"}}>
+            {l}
+          </button>
+          );
+        })}
+        <div style={{flex:1}}/>
+        {chartLayers.conditions&&Object.entries(COND_COLORS).slice(0,6).map(([k,col])=>(
+          <div key={k} style={{display:"flex",gap:3,alignItems:"center"}}>
+            <div style={{width:7,height:7,borderRadius:2,background:col}}/>
+            <span style={{fontSize:8,color:"#64748b"}}>{COND_LABELS[k]}</span>
+          </div>
+        ))}
+      </div>}
+
+      {/* Badge hover popover */}
+      {badgeHover&&(()=>{
+        const tx=badgeHover.tx;
+        const r=badgeHover.rect;
+        const BCOLS={"crown":"#D97706","rct":"#7C3AED","implant":"#16A34A","bridge":"#0891B2","veneer":"#DB2777","filling":"#2563FF","extraction":"#EA580C"};
+        const bCol=tx.status==="completed"?"#16A34A":(BCOLS[tx.icon]||"#6366F1");
+        return(
+        <div style={{position:"fixed",left:r.left+r.width/2,top:r.top-8,transform:"translateX(-50%) translateY(-100%)",zIndex:9999,background:"#1E293B",border:`1px solid ${bCol}55`,borderRadius:10,padding:"8px 12px",boxShadow:"0 8px 32px rgba(0,0,0,0.5)",minWidth:180,pointerEvents:"none"}}>
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:5}}>
+            <TxIcon icon={tx.icon||"tooth"} size={14} color={bCol}/>
+            <span style={{fontSize:11,fontWeight:800,color:"#F8FAFC"}}>{tx.label}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,background:tx.status==="completed"?"rgba(22,163,74,0.2)":"rgba(99,102,241,0.2)",color:tx.status==="completed"?"#4ade80":"#a5b4fc",textTransform:"uppercase"}}>{tx.status}</span>
+              <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,background:tx.nhs?"rgba(29,78,216,0.2)":"rgba(124,58,237,0.2)",color:tx.nhs?"#93c5fd":"#c4b5fd"}}>{tx.nhs?"NHS":"Private"}</span>
+              <span style={{fontSize:9,fontWeight:700,fontFamily:"ui-monospace,monospace",color:"#34D399"}}>£{tx.fee}</span>
+            </div>
+            <div style={{display:"flex",gap:3,alignItems:"center"}}><Calendar size={9} color="#64748b"/><span style={{fontSize:9,color:"#CBD5E1"}}>{tx.date}</span></div>
+            <div style={{display:"flex",gap:3,alignItems:"center"}}><User size={9} color="#64748b"/><span style={{fontSize:9,color:"#CBD5E1"}}>{tx.by}</span></div>
+            {tx.surfaces&&tx.surfaces.length>0&&<div style={{fontSize:8,color:"#94a3b8"}}>Surfaces: {tx.surfaces.join(" ")}</div>}
+          </div>
+        </div>
+        );
+      })()}
+
       {/* Voice Charting Panel — slides in as a right panel */}
       {showVoice&&<div style={{position:"absolute",right:0,top:0,bottom:0,width:380,background:"#071428",borderLeft:"1.5px solid rgba(80,140,255,0.25)",zIndex:50,boxShadow:"-8px 0 32px rgba(0,0,0,0.4)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
         <VoiceChartingPanel
@@ -16852,7 +16936,7 @@ function DentalWorkspace({patient,user}){
         {/* Upper arch */}
         <div style={{display:"flex",gap:1,alignItems:"flex-end",padding:"6px 8px",background:"#132238",borderRadius:"12px 12px 0 0",border:"1px solid rgba(80,140,255,0.16)",borderBottom:"none",boxShadow:"0 -2px 8px rgba(0,0,0,.04)"}}>
           {UPPER.map((n,i)=>(
-            <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+            <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
               <ToothSVG num={n} selected={selTeeth.includes(n)} active={hasSel&&selTeeth.includes(n)}/>
             </div>
           ))}
