@@ -15698,90 +15698,82 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         (R.current.surfMarkers||[]).forEach(m=>{m.removeFromParent?.();m.geometry?.dispose();m.material?.dispose();});
         R.current.surfMarkers=[];
 
-        // ── Surface markers: vertex-position slab approach ──────────────────────
-        // The diagram layout (B=top, M=left, O=centre, D=right, P=bottom) maps to
-        // world-space axes computed per tooth from the arch geometry.
-        // We slice the tooth's bounding box and keep only the triangles whose
-        // world-space centroid falls inside the corresponding slab.
+        // ── Surface markers: zone-on-visible-surface approach ───────────────────
+        // Only triangles on the aerial-visible face of the crown are coloured.
+        // That face is divided into 5 non-overlapping zones matching the diagram:
+        //   B=top(+Y)  P=bottom(-Y)  M=±X mesial  D=±X distal  O=centre
+        // Aerial camera sits at +Z, so visible triangles have world normal.z > 0.
+        // Zone is determined by the normalised XY position of the triangle centroid.
         const T=R.current.THREE;
         if(T){
           R.current.scene.updateMatrixWorld(true);
 
-          // Slab extractor: keep triangles whose world centroid is in the
-          // outer SLAB fraction of the tooth along axisDir.
-          // axisDir must be a unit vector pointing TOWARD the target surface.
-          const SLAB=0.4; // outer 40% of each face
-          const slabGeo=(geo,mw,axisDir,wCentre,wHalf)=>{
+          const zoneGeo=(geo,mw,surf,wc,wsx,wsy,isRight)=>{
             const pos=geo.attributes.position;
             const nrm=geo.attributes.normal;
-            if(!pos)return null;
+            if(!pos||!nrm)return null;
+            const normalMat=new T.Matrix3().getNormalMatrix(mw);
             const idx=geo.index;
             const count=idx?idx.count:pos.count;
             const newPos=[],newNorm=[];
-            const ct=new T.Vector3();
-            const cProj=wCentre.dot(axisDir);
-            const cut=cProj+(1-2*SLAB)*wHalf; // centroid must exceed this
+            const ct=new T.Vector3(),wn=new T.Vector3();
             for(let i=0;i<count;i+=3){
               const ia=idx?idx.getX(i):i;
               const ib=idx?idx.getX(i+1):i+1;
               const ic=idx?idx.getX(i+2):i+2;
+              // World normal — only keep triangles facing aerial camera (+Z)
+              wn.set(
+                (nrm.getX(ia)+nrm.getX(ib)+nrm.getX(ic))/3,
+                (nrm.getY(ia)+nrm.getY(ib)+nrm.getY(ic))/3,
+                (nrm.getZ(ia)+nrm.getZ(ib)+nrm.getZ(ic))/3
+              ).applyMatrix3(normalMat).normalize();
+              if(wn.z<=0)continue;
+              // World centroid for zone classification
               ct.set(
                 (pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,
                 (pos.getY(ia)+pos.getY(ib)+pos.getY(ic))/3,
                 (pos.getZ(ia)+pos.getZ(ib)+pos.getZ(ic))/3
               ).applyMatrix4(mw);
-              if(ct.dot(axisDir)<cut)continue;
+              // Normalised XY position within tooth bounds (−1 … +1)
+              const nx=(ct.x-wc.x)/(wsx*0.5);
+              const ny=(ct.y-wc.y)/(wsy*0.5);
+              // Non-overlapping diamond split — matches surface diagram layout
+              let zone;
+              if(Math.abs(nx)<0.35&&Math.abs(ny)<0.35)       zone='o';
+              else if(ny>=Math.abs(nx))                        zone='b';
+              else if(-ny>=Math.abs(nx))                       zone='l';
+              else zone=isRight?(nx<0?'m':'d'):(nx>0?'m':'d');
+              if(zone!==surf)continue;
               for(const v of[ia,ib,ic]){
                 newPos.push(pos.getX(v),pos.getY(v),pos.getZ(v));
-                if(nrm)newNorm.push(nrm.getX(v),nrm.getY(v),nrm.getZ(v));
+                newNorm.push(nrm.getX(v),nrm.getY(v),nrm.getZ(v));
               }
             }
             if(!newPos.length)return null;
             const g=new T.BufferGeometry();
             g.setAttribute('position',new T.BufferAttribute(new Float32Array(newPos),3));
-            if(newNorm.length)g.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
+            g.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
             return g;
           };
 
           Object.entries(surfData).forEach(([pid,surfs])=>{
             const mesh=R.current.toothMap[pid];
             if(!mesh)return;
-
-            // World bounding box for half-extents
             const wbb=new T.Box3().setFromObject(mesh);
             const wc=new T.Vector3();wbb.getCenter(wc);
             const ws=new T.Vector3();wbb.getSize(ws);
-            const hX=ws.x/2, hY=ws.y/2, hZ=ws.z/2;
-
-            // M works via fixed world axes — use the same pattern for all surfaces.
-            // Tooth meshes in the GLB are axis-aligned (not rotated to follow arch curvature):
-            //   Mesial/Distal  → world X
-            //   Buccal/Palatal → world Z  (buccal faces camera at +Z)
-            //   Buccal/Palatal → world Y  |  Occlusal → world Z  |  Mesial/Distal → world X
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
-            const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
-            const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
-
-            const axes={
-              b:{dir:new T.Vector3(0,1,0),          half:hY}, // Buccal  → +Y
-              l:{dir:new T.Vector3(0,-1,0),         half:hY}, // Palatal → -Y
-              m:{dir:mesialDir.clone(),              half:hX}, // Mesial  → toward midline (±X)
-              d:{dir:mesialDir.clone().negate(),     half:hX}, // Distal  → away from midline
-              o:{dir:new T.Vector3(0,0,1),          half:hZ}, // Occlusal→ +Z (into surface)
-            };
-
             Object.entries(surfs).forEach(([s,cond])=>{
-              if(!cond||!axes[s])return;
+              if(!cond)return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const{dir,half}=axes[s];
-              const g=slabGeo(mesh.geometry,mesh.matrixWorld,dir,wc,half);
+              const g=zoneGeo(mesh.geometry,mesh.matrixWorld,s,wc,ws.x,ws.y,isRight);
               if(!g)return;
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
-                emissiveIntensity:0.8,roughness:0.3,metalness:0.0,
+                emissiveIntensity:0.9,roughness:0.3,metalness:0.0,
                 depthWrite:false,
-                polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6,
+                polygonOffset:true,polygonOffsetFactor:-8,polygonOffsetUnits:-8,
               });
               const clone=new T.Mesh(g,mat);
               clone.renderOrder=2;
