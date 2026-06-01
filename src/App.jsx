@@ -16011,6 +16011,8 @@ function DentalWorkspace({patient,user}){
   const [showSearch,setShowSearch]=useState(false);
   const [showVoice,setShowVoice]=useState(false); // voice charting panel
   const [voiceLog,setVoiceLog]=useState([]);       // session history
+  const [floatMenuTooth,setFloatMenuTooth]=useState(null);
+  const [floatMenuPos,setFloatMenuPos]=useState({x:0,y:0});
   const M=60000;
 
   const toast=m=>{setToastMsg(m);setTimeout(()=>setToastMsg(null),2200);};
@@ -16085,8 +16087,6 @@ function DentalWorkspace({patient,user}){
   const COND_LABELS={miss:"Missing",filling:"Filling",crown:"Crown",rct:"Root Canal",decay:"Decay",implant:"Implant",extraction:"Extraction",bridge:"Bridge",veneer:"Veneer",fracture:"Fracture",mobility:"Mobility",watch:"Watch",planned:"Planned",completed:"Completed"};
 
   // Floating quick-action menu shown when a tooth is selected
-  const [floatMenuTooth,setFloatMenuTooth]=useState(null);
-  const [floatMenuPos,setFloatMenuPos]=useState({x:0,y:0});
   const QUICK_ACTIONS=[
     {k:"filling",  emoji:"🩹", label:"Filling",    color:"#2563FF"},
     {k:"crown",    emoji:"👑", label:"Crown",      color:"#D97706"},
@@ -16509,8 +16509,9 @@ function DentalWorkspace({patient,user}){
           const menuW=QUICK_ACTIONS.length*62+16;
           return(
             <div className="pdc-float-menu" style={{
+              position:"absolute",
               left:Math.max(8,Math.min(floatMenuPos.x-menuW/2,800-menuW-8)),
-              top:floatMenuPos.y-88,
+              top:Math.max(8,floatMenuPos.y-96),
               zIndex:50,
               display:"flex",gap:6,
               padding:"8px 10px",
