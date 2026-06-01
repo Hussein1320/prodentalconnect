@@ -15711,23 +15711,15 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
           const zoneGeo=(geo,mw,surf,wc,wsx,wsy,isRight)=>{
             const pos=geo.attributes.position;
             const nrm=geo.attributes.normal;
-            if(!pos||!nrm)return null;
-            const normalMat=new T.Matrix3().getNormalMatrix(mw);
+            if(!pos)return null;
             const idx=geo.index;
             const count=idx?idx.count:pos.count;
             const newPos=[],newNorm=[];
-            const ct=new T.Vector3(),wn=new T.Vector3();
+            const ct=new T.Vector3();
             for(let i=0;i<count;i+=3){
               const ia=idx?idx.getX(i):i;
               const ib=idx?idx.getX(i+1):i+1;
               const ic=idx?idx.getX(i+2):i+2;
-              // World normal — only keep triangles facing aerial camera (+Z)
-              wn.set(
-                (nrm.getX(ia)+nrm.getX(ib)+nrm.getX(ic))/3,
-                (nrm.getY(ia)+nrm.getY(ib)+nrm.getY(ic))/3,
-                (nrm.getZ(ia)+nrm.getZ(ib)+nrm.getZ(ic))/3
-              ).applyMatrix3(normalMat).normalize();
-              if(wn.z<=0)continue;
               // World centroid for zone classification
               ct.set(
                 (pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,
@@ -15737,7 +15729,7 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
               // Normalised XY position within tooth bounds (−1 … +1)
               const nx=(ct.x-wc.x)/(wsx*0.5);
               const ny=(ct.y-wc.y)/(wsy*0.5);
-              // Non-overlapping diamond split — matches surface diagram layout
+              // Non-overlapping diamond split matching surface diagram
               let zone;
               if(Math.abs(nx)<0.35&&Math.abs(ny)<0.35)       zone='o';
               else if(ny>=Math.abs(nx))                        zone='b';
@@ -15746,13 +15738,13 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
               if(zone!==surf)continue;
               for(const v of[ia,ib,ic]){
                 newPos.push(pos.getX(v),pos.getY(v),pos.getZ(v));
-                newNorm.push(nrm.getX(v),nrm.getY(v),nrm.getZ(v));
+                if(nrm)newNorm.push(nrm.getX(v),nrm.getY(v),nrm.getZ(v));
               }
             }
             if(!newPos.length)return null;
             const g=new T.BufferGeometry();
             g.setAttribute('position',new T.BufferAttribute(new Float32Array(newPos),3));
-            g.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
+            if(newNorm.length)g.setAttribute('normal',new T.BufferAttribute(new Float32Array(newNorm),3));
             return g;
           };
 
