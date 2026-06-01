@@ -16084,9 +16084,20 @@ function DentalWorkspace({patient,user}){
   const COND_COLORS={miss:"#64748B",filling:"#2563FF",crown:"#D97706",rct:"#7C3AED",decay:"#DC2626",implant:"#16A34A",extraction:"#EA580C",bridge:"#0891B2",veneer:"#DB2777",fracture:"#F97316",mobility:"#F59E0B",watch:"#CA8A04",planned:"#6366F1",completed:"#16A34A"};
   const COND_LABELS={miss:"Missing",filling:"Filling",crown:"Crown",rct:"Root Canal",decay:"Decay",implant:"Implant",extraction:"Extraction",bridge:"Bridge",veneer:"Veneer",fracture:"Fracture",mobility:"Mobility",watch:"Watch",planned:"Planned",completed:"Completed"};
 
-  // Tooth SVG — condition-coded with distinctive per-treatment visuals
+  // Floating quick-action menu shown when a tooth is selected
+  const [floatMenuTooth,setFloatMenuTooth]=useState(null);
+  const [floatMenuPos,setFloatMenuPos]=useState({x:0,y:0});
+  const QUICK_ACTIONS=[
+    {k:"filling",  emoji:"🩹", label:"Filling",    color:"#2563FF"},
+    {k:"crown",    emoji:"👑", label:"Crown",      color:"#D97706"},
+    {k:"rct",      emoji:"🦷", label:"Root Canal", color:"#7C3AED"},
+    {k:"implant",  emoji:"🔩", label:"Implant",    color:"#16A34A"},
+    {k:"extraction",emoji:"❌",label:"Extraction", color:"#EA580C"},
+  ];
+
+  // Tooth SVG — premium 3D-style with gradients, shadows, glow
   const ToothSVG=({num,selected,active})=>{
-    const W=38;const H=38;const OX=11;const OY=11;
+    const W=42;const H=46;const OX=10;const OY=10;
     const td=teeth[num]||{cond:null,surfaces:{},planned:[],completed:[]};
     const c=td.cond;
     const isMiss=c==="miss";
@@ -16094,6 +16105,9 @@ function DentalWorkspace({patient,user}){
     const hasComplete=td.completed.length>0;
     const isSel=selected;
     const col=c&&COND_COLORS[c]||null;
+    const isDecay=c==="decay";
+    const isCompleted=td.completed.length>0&&!td.planned.length;
+    const uid=`t${num}`;
 
     const zones=[
       {id:"b",d:`M0,0 L${W},0 L${W-OX},${OY} L${OX},${OY} Z`},
@@ -16102,115 +16116,178 @@ function DentalWorkspace({patient,user}){
       {id:"d",d:`M${W},0 L${W},${H} L${W-OX},${H-OY} L${W-OX},${OY} Z`},
       {id:"o",d:`M${OX},${OY} L${W-OX},${OY} L${W-OX},${H-OY} L${OX},${H-OY} Z`},
     ];
-
-    // Abbreviations shown inside tooth for text-readable conditions
     const ABBR={crown:"CR",rct:"RCT",implant:"IMP",bridge:"BR",veneer:"V",decay:"DC",watch:"W",mobility:"MOB"};
 
+    // Base gradient: ivory/cream for healthy, colour-tinted for condition
+    const baseTop=col?(col+"ee"):(isSel?"#1e3a5f":"#1e2e46");
+    const baseBtm=col?(col+"99"):(isSel?"#0d1e35":"#111c2e");
+    // Highlight sheen (top-left specular)
+    const sheenOpacity=isSel?0.22:0.13;
+
     return(
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{display:"block",cursor:"pointer",borderRadius:4}}
-        onClick={e=>toggleTooth(num,e)}>
+      <div
+        className={`pdc-tooth${isSel?" pdc-tooth--sel":""}${col?" pdc-tooth--cond":""}`}
+        style={{
+          position:"relative",
+          width:W,height:H,
+          cursor:"pointer",
+          flexShrink:0,
+          // 3D lift effect via transform + shadow
+          transform:isSel?"translateY(-4px) scale(1.08)":"translateY(0) scale(1)",
+          transition:"transform .15s cubic-bezier(.34,1.56,.64,1), filter .15s, box-shadow .15s",
+          filter:isSel
+            ?`drop-shadow(0 0 8px ${col||"#3b82f6"}cc) drop-shadow(0 4px 12px rgba(0,0,0,0.6))`
+            :col
+              ?`drop-shadow(0 2px 6px ${col}99)`
+              :"drop-shadow(0 2px 5px rgba(0,0,0,0.45))",
+          zIndex:isSel?10:1,
+        }}
+        onClick={e=>{
+          toggleTooth(num,e);
+          // Position the floating menu near the tooth
+          const rect=e.currentTarget.getBoundingClientRect();
+          const parentRect=e.currentTarget.closest(".pdc-chart-center")?.getBoundingClientRect()||{left:0,top:0};
+          setFloatMenuTooth(prev=>(prev===num?null:num));
+          setFloatMenuPos({x:rect.left-parentRect.left+W/2,y:rect.top-parentRect.top-8});
+        }}>
 
-        {/* ── Base fill ── */}
-        <rect x={0} y={0} width={W} height={H} rx={3}
-          fill={isMiss?"#475569":col?col+"cc":"#132238"}
-          stroke={isSel?"#60A5FA":col||"rgba(80,140,255,0.18)"}
-          strokeWidth={isSel?2.5:col?2:1}/>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{display:"block",borderRadius:5,overflow:"visible"}}>
+          <defs>
+            {/* Main body gradient */}
+            <linearGradient id={`${uid}bg`} x1="0.3" y1="0" x2="0.7" y2="1">
+              <stop offset="0%" stopColor={baseTop}/>
+              <stop offset="100%" stopColor={baseBtm}/>
+            </linearGradient>
+            {/* Specular top-left sheen */}
+            <radialGradient id={`${uid}sh`} cx="30%" cy="20%" r="55%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.28)" stopOpacity="1"/>
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" stopOpacity="0"/>
+            </radialGradient>
+            {/* Glow ring for selected */}
+            <filter id={`${uid}glow`} x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            {/* Inner shadow at bottom edge */}
+            <filter id={`${uid}inner`} x="-5%" y="-5%" width="110%" height="110%">
+              <feFlood floodColor="rgba(0,0,0,0.4)" result="flood"/>
+              <feComposite in="flood" in2="SourceGraphic" operator="in" result="shadow"/>
+              <feOffset dx="0" dy="2" in="shadow" result="offset"/>
+              <feMerge><feMergeNode in="offset"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
 
-        {/* ── Surface zones (only when no whole-tooth cond) ── */}
-        {!c&&zones.map(z=>{
-          const sc=td.surfaces[z.id];
-          const isSelSurf=active&&selSurfaces.has(z.id);
-          return(
-            <path key={z.id} d={z.d}
-              fill={sc?COND_COLORS[sc]||"#64748b":isSelSurf?"#2563FF":"transparent"}
-              fillOpacity={sc?0.9:isSelSurf?0.55:0}
-              stroke={sc?COND_COLORS[sc]:"rgba(80,140,255,0.18)"} strokeWidth={0.8}
-              style={{cursor:active?"crosshair":"pointer"}}
-              onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}
-              onMouseEnter={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0.3");}}
-              onMouseLeave={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0");}}/>
-          );
-        })}
-        {/* Surface zones overlay when whole-tooth cond also exists */}
-        {c&&zones.map(z=>{
-          const sc=td.surfaces[z.id];
-          const isSelSurf=active&&selSurfaces.has(z.id);
-          if(!sc&&!isSelSurf)return null;
-          return(
-            <path key={z.id} d={z.d}
-              fill={sc?COND_COLORS[sc]||"#64748b":isSelSurf?"#60A5FA":"transparent"}
-              fillOpacity={sc?0.9:0.5}
-              stroke="rgba(255,255,255,0.4)" strokeWidth={0.8}
-              style={{cursor:active?"crosshair":"pointer"}}
-              onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}/>
-          );
-        })}
+          {/* ── Outer glow ring (selected) ── */}
+          {isSel&&<rect x={-2} y={-2} width={W+4} height={H+4} rx={6}
+            fill="none"
+            stroke={col||"#3b82f6"}
+            strokeWidth={3}
+            opacity={0.7}
+            filter={`url(#${uid}glow)`}/>}
 
-        {/* ── Condition-specific overlays ── */}
+          {/* ── Body ── */}
+          <rect x={1} y={1} width={W-2} height={H-2} rx={4}
+            fill={isMiss?"#2d3a4f":`url(#${uid}bg)`}
+            stroke={isSel?(col||"#3b82f6"):col?(col+"bb"):"rgba(80,140,255,0.22)"}
+            strokeWidth={isSel?2:col?1.5:1}/>
 
-        {/* Missing — bold white X */}
-        {isMiss&&<>
-          <line x1={6} y1={6} x2={W-6} y2={H-6} stroke="#F1F5F9" strokeWidth={3.5} strokeLinecap="round"/>
-          <line x1={W-6} y1={6} x2={6} y2={H-6} stroke="#F1F5F9" strokeWidth={3.5} strokeLinecap="round"/>
-        </>}
+          {/* ── Bottom edge depth shadow ── */}
+          <rect x={2} y={H-5} width={W-4} height={4} rx={2}
+            fill="rgba(0,0,0,0.22)"/>
 
-        {/* Extraction — orange X with thinner lines (distinct from missing) */}
-        {c==="extraction"&&<>
-          <line x1={7} y1={7} x2={W-7} y2={H-7} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
-          <line x1={W-7} y1={7} x2={7} y2={H-7} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
-          <text x={W/2} y={H-4} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">EX</text>
-        </>}
+          {/* ── Surface zones ── */}
+          {!c&&zones.map(z=>{
+            const sc=td.surfaces[z.id];
+            const isSelSurf=active&&selSurfaces.has(z.id);
+            const zfill=sc?(COND_COLORS[sc]||"#64748b"):isSelSurf?"#3b82f6":"transparent";
+            return(
+              <path key={z.id} d={z.d}
+                fill={zfill} fillOpacity={sc?0.88:isSelSurf?0.6:0}
+                stroke={sc?(COND_COLORS[sc]+"66"):"rgba(80,140,255,0.12)"} strokeWidth={0.7}
+                style={{cursor:active?"crosshair":"pointer"}}
+                onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}
+                onMouseEnter={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0.25");}}
+                onMouseLeave={e=>{if(!sc&&!isSelSurf)e.currentTarget.setAttribute("fill-opacity","0");}}/>
+            );
+          })}
+          {c&&zones.map(z=>{
+            const sc=td.surfaces[z.id];
+            const isSelSurf=active&&selSurfaces.has(z.id);
+            if(!sc&&!isSelSurf)return null;
+            return(
+              <path key={z.id} d={z.d}
+                fill={sc?(COND_COLORS[sc]||"#64748b"):isSelSurf?"#60A5FA":"transparent"}
+                fillOpacity={sc?0.88:0.5}
+                stroke="rgba(255,255,255,0.35)" strokeWidth={0.7}
+                style={{cursor:active?"crosshair":"pointer"}}
+                onClick={e=>{if(active&&isSel){e.stopPropagation();toggleSurf(z.id);}}}/>
+            );
+          })}
 
-        {/* Crown — gold crown shape at top */}
-        {c==="crown"&&<>
-          <polygon points={`3,15 3,7 9,12 19,4 29,12 35,7 35,15`} fill="#D97706" opacity={0.95} stroke="#fff" strokeWidth={0.6}/>
-          <text x={W/2} y={H-3} textAnchor="middle" fontSize={8} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">CR</text>
-        </>}
+          {/* ── Condition-specific overlays ── */}
+          {isMiss&&<>
+            <line x1={7} y1={7} x2={W-7} y2={H-7} stroke="#94A3B8" strokeWidth={3} strokeLinecap="round"/>
+            <line x1={W-7} y1={7} x2={7} y2={H-7} stroke="#94A3B8" strokeWidth={3} strokeLinecap="round"/>
+          </>}
+          {c==="extraction"&&<>
+            <line x1={8} y1={8} x2={W-8} y2={H-8} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
+            <line x1={W-8} y1={8} x2={8} y2={H-8} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" opacity={0.95}/>
+            <text x={W/2} y={H-4} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">EX</text>
+          </>}
+          {c==="crown"&&<>
+            <polygon points={`4,17 4,8 10,13 ${W/2},5 ${W-10},13 ${W-4},8 ${W-4},17`} fill="#F59E0B" opacity={0.95} stroke="rgba(255,255,255,0.6)" strokeWidth={0.8}/>
+            <rect x={4} y={17} width={W-8} height={3} rx={1} fill="#D97706" opacity={0.8}/>
+            <text x={W/2} y={H-4} textAnchor="middle" fontSize={8} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">CR</text>
+          </>}
+          {c==="rct"&&<>
+            <line x1={14} y1={15} x2={12} y2={H-4} stroke="#E9D5FF" strokeWidth={2} strokeLinecap="round" opacity={0.9}/>
+            <line x1={W/2} y1={14} x2={W/2} y2={H-4} stroke="#E9D5FF" strokeWidth={2} strokeLinecap="round" opacity={0.9}/>
+            <line x1={W-14} y1={15} x2={W-12} y2={H-4} stroke="#E9D5FF" strokeWidth={2} strokeLinecap="round" opacity={0.9}/>
+            <text x={W/2} y={13} textAnchor="middle" fontSize={7} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">RCT</text>
+          </>}
+          {c==="implant"&&<>
+            <rect x={W/2-5} y={8} width={10} height={22} rx={3} fill="none" stroke="#86EFAC" strokeWidth={1.5} opacity={0.9}/>
+            {[12,16,20,24].map(y=><line key={y} x1={W/2-5} y1={y} x2={W/2+5} y2={y} stroke="#86EFAC" strokeWidth={1} opacity={0.6}/>)}
+            <text x={W/2} y={H-3} textAnchor="middle" fontSize={6} fontWeight={900} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">IMP</text>
+          </>}
+          {c==="bridge"&&<>
+            <rect x={1} y={3} width={W-2} height={5} rx={2} fill="rgba(255,255,255,0.18)"/>
+            <rect x={1} y={H-8} width={W-2} height={5} rx={2} fill="rgba(255,255,255,0.18)"/>
+            <text x={W/2} y={H/2+4} textAnchor="middle" fontSize={10} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">BR</text>
+          </>}
+          {c==="fracture"&&<>
+            <polyline points={`${W/2+1},4 ${W/2-5},${H/3} ${W/2+5},${H*2/3} ${W/2},${H-5}`} fill="none" stroke="#FED7AA" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.95}/>
+          </>}
+          {c&&ABBR[c]&&!["crown","rct","implant","bridge","fracture","extraction","miss"].includes(c)&&(
+            <text x={W/2} y={H/2+4} textAnchor="middle"
+              fontSize={ABBR[c].length>2?8:11} fontWeight={900}
+              fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">
+              {ABBR[c]}
+            </text>
+          )}
 
-        {/* RCT — purple + three root canal lines */}
-        {c==="rct"&&<>
-          <line x1={13} y1={14} x2={11} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
-          <line x1={19} y1={14} x2={19} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
-          <line x1={25} y1={14} x2={27} y2={H-3} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.85}/>
-          <text x={W/2} y={13} textAnchor="middle" fontSize={7} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">RCT</text>
-        </>}
+          {/* ── Specular sheen (top-left highlight) ── */}
+          {!isMiss&&<rect x={1} y={1} width={W-2} height={H-2} rx={4}
+            fill={`url(#${uid}sh)`} opacity={sheenOpacity} style={{pointerEvents:"none"}}/>}
 
-        {/* Implant — green + screw body */}
-        {c==="implant"&&<>
-          <rect x={14} y={9} width={10} height={20} rx={3} fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.85}/>
-          {[13,17,21,25].map(y=><line key={y} x1={14} y1={y} x2={24} y2={y} stroke="#fff" strokeWidth={1} opacity={0.6}/>)}
-          <text x={W/2} y={H-2} textAnchor="middle" fontSize={6} fontWeight={900} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">IMP</text>
-        </>}
+          {/* ── Top highlight line ── */}
+          {!isMiss&&<line x1={4} y1={2} x2={W-4} y2={2} stroke="rgba(255,255,255,0.35)" strokeWidth={1} strokeLinecap="round"/>}
 
-        {/* Bridge — teal + horizontal bridge bars */}
-        {c==="bridge"&&<>
-          <rect x={1} y={2} width={W-2} height={6} rx={2} fill="#fff" opacity={0.2}/>
-          <rect x={1} y={H-8} width={W-2} height={6} rx={2} fill="#fff" opacity={0.2}/>
-          <text x={W/2} y={H/2+4} textAnchor="middle" fontSize={9} fontWeight={900} fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">BR</text>
-        </>}
+          {/* ── Planned / completed corner badges ── */}
+          {hasPlanned&&!isMiss&&<>
+            <circle cx={5} cy={5} r={4} fill="#F59E0B" stroke="#0d1e35" strokeWidth={1}/>
+            <text x={5} y={8} textAnchor="middle" fontSize={5} fontWeight={900} fill="#000">P</text>
+          </>}
+          {hasComplete&&!isMiss&&<>
+            <circle cx={5} cy={H-5} r={4} fill="#22C55E" stroke="#0d1e35" strokeWidth={1}/>
+            <text x={5} y={H-2} textAnchor="middle" fontSize={5} fontWeight={900} fill="#000">✓</text>
+          </>}
 
-        {/* Fracture — orange + zigzag crack */}
-        {c==="fracture"&&<>
-          <polyline points={`${W/2},3 ${W/2-5},${H/3} ${W/2+5},${H*2/3} ${W/2},${H-3}`} fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.95}/>
-          <text x={W/2} y={H-2} textAnchor="middle" fontSize={7} fontWeight={800} fill="#fff" opacity={0.9} fontFamily="ui-monospace,monospace">FR</text>
-        </>}
-
-        {/* Veneer, decay, watch, mobility — colour fill + label */}
-        {c&&ABBR[c]&&!["crown","rct","implant","bridge","fracture","extraction"].includes(c)&&(
-          <text x={W/2} y={H/2+4} textAnchor="middle"
-            fontSize={ABBR[c].length>2?8:10} fontWeight={900}
-            fill="#fff" opacity={0.95} fontFamily="ui-monospace,monospace">
-            {ABBR[c]}
-          </text>
-        )}
-
-        {/* Planned / completed corner dots */}
-        {hasPlanned&&!isMiss&&<circle cx={4} cy={4} r={3.5} fill="#f59e0b" stroke="#132238" strokeWidth={0.8}/>}
-        {hasComplete&&!isMiss&&<circle cx={4} cy={H-4} r={3.5} fill="#16a34a" stroke="#132238" strokeWidth={0.8}/>}
-
-        {/* Selection ring */}
-        {isSel&&<rect x={0.5} y={0.5} width={W-1} height={H-1} rx={3} fill="none" stroke="#60A5FA" strokeWidth={2} strokeDasharray="4,2"/>}
-      </svg>
+          {/* ── Selection dashed outer ring ── */}
+          {isSel&&<rect x={0.5} y={0.5} width={W-1} height={H-1} rx={4.5} fill="none"
+            stroke={col||"#60A5FA"} strokeWidth={1.5} strokeDasharray="4,2" opacity={0.85}/>}
+        </svg>
+      </div>
     );
   };
 
@@ -16228,11 +16305,11 @@ function DentalWorkspace({patient,user}){
   const [perioPockets,setPerioPockets]=useState(()=>{const d={};UPPER.concat(LOWER).forEach(n=>{d[n]=Math.floor(Math.random()*3)+1;});return d;});
 
   return(
-  <div style={{display:"flex",height:"100%",overflow:"hidden",background:"#0F1C34",fontFamily:"inherit"}}>
+  <div style={{display:"flex",height:"100%",overflow:"hidden",background:"radial-gradient(ellipse at 30% 10%,rgba(37,99,235,0.12) 0%,#080f1e 55%),radial-gradient(ellipse at 80% 80%,rgba(124,58,237,0.08) 0%,transparent 50%)",fontFamily:"inherit"}}>
     {toastMsg&&<div style={{position:"fixed",top:14,left:"50%",transform:"translateX(-50%)",padding:"8px 20px",background:"#2563FF",color:"#ffffff",borderRadius:20,fontSize:12,fontWeight:700,zIndex:900,boxShadow:"0 4px 20px rgba(0,0,0,.2)",whiteSpace:"nowrap"}}>{toastMsg}</div>}
 
     {/* ══ LEFT PANEL — Treatment Library ══ */}
-    <div style={{width:220,flexShrink:0,background:"#1a2234",display:"flex",flexDirection:"column",overflow:"hidden",borderRight:"1px solid rgba(255,255,255,.06)"}}>
+    <div style={{width:220,flexShrink:0,background:"linear-gradient(180deg,#111d30 0%,#0e1827 100%)",display:"flex",flexDirection:"column",overflow:"hidden",borderRight:"1px solid rgba(80,140,255,0.12)",boxShadow:"4px 0 20px rgba(0,0,0,0.35)"}}>
       {/* Search */}
       <div style={{padding:"10px 10px 6px",flexShrink:0}}>
         <div style={{position:"relative"}}>
@@ -16341,7 +16418,7 @@ function DentalWorkspace({patient,user}){
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,position:"relative"}}>
 
       {/* Chart mode toolbar */}
-      <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.12)",padding:"0 12px",display:"flex",gap:0,alignItems:"center",flexShrink:0,height:40}}>
+      <div style={{background:"rgba(10,18,34,0.92)",backdropFilter:"blur(10px)",borderBottom:"1px solid rgba(80,140,255,0.15)",padding:"0 12px",display:"flex",gap:0,alignItems:"center",flexShrink:0,height:42,boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}}>
         <div style={{display:"flex",gap:0,flex:1}}>
           {[{id:"chart",l:"🦷 Dental Chart"},{id:"perio",l:"📊 Perio"},{id:"softtissue",l:"🫦 Soft Tissue & Pathology"},{id:"3d",l:"🔮 3D View"}].map(m=>(
             <button key={m.id} onClick={()=>setChartMode(m.id)} style={{padding:"0 14px",height:40,border:"none",borderBottom:`2px solid ${chartMode===m.id?"#2563FF":"transparent"}`,background:"transparent",cursor:"pointer",fontSize:11,fontWeight:chartMode===m.id?700:400,color:chartMode===m.id?"#2563FF":"#64748b",whiteSpace:"nowrap"}}>
@@ -16379,18 +16456,108 @@ function DentalWorkspace({patient,user}){
       </div>}
 
       {/* Chart view */}
-      {chartMode==="chart"&&<div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 12px",gap:4}}>
+      {chartMode==="chart"&&<div className="pdc-chart-center" style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px 16px",gap:0,position:"relative",background:"radial-gradient(ellipse at 50% 0%,rgba(37,99,235,0.07) 0%,transparent 60%)"}}>
+
+        <style>{`
+          .pdc-tooth{border-radius:5px;user-select:none;}
+          .pdc-tooth:hover{transform:translateY(-3px) scale(1.06)!important;filter:brightness(1.18) drop-shadow(0 4px 10px rgba(59,130,246,0.4))!important;z-index:5!important;}
+          .pdc-tooth--sel:hover{transform:translateY(-5px) scale(1.1)!important;}
+          .pdc-tooth:active{transform:translateY(0) scale(0.97)!important;transition:transform .08s ease!important;}
+          .pdc-float-menu{
+            position:absolute;transform-origin:center bottom;
+            animation:pdc-menu-in .18s cubic-bezier(.34,1.56,.64,1) forwards;
+          }
+          @keyframes pdc-menu-in{from{opacity:0;transform:scale(0.7) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+          .pdc-qbtn{
+            display:flex;flex-direction:column;align-items:center;gap:3px;
+            padding:7px 5px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);
+            background:rgba(13,22,40,0.88);cursor:pointer;min-width:52px;
+            transition:all .15s cubic-bezier(.34,1.56,.64,1);
+            backdrop-filter:blur(12px);
+          }
+          .pdc-qbtn:hover{transform:translateY(-3px) scale(1.08);border-color:rgba(255,255,255,0.3);background:rgba(20,35,65,0.95);}
+          .pdc-qbtn:active{transform:scale(0.93);}
+          .pdc-arch-upper{
+            display:flex;gap:2px;align-items:flex-end;
+            padding:10px 12px 8px;
+            background:linear-gradient(180deg,rgba(15,28,52,0.0) 0%,rgba(19,34,56,0.85) 100%);
+            backdrop-filter:blur(8px);
+            border-radius:16px 16px 0 0;
+            border:1px solid rgba(80,140,255,0.2);border-bottom:none;
+            box-shadow:0 -4px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
+          }
+          .pdc-arch-lower{
+            display:flex;gap:2px;align-items:flex-start;
+            padding:8px 12px 10px;
+            background:linear-gradient(0deg,rgba(15,28,52,0.0) 0%,rgba(19,34,56,0.85) 100%);
+            backdrop-filter:blur(8px);
+            border-radius:0 0 16px 16px;
+            border:1px solid rgba(80,140,255,0.2);border-top:none;
+            box-shadow:0 6px 24px rgba(0,0,0,0.35),inset 0 -1px 0 rgba(255,255,255,0.04);
+          }
+          .pdc-midline{
+            display:flex;align-items:center;gap:8px;
+            width:100%;max-width:730px;
+            border-left:1px solid rgba(80,140,255,0.18);border-right:1px solid rgba(80,140,255,0.18);
+            padding:5px 12px;z-index:1;
+            background:linear-gradient(90deg,transparent,rgba(37,99,235,0.06),transparent);
+          }
+        `}</style>
+
+        {/* Floating quick-action menu */}
+        {floatMenuTooth&&(()=>{
+          const menuW=QUICK_ACTIONS.length*62+16;
+          return(
+            <div className="pdc-float-menu" style={{
+              left:Math.max(8,Math.min(floatMenuPos.x-menuW/2,800-menuW-8)),
+              top:floatMenuPos.y-88,
+              zIndex:50,
+              display:"flex",gap:6,
+              padding:"8px 10px",
+              background:"rgba(8,16,32,0.92)",
+              backdropFilter:"blur(16px)",
+              borderRadius:14,
+              border:"1px solid rgba(80,140,255,0.25)",
+              boxShadow:"0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04),inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}>
+              {QUICK_ACTIONS.map(({k,emoji,label,color})=>{
+                const isActive=teeth[floatMenuTooth]?.cond===k;
+                return(
+                  <button key={k} className="pdc-qbtn"
+                    style={{borderColor:isActive?(color+"66"):"rgba(255,255,255,0.1)",background:isActive?(color+"22"):"rgba(13,22,40,0.88)"}}
+                    onClick={e=>{
+                      e.stopPropagation();
+                      const next=isActive?null:k;
+                      setTeeth(p=>{const cur=p[floatMenuTooth]||{cond:null,surfaces:{},planned:[],completed:[]};return{...p,[floatMenuTooth]:{...cur,cond:next}};});
+                      toast(next?`✓ ${label} — ${palmerName(floatMenuTooth)}`:`Cleared ${palmerName(floatMenuTooth)}`);
+                      setFloatMenuTooth(null);
+                    }}>
+                    <span style={{fontSize:18,lineHeight:1}}>{emoji}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:isActive?color:"#94A3B8",whiteSpace:"nowrap"}}>{label}</span>
+                  </button>
+                );
+              })}
+              <button className="pdc-qbtn" style={{minWidth:32,padding:"7px 6px"}} title="Close"
+                onClick={e=>{e.stopPropagation();setFloatMenuTooth(null);}}>
+                <span style={{fontSize:14,color:"#64748B"}}>✕</span>
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Click-away to close float menu */}
+        {floatMenuTooth&&<div style={{position:"fixed",inset:0,zIndex:49}} onClick={()=>setFloatMenuTooth(null)}/>}
 
         {/* Palmer notation labels — Upper */}
-        <div style={{display:"flex",gap:1,alignItems:"center",marginBottom:2}}>
-          {[{n:"UR8",w:38},{n:"UR7",w:38},{n:"UR6",w:38},{n:"UR5",w:38},{n:"UR4",w:38},{n:"UR3",w:38},{n:"UR2",w:38},{n:"UR1",w:38}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"#CBD5E1"}}>{t.n}</div>)}
+        <div style={{display:"flex",gap:2,alignItems:"center",marginBottom:4}}>
+          {[{n:"UR8",w:42},{n:"UR7",w:42},{n:"UR6",w:42},{n:"UR5",w:42},{n:"UR4",w:42},{n:"UR3",w:42},{n:"UR2",w:42},{n:"UR1",w:42}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"rgba(148,163,184,0.7)",letterSpacing:"-.01em"}}>{t.n}</div>)}
           <div style={{width:16}}/>
-          {[{n:"UL1",w:38},{n:"UL2",w:38},{n:"UL3",w:38},{n:"UL4",w:38},{n:"UL5",w:38},{n:"UL6",w:38},{n:"UL7",w:38},{n:"UL8",w:38}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"#CBD5E1"}}>{t.n}</div>)}
+          {[{n:"UL1",w:42},{n:"UL2",w:42},{n:"UL3",w:42},{n:"UL4",w:42},{n:"UL5",w:42},{n:"UL6",w:42},{n:"UL7",w:42},{n:"UL8",w:42}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"rgba(148,163,184,0.7)",letterSpacing:"-.01em"}}>{t.n}</div>)}
         </div>
 
         {/* Upper arch */}
-        <div style={{display:"flex",gap:1,alignItems:"flex-end",padding:"6px 8px",background:"#132238",borderRadius:"12px 12px 0 0",border:"1px solid rgba(80,140,255,0.16)",borderBottom:"none",boxShadow:"0 -2px 8px rgba(0,0,0,.04)"}}>
-          {UPPER.map((n,i)=>(
+        <div className="pdc-arch-upper">
+          {UPPER.map((n)=>(
             <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
               <ToothSVG num={n} selected={selTeeth.includes(n)} active={hasSel&&selTeeth.includes(n)}/>
             </div>
@@ -16399,15 +16566,15 @@ function DentalWorkspace({patient,user}){
         </div>
 
         {/* Midline */}
-        <div style={{width:"100%",maxWidth:680,display:"flex",alignItems:"center",gap:8,background:"#0F1C34",borderLeft:"1px solid rgba(80,140,255,0.15)",borderRight:"1px solid rgba(80,140,255,0.15)",padding:"4px 8px",zIndex:1}}>
-          <div style={{flex:1,height:1,background:"rgba(80,140,255,0.2)"}}/>
-          <span style={{fontSize:8,fontWeight:700,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".1em",whiteSpace:"nowrap",padding:"2px 8px",border:"1px solid rgba(80,140,255,0.16)",borderRadius:9,background:"#0F1C34"}}>Upper · Lower</span>
-          <div style={{flex:1,height:1,background:"rgba(80,140,255,0.2)"}}/>
+        <div className="pdc-midline">
+          <div style={{flex:1,height:1,background:"linear-gradient(90deg,transparent,rgba(80,140,255,0.35))"}}/>
+          <span style={{fontSize:8,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".12em",whiteSpace:"nowrap",padding:"3px 10px",border:"1px solid rgba(80,140,255,0.2)",borderRadius:9,background:"rgba(15,28,52,0.8)",backdropFilter:"blur(6px)"}}>Upper · Lower</span>
+          <div style={{flex:1,height:1,background:"linear-gradient(90deg,rgba(80,140,255,0.35),transparent)"}}/>
         </div>
 
         {/* Lower arch */}
-        <div style={{display:"flex",gap:1,alignItems:"flex-start",padding:"6px 8px",background:"#132238",borderRadius:"0 0 12px 12px",border:"1px solid rgba(80,140,255,0.16)",borderTop:"none",boxShadow:"0 4px 8px rgba(0,0,0,.04)"}}>
-          {LOWER.map((n,i)=>(
+        <div className="pdc-arch-lower">
+          {LOWER.map((n)=>(
             <div key={n}>
               <ToothSVG num={n} selected={selTeeth.includes(n)} active={hasSel&&selTeeth.includes(n)}/>
             </div>
@@ -16416,32 +16583,38 @@ function DentalWorkspace({patient,user}){
         </div>
 
         {/* Palmer labels — Lower */}
-        <div style={{display:"flex",gap:1,alignItems:"center",marginTop:2}}>
-          {[{n:"LR8",w:38},{n:"LR7",w:38},{n:"LR6",w:38},{n:"LR5",w:38},{n:"LR4",w:38},{n:"LR3",w:38},{n:"LR2",w:38},{n:"LR1",w:38}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"#CBD5E1"}}>{t.n}</div>)}
+        <div style={{display:"flex",gap:2,alignItems:"center",marginTop:4}}>
+          {[{n:"LR8",w:42},{n:"LR7",w:42},{n:"LR6",w:42},{n:"LR5",w:42},{n:"LR4",w:42},{n:"LR3",w:42},{n:"LR2",w:42},{n:"LR1",w:42}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"rgba(148,163,184,0.7)",letterSpacing:"-.01em"}}>{t.n}</div>)}
           <div style={{width:16}}/>
-          {[{n:"LL1",w:38},{n:"LL2",w:38},{n:"LL3",w:38},{n:"LL4",w:38},{n:"LL5",w:38},{n:"LL6",w:38},{n:"LL7",w:38},{n:"LL8",w:38}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"#CBD5E1"}}>{t.n}</div>)}
+          {[{n:"LL1",w:42},{n:"LL2",w:42},{n:"LL3",w:42},{n:"LL4",w:42},{n:"LL5",w:42},{n:"LL6",w:42},{n:"LL7",w:42},{n:"LL8",w:42}].map(t=><div key={t.n} style={{width:t.w,textAlign:"center",fontSize:8,fontWeight:700,color:"rgba(148,163,184,0.7)",letterSpacing:"-.01em"}}>{t.n}</div>)}
         </div>
 
         {/* Treatment plan summary at bottom of chart */}
-        {txPlan.length>0&&<div style={{width:"100%",maxWidth:700,marginTop:16}}>
-          <div style={{fontSize:10,fontWeight:800,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Treatment Plan ({txPlan.filter(t=>t.status==="planned").length} planned · {txPlan.filter(t=>t.status==="completed").length} complete)</div>
+        {txPlan.length>0&&<div style={{width:"100%",maxWidth:730,marginTop:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <div style={{flex:1,height:1,background:"rgba(80,140,255,0.15)"}}/>
+            <span style={{fontSize:10,fontWeight:800,color:"#64748B",textTransform:"uppercase",letterSpacing:".1em",whiteSpace:"nowrap"}}>Treatment Plan · {txPlan.filter(t=>t.status==="planned").length} planned · {txPlan.filter(t=>t.status==="completed").length} complete</span>
+            <div style={{flex:1,height:1,background:"rgba(80,140,255,0.15)"}}/>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:3,padding:"10px",background:"rgba(13,22,40,0.6)",backdropFilter:"blur(8px)",borderRadius:14,border:"1px solid rgba(80,140,255,0.18)",boxShadow:"0 4px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.04)"}}>
           {txPlan.map(tx=>(
-            <div key={tx.id} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 10px",background:"#132238",borderRadius:12,marginBottom:4,border:`1px solid ${tx.status==="completed"?"#bbf7d0":"rgba(80,140,255,0.2)"}`,opacity:tx.status==="completed"?0.7:1}}>
-              <div style={{width:8,height:8,borderRadius:2,background:tx.status==="completed"?"#16a34a":"#f59e0b",flexShrink:0}}/>
+            <div key={tx.id} style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",background:tx.status==="completed"?"rgba(22,163,74,0.06)":"rgba(255,255,255,0.03)",borderRadius:10,border:`1px solid ${tx.status==="completed"?"rgba(22,163,74,0.25)":"rgba(80,140,255,0.14)"}`,opacity:tx.status==="completed"?0.65:1,transition:"all .15s"}}>
+              <div style={{width:10,height:10,borderRadius:3,background:tx.status==="completed"?"#22C55E":"#F59E0B",flexShrink:0,boxShadow:tx.status==="completed"?"0 0 6px #22C55E88":"0 0 6px #F59E0B88"}}/>
               <div style={{flex:1,minWidth:0}}>
-                <span style={{fontSize:11,fontWeight:600,color:tx.status==="completed"?"#64748b":"#374151",textDecoration:tx.status==="completed"?"line-through":"none"}}>{tx.label}</span>
-                {tx.teeth.length>0&&<span style={{fontSize:9,color:"#CBD5E1",marginLeft:6}}>Tooth {tx.teeth.join(", ")}{tx.surfaces.length>0?` — ${tx.surfaces.join("")}`:""}</span>}
+                <span style={{fontSize:11,fontWeight:600,color:tx.status==="completed"?"#64748B":"#E2E8F0",textDecoration:tx.status==="completed"?"line-through":"none"}}>{tx.label}</span>
+                {tx.teeth.length>0&&<span style={{fontSize:9,color:"#64748B",marginLeft:6}}>· Tooth {tx.teeth.join(", ")}{tx.surfaces.length>0?` — ${tx.surfaces.join("")}`:""}</span>}
               </div>
-              <span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:tx.nhs?"#dbeafe":"#ede9fe",color:tx.nhs?"#1d4ed8":"#7c3aed"}}>{tx.nhs?"NHS":"Pvt"}</span>
-              <span style={{fontSize:10,fontWeight:700,fontFamily:"ui-monospace,monospace",color:"#F8FAFC"}}>£{tx.fee.toFixed(2)}</span>
-              {tx.status==="planned"&&<button onClick={()=>markComplete(tx.id)} title="Mark complete" style={{padding:"2px 7px",borderRadius:5,border:"1px solid rgba(80,140,255,0.18)",background:"rgba(0,109,255,0.06)",cursor:"pointer",fontSize:9,color:"#4ADE80",fontWeight:700}}>✓</button>}
-              <button onClick={()=>removeTx(tx.id)} style={{padding:"2px 5px",borderRadius:5,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",cursor:"pointer",fontSize:9,color:"#EF4444",fontWeight:800}}>✕</button>
+              <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:5,background:tx.nhs?"rgba(29,78,216,0.25)":"rgba(124,58,237,0.25)",color:tx.nhs?"#93C5FD":"#C4B5FD",border:`1px solid ${tx.nhs?"rgba(29,78,216,0.3)":"rgba(124,58,237,0.3)"}`}}>{tx.nhs?"NHS":"Pvt"}</span>
+              <span style={{fontSize:10,fontWeight:800,fontFamily:"ui-monospace,monospace",color:"#F8FAFC"}}>£{tx.fee.toFixed(2)}</span>
+              {tx.status==="planned"&&<button onClick={()=>markComplete(tx.id)} title="Mark complete" style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.1)",cursor:"pointer",fontSize:9,color:"#4ADE80",fontWeight:800}}>✓</button>}
+              <button onClick={()=>removeTx(tx.id)} style={{padding:"3px 6px",borderRadius:6,border:"1px solid rgba(239,68,68,0.25)",background:"rgba(239,68,68,0.08)",cursor:"pointer",fontSize:9,color:"#F87171",fontWeight:800}}>✕</button>
             </div>
           ))}
-          <div style={{display:"flex",justifyContent:"flex-end",gap:12,padding:"6px 10px",fontSize:11,fontWeight:700}}>
-            <span style={{color:"#CBD5E1"}}>NHS: £{txPlan.filter(t=>t.nhs).reduce((s,t)=>s+t.fee,0).toFixed(2)}</span>
-            <span style={{color:"#8B5CF6"}}>Private: £{txPlan.filter(t=>!t.nhs).reduce((s,t)=>s+t.fee,0).toFixed(2)}</span>
-            <span style={{color:"#2563FF"}}>Total: £{txPlan.reduce((s,t)=>s+t.fee,0).toFixed(2)}</span>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:14,padding:"8px 10px 2px",fontSize:11,fontWeight:700,borderTop:"1px solid rgba(80,140,255,0.1)",marginTop:4}}>
+            <span style={{color:"#64748B"}}>NHS <span style={{color:"#94A3B8"}}>£{txPlan.filter(t=>t.nhs).reduce((s,t)=>s+t.fee,0).toFixed(2)}</span></span>
+            <span style={{color:"#A78BFA"}}>Pvt <span style={{color:"#C4B5FD"}}>£{txPlan.filter(t=>!t.nhs).reduce((s,t)=>s+t.fee,0).toFixed(2)}</span></span>
+            <span style={{color:"#60A5FA"}}>Total <span style={{color:"#E0F2FE"}}>£{txPlan.reduce((s,t)=>s+t.fee,0).toFixed(2)}</span></span>
+          </div>
           </div>
         </div>}
 
@@ -16501,7 +16674,7 @@ function DentalWorkspace({patient,user}){
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
-    <div style={{width:280,flexShrink:0,display:"flex",flexDirection:"column",background:"#132238",borderLeft:"1px solid rgba(80,140,255,0.15)",overflow:"hidden"}}>
+    <div style={{width:280,flexShrink:0,display:"flex",flexDirection:"column",background:"linear-gradient(180deg,rgba(15,28,52,0.95) 0%,rgba(10,18,36,0.98) 100%)",backdropFilter:"blur(12px)",borderLeft:"1px solid rgba(80,140,255,0.18)",overflow:"hidden",boxShadow:"-4px 0 20px rgba(0,0,0,0.4)"}}>
       {/* Right panel tabs */}
       <div style={{display:"flex",gap:0,borderBottom:"1px solid rgba(56,189,248,0.12)",flexShrink:0}}>
         {[{id:"tooth",l:"Tooth"},{id:"notes",l:"Notes"},{id:"costs",l:"Costs"},{id:"history",l:"History"}].map(t=>(
@@ -16766,26 +16939,64 @@ function DentalWorkspace({patient,user}){
               )}
             </div>
 
-            {/* E. Quick add treatments */}
+            {/* E. Quick add treatments — premium icon cards */}
             <div style={{padding:"10px 14px"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#CBD5E1",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Quick Add Treatment</div>
-              {favCodes.slice(0,6).map(c=>(
+              <div style={{fontSize:10,fontWeight:700,color:"#64748B",marginBottom:8,textTransform:"uppercase",letterSpacing:".08em"}}>Quick Add Treatment</div>
+              {/* Prominent icon cards for most common treatments */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:8}}>
+                {[
+                  {k:"filling",  emoji:"🩹", label:"Filling",    color:"#3B82F6", shadow:"rgba(59,130,246,0.4)"},
+                  {k:"decay",    emoji:"🦠", label:"Decay",      color:"#EF4444", shadow:"rgba(239,68,68,0.4)"},
+                  {k:"crown",    emoji:"👑", label:"Crown",      color:"#F59E0B", shadow:"rgba(245,158,11,0.4)"},
+                  {k:"rct",      emoji:"🦷", label:"Root Canal", color:"#8B5CF6", shadow:"rgba(139,92,246,0.4)"},
+                  {k:"implant",  emoji:"🔩", label:"Implant",    color:"#22C55E", shadow:"rgba(34,197,94,0.4)"},
+                  {k:"extraction",emoji:"❌",label:"Extract",    color:"#F97316", shadow:"rgba(249,115,22,0.4)"},
+                  {k:"veneer",   emoji:"✨", label:"Veneer",     color:"#EC4899", shadow:"rgba(236,72,153,0.4)"},
+                  {k:"bridge",   emoji:"🌉", label:"Bridge",     color:"#06B6D4", shadow:"rgba(6,182,212,0.4)"},
+                  {k:"watch",    emoji:"👁️", label:"Watch",      color:"#EAB308", shadow:"rgba(234,179,8,0.4)"},
+                ].map(({k,emoji,label,color,shadow})=>{
+                  const isActive=selToothData?.cond===k;
+                  return(
+                    <button key={k}
+                      onClick={()=>{
+                        if(!selTooth)return;
+                        const next=isActive?null:k;
+                        setTeeth(p=>{const cur=p[selTooth]||{cond:null,surfaces:{},planned:[],completed:[]};return{...p,[selTooth]:{...cur,cond:next}};});
+                        toast(next?`✓ ${label} — ${palmerName(selTooth)}`:`Cleared ${palmerName(selTooth)}`);
+                      }}
+                      style={{
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+                        padding:"8px 4px",borderRadius:11,cursor:"pointer",
+                        border:`1.5px solid ${isActive?(color+"88"):"rgba(255,255,255,0.08)"}`,
+                        background:isActive?`linear-gradient(135deg,${color}22,${color}11)`:"rgba(255,255,255,0.03)",
+                        boxShadow:isActive?`0 0 12px ${shadow},inset 0 1px 0 rgba(255,255,255,0.1)`:"inset 0 1px 0 rgba(255,255,255,0.05)",
+                        transition:"all .18s cubic-bezier(.34,1.56,.64,1)",
+                      }}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px) scale(1.05)";e.currentTarget.style.boxShadow=`0 4px 14px ${shadow},inset 0 1px 0 rgba(255,255,255,0.1)`;e.currentTarget.style.borderColor=color+"66";}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=isActive?`0 0 12px ${shadow},inset 0 1px 0 rgba(255,255,255,0.1)`:"inset 0 1px 0 rgba(255,255,255,0.05)";e.currentTarget.style.borderColor=isActive?(color+"88"):"rgba(255,255,255,0.08)";}}>
+                      <span style={{fontSize:16,lineHeight:1}}>{emoji}</span>
+                      <span style={{fontSize:8,fontWeight:700,color:isActive?color:"#64748B",letterSpacing:".02em",whiteSpace:"nowrap"}}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Favourite treatment codes list */}
+              {favCodes.slice(0,4).map(c=>(
                 <button key={c.c} onClick={()=>{addTx(c);toast("✓ "+c.l+(selTooth?" — tooth "+selTooth:""));}}
-                  style={{width:"100%",display:"flex",gap:8,alignItems:"center",padding:"7px 9px",marginBottom:4,borderRadius:12,border:"1px solid rgba(80,140,255,0.16)",background:"#132238",cursor:"pointer",textAlign:"left",transition:"all .1s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.background="rgba(80,140,255,0.06)";e.currentTarget.style.borderColor="#2563FF";e.currentTarget.style.transform="translateX(2px)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background="#132238";e.currentTarget.style.borderColor="rgba(80,140,255,0.2)";e.currentTarget.style.transform="none";}}>
+                  style={{width:"100%",display:"flex",gap:8,alignItems:"center",padding:"7px 9px",marginBottom:3,borderRadius:10,border:"1px solid rgba(80,140,255,0.13)",background:"rgba(255,255,255,0.025)",cursor:"pointer",textAlign:"left",transition:"all .12s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.background="rgba(37,99,235,0.1)";e.currentTarget.style.borderColor="rgba(59,130,246,0.4)";e.currentTarget.style.transform="translateX(2px)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.025)";e.currentTarget.style.borderColor="rgba(80,140,255,0.13)";e.currentTarget.style.transform="none";}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
-                    <div style={{display:"flex",gap:5,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:9,color:"#CBD5E1",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
-                      {c.nhs&&c.band&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(80,140,255,0.08)",color:"#38BDF8"}}>Band {c.band}</span>}
-                      {!c.nhs&&<span style={{fontSize:8,fontWeight:800,padding:"0px 5px",borderRadius:3,background:"rgba(139,92,246,0.08)",color:"#8B5CF6"}}>Private</span>}
-                      <span style={{fontSize:9,fontWeight:700,color:"#2563FF",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
-                      {DEFAULT_SNOMED[c.c]&&<span style={{fontSize:8,fontFamily:"ui-monospace,monospace",color:"#2563FF",background:"rgba(80,140,255,0.06)",padding:"0 4px",borderRadius:3,border:"1px solid rgba(56,189,248,0.25)"}}>{DEFAULT_SNOMED[c.c]}</span>}
+                    <div style={{fontSize:10,fontWeight:600,color:"#E2E8F0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
+                    <div style={{display:"flex",gap:5,marginTop:1,alignItems:"center"}}>
+                      <span style={{fontSize:8,color:"#475569",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
+                      {c.nhs&&c.band&&<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(29,78,216,0.25)",color:"#93C5FD",border:"1px solid rgba(29,78,216,0.3)"}}>B{c.band}</span>}
+                      {!c.nhs&&<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(139,92,246,0.25)",color:"#C4B5FD",border:"1px solid rgba(139,92,246,0.3)"}}>Pvt</span>}
+                      <span style={{fontSize:8,fontWeight:700,color:"#60A5FA",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
                     </div>
                   </div>
-                  <div style={{width:24,height:24,borderRadius:8,background:"#2563FF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <span style={{fontSize:16,color:"#132238",fontWeight:800,lineHeight:1}}>+</span>
+                  <div style={{width:22,height:22,borderRadius:7,background:"linear-gradient(135deg,#2563FF,#1d4ed8)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 6px rgba(37,99,235,0.5)"}}>
+                    <span style={{fontSize:14,color:"#fff",fontWeight:800,lineHeight:1}}>+</span>
                   </div>
                 </button>
               ))}
