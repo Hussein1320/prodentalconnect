@@ -25719,6 +25719,29 @@ function LabPage(){
           </div>
         </div>}
 
+        {/* Appointment Risk Banner */}
+        {apptRisk48h.length>0&&<div style={{background:"rgba(245,158,11,0.08)",border:"2px solid "+(apptRisk24h.length>0?"rgba(239,68,68,0.5)":"rgba(245,158,11,0.35)"),borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:12,fontWeight:800,color:apptRisk24h.length>0?C.red:C.amber}}>⚠️ APPOINTMENT RISK: {apptRisk48h.length} case{apptRisk48h.length!==1?"s":""} {apptRisk48h.length===1?"has":"have"} appointments within 48 hours but {apptRisk48h.length===1?"is":"are"} not yet ready.</div>
+            {apptRisk24h.length>0&&<button onClick={()=>doToast("🚨 Escalated to manager: "+apptRisk24h.map(l=>l.patient).join(", "),"#EF4444")} style={{padding:"5px 12px",background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.4)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red,flexShrink:0}}>🚨 Escalate to Manager</button>}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {apptRisk48h.map(l=>(
+              <div key={l.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,padding:"6px 8px",background:"rgba(15,28,52,0.6)",borderRadius:8,border:"1px solid "+(apptRisk24h.some(r=>r.id===l.id)?"rgba(239,68,68,0.3)":"rgba(245,158,11,0.2)")}}>
+                <span style={{fontWeight:700,color:"#F8FAFC"}}>{l.patient}</span>
+                <span style={{color:"#94A3B8"}}>·</span>
+                <span style={{color:"#CBD5E1"}}>{l.type}</span>
+                <span style={{color:"#94A3B8"}}>·</span>
+                <span style={{color:C.amber}}>Appt {date_str(l.appointmentDate)}</span>
+                <span style={{color:"#94A3B8"}}>·</span>
+                <Chip color={LAB_STATUSES[l.status]?.c||"#64748B"}>{LAB_STATUSES[l.status]?.l||l.status}</Chip>
+                {apptRisk24h.some(r=>r.id===l.id)&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ 24h!</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:"#94A3B8",marginTop:8}}>Recommended: Contact patients to reschedule or confirm lab status.</div>
+        </div>}
+
         {/* Stats row */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>
           {[
@@ -25766,7 +25789,12 @@ function LabPage(){
                 const apptDays=l.appointmentDate?days_until(l.appointmentDate):null;
                 return(
                   <tr key={l.id} style={{borderTop:i>0?"1px solid rgba(59,130,246,0.07)":"none",background:l.status==="overdue"?"rgba(239,68,68,0.04)":"transparent",cursor:"pointer"}} onClick={()=>setDetailCase(l.id)}>
-                    <td style={{padding:"10px 12px",fontWeight:700,color:"#F8FAFC"}}>{l.patient}</td>
+                    <td style={{padding:"10px 12px",fontWeight:700,color:"#F8FAFC"}}>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        {l.patient}
+                        {apptRisk48h.some(r=>r.id===l.id)&&<span style={{fontSize:9,padding:"2px 6px",background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:4,color:C.amber,fontWeight:700,flexShrink:0}}>⚠ Lab Risk</span>}
+                      </div>
+                    </td>
                     <td style={{padding:"10px 12px",color:"#CBD5E1",fontSize:11,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lab}</td>
                     <td style={{padding:"10px 12px"}}>
                       <div style={{color:"#F8FAFC",fontWeight:600}}>{l.type}</div>
@@ -25789,6 +25817,7 @@ function LabPage(){
                         {l.status==="arrived"&&<button onClick={()=>setNurseModal(l)} style={{padding:"4px 9px",background:"rgba(236,72,153,0.1)",border:"1px solid rgba(236,72,153,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:"#EC4899",whiteSpace:"nowrap"}}>Nurse ✓</button>}
                         {l.status==="awaiting_approval"&&<button onClick={()=>{updateStatus(l.id,"approved","Dentist","dentist");doToast("✓ Case approved");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Approve</button>}
                         {l.status==="approved"&&<button onClick={()=>{updateStatus(l.id,"fitted","Dentist","dentist");doToast("✓ Fitted");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Fitted</button>}
+                        <button onClick={()=>{setStatusModal(l);setStatusForm({status:l.status,notes:""}); }} style={{padding:"4px 9px",background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.amber,whiteSpace:"nowrap"}}>Status</button>
                         <button onClick={()=>setDetailCase(l.id)} style={{padding:"4px 8px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,color:C.blue}}>⋯</button>
                       </div>
                     </td>
@@ -25874,6 +25903,126 @@ function LabPage(){
               {r.data.length>4&&<div style={{fontSize:10,color:C.blue,marginTop:6,cursor:"pointer"}} onClick={()=>{setFilterStatus("all");setTab("cases");}}>+{r.data.length-4} more →</div>}
             </div>
           ))}
+        </div>
+      </>}
+
+      {/* ── EMAILS TAB ──────────────────────────────────────────────────── */}
+      {tab==="emails"&&<>
+        <div style={{marginBottom:12,padding:"10px 14px",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.18)",borderRadius:10,fontSize:11,color:"#94A3B8"}}>
+          <div style={{fontWeight:700,color:C.blue,marginBottom:6}}>📧 Unmatched Lab Emails Inbox</div>
+          <div>Emails are parsed automatically. High confidence matches can be auto-applied. Medium confidence requires review. Low confidence must be linked manually.</div>
+          <div style={{marginTop:6,display:"flex",gap:16,flexWrap:"wrap"}}>
+            <span><span style={{color:C.green,fontWeight:700}}>●</span> High — patient name + case ID detected</span>
+            <span><span style={{color:C.amber,fontWeight:700}}>●</span> Medium — partial match (name or lab)</span>
+            <span><span style={{color:C.red,fontWeight:700}}>●</span> Low — insufficient data to auto-match</span>
+          </div>
+        </div>
+
+        <div style={{marginBottom:8,fontSize:12,fontWeight:700,color:"#94A3B8"}}>Unprocessed ({unmatchedEmails.filter(e=>!e.matched&&!e.archived).length})</div>
+        {unmatchedEmails.filter(e=>!e.matched&&!e.archived).map(email=>(
+          <div key={email.id} style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:12,padding:14,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC",marginBottom:2}}>{email.subject}</div>
+                <div style={{fontSize:11,color:"#94A3B8"}}>From: {email.from} · {email.receivedAt}</div>
+              </div>
+              <div style={{padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:700,background:email.confidence==="high"?"rgba(34,197,94,0.15)":email.confidence==="medium"?"rgba(245,158,11,0.15)":"rgba(239,68,68,0.15)",color:email.confidence==="high"?C.green:email.confidence==="medium"?C.amber:C.red,flexShrink:0,textTransform:"capitalize"}}>{email.confidence} Confidence</div>
+            </div>
+            <div style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:10,fontSize:11,color:"#CBD5E1",lineHeight:1.5}}>{email.body}</div>
+            {Object.keys(email.parsed).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+              {Object.entries(email.parsed).map(([k,v])=>(
+                <span key={k} style={{fontSize:10,padding:"3px 8px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,color:"#94A3B8"}}>
+                  <span style={{color:C.blue,fontWeight:700}}>{k}:</span> {v}
+                </span>
+              ))}
+            </div>}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {email.confidence==="high"&&<button onClick={()=>{
+                const matched=labs.find(l=>l.id===email.parsed.caseId||l.patient===email.parsed.patient);
+                if(matched&&email.parsed.status){
+                  updateStatus(matched.id,email.parsed.status,"Email Parser","system");
+                  const entry={type:"Email",by:"Email Parser",at:now_str(),note:"Auto-applied from email: "+email.subject,source:"Email Parser"};
+                  setLabs(p=>p.map(x=>x.id===matched.id?{...x,commsLog:[...x.commsLog,entry]}:x));
+                  setUnmatchedEmails(p=>p.map(e=>e.id===email.id?{...e,matched:true}:e));
+                  doToast("✓ Auto-applied update to "+matched.patient);
+                }else{
+                  doToast("Could not find matching case","#EF4444");
+                }
+              }} style={{padding:"5px 12px",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:C.green}}>✓ Auto-Apply Update</button>}
+              {email.confidence==="medium"&&<button onClick={()=>{setLinkEmailModal(email);setLinkCaseId("");}} style={{padding:"5px 12px",background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:C.amber}}>🔗 Review & Link</button>}
+              {email.confidence==="low"&&<button onClick={()=>{setLinkEmailModal(email);setLinkCaseId("");}} style={{padding:"5px 12px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:C.blue}}>🔗 Link Manually</button>}
+              <button onClick={()=>setUnmatchedEmails(p=>p.map(e=>e.id===email.id?{...e,archived:true}:e))} style={{padding:"5px 12px",background:"rgba(100,116,139,0.1)",border:"1px solid rgba(100,116,139,0.2)",borderRadius:8,cursor:"pointer",fontSize:11,color:"#64748B"}}>Archive</button>
+            </div>
+          </div>
+        ))}
+
+        {unmatchedEmails.filter(e=>e.matched).length>0&&<>
+          <div style={{marginTop:16,marginBottom:8,fontSize:12,fontWeight:700,color:C.green}}>✓ Matched ({unmatchedEmails.filter(e=>e.matched).length})</div>
+          {unmatchedEmails.filter(e=>e.matched).map(email=>(
+            <div key={email.id} style={{background:"rgba(34,197,94,0.04)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:12,padding:12,marginBottom:8,display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:16}}>✓</span>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:C.green}}>{email.subject}</div>
+                <div style={{fontSize:10,color:"#64748B"}}>{email.from} · {email.receivedAt}</div>
+              </div>
+            </div>
+          ))}
+        </>}
+
+        {unmatchedEmails.filter(e=>e.archived).length>0&&<>
+          <div style={{marginTop:16,marginBottom:8,fontSize:12,fontWeight:700,color:"#64748B"}}>Archived ({unmatchedEmails.filter(e=>e.archived).length})</div>
+          {unmatchedEmails.filter(e=>e.archived).map(email=>(
+            <div key={email.id} style={{background:"rgba(100,116,139,0.05)",border:"1px solid rgba(100,116,139,0.12)",borderRadius:10,padding:10,marginBottom:6,opacity:0.6}}>
+              <div style={{fontSize:11,color:"#64748B"}}>{email.subject} · {email.from}</div>
+            </div>
+          ))}
+        </>}
+      </>}
+
+      {/* ── PORTAL TAB ──────────────────────────────────────────────────── */}
+      {tab==="portal"&&<>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"flex-start",marginBottom:16}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>🌐 Lab Portal View</div>
+            <div style={{fontSize:11,color:"#94A3B8"}}>Privacy-limited view of your cases as labs would see them. Only anonymised/necessary data is shared.</div>
+          </div>
+          <button onClick={()=>setPortalSimModal(true)} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>🌐 Simulate Lab Update</button>
+        </div>
+
+        <div style={{background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.18)",borderRadius:10,padding:"10px 14px",marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.blue,marginBottom:4}}>Portal Settings</div>
+          <div style={{fontSize:11,color:"#CBD5E1"}}>Practice email for lab updates: <span style={{color:C.blue,fontWeight:700,fontFamily:"ui-monospace,monospace"}}>labs+riverside@prodentalconnect.co.uk</span></div>
+          <div style={{fontSize:11,color:"#94A3B8",marginTop:4}}>Share this address with your labs so they can email case updates directly. Emails sent here are automatically parsed and matched to cases.</div>
+        </div>
+
+        <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,overflow:"hidden"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style={{background:"#0F1C34",borderBottom:"2px solid rgba(80,140,255,0.15)"}}>
+              {["Case ID","Patient Initials","Treatment","Tooth","Shade","Due Date","Appt Date","Status"].map(h=>(
+                <th key={h} style={{padding:"9px 12px",textAlign:"left",fontSize:9,fontWeight:800,color:"rgba(59,130,246,0.7)",letterSpacing:".06em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {labs.filter(l=>!["fitted","cancelled"].includes(l.status)).map((l,i)=>{
+                const initials=l.patient.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();
+                const st=LAB_STATUSES[l.status]||{l:l.status,c:"#64748B"};
+                return(
+                  <tr key={l.id} style={{borderTop:i>0?"1px solid rgba(59,130,246,0.07)":"none"}}>
+                    <td style={{padding:"10px 12px",fontFamily:"ui-monospace,monospace",fontWeight:700,color:C.blue,fontSize:11}}>{l.id}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(59,130,246,0.15)",border:"1px solid rgba(59,130,246,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:C.blue}}>{initials}</div>
+                    </td>
+                    <td style={{padding:"10px 12px",color:"#F8FAFC",fontWeight:600}}>{l.type}</td>
+                    <td style={{padding:"10px 12px",color:"#CBD5E1",fontSize:11}}>{l.tooth}</td>
+                    <td style={{padding:"10px 12px",fontFamily:"ui-monospace,monospace",color:C.blue,fontSize:11}}>{l.shade}</td>
+                    <td style={{padding:"10px 12px",fontSize:11,color:l.dueDate&&days_until(l.dueDate)<=2?C.amber:C.text}}>{date_str(l.dueDate)}</td>
+                    <td style={{padding:"10px 12px",fontSize:11,color:"#CBD5E1"}}>{date_str(l.appointmentDate)}</td>
+                    <td style={{padding:"10px 12px"}}><Chip color={st.c}>{st.l}</Chip></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </>}
 
