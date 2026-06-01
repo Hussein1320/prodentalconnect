@@ -15757,17 +15757,17 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             // Tooth meshes in the GLB are axis-aligned (not rotated to follow arch curvature):
             //   Mesial/Distal  → world X
             //   Buccal/Palatal → world Z  (buccal faces camera at +Z)
-            //   Occlusal       → world Y  (upper arch bites downward -Y, lower bites upward +Y)
+            //   Buccal/Palatal → world Y  |  Occlusal → world Z  |  Mesial/Distal → world X
             const isRight=pid.startsWith('UR')||pid.startsWith('LR');
             const isUpper=pid.startsWith('UR')||pid.startsWith('UL');
             const mesialDir=isRight?new T.Vector3(-1,0,0):new T.Vector3(1,0,0);
 
             const axes={
-              b:{dir:new T.Vector3(0,0,1),          half:hZ}, // Buccal  → +Z (toward camera)
-              l:{dir:new T.Vector3(0,0,-1),          half:hZ}, // Palatal → -Z (away from camera)
+              b:{dir:new T.Vector3(0,1,0),          half:hY}, // Buccal  → +Y
+              l:{dir:new T.Vector3(0,-1,0),         half:hY}, // Palatal → -Y
               m:{dir:mesialDir.clone(),              half:hX}, // Mesial  → toward midline (±X)
               d:{dir:mesialDir.clone().negate(),     half:hX}, // Distal  → away from midline
-              o:{dir:new T.Vector3(0,isUpper?-1:1,0),half:hY},// Occlusal→ upper bites -Y, lower +Y
+              o:{dir:new T.Vector3(0,0,1),          half:hZ}, // Occlusal→ +Z (into surface)
             };
 
             Object.entries(surfs).forEach(([s,cond])=>{
