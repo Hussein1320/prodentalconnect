@@ -14887,174 +14887,233 @@ const DEFAULT_SNOMED={
 
 
 const UK_TX=[
-  {group:"EXAMINATION",icon:"🔍",color:"#2563eb",codes:[
-    {c:"100",l:"Routine Examination",          nhs:true, band:1, fee:26.80},
-    {c:"101",l:"Exam + Scale & Polish",        nhs:true, band:1, fee:26.80},
-    {c:"102",l:"New Patient Examination",      nhs:true, band:1, fee:26.80},
-    {c:"103",l:"Recall Examination",           nhs:true, band:1, fee:26.80},
-    {c:"104",l:"Emergency Examination",        nhs:true, band:1, fee:26.80},
-    {c:"105",l:"Assessment & Advice",          nhs:true, band:1, fee:26.80},
-    {c:"106",l:"Treatment Planning",           nhs:true, band:1, fee:26.80},
-    {c:"107",l:"Second Opinion Consultation",  nhs:false,         fee:95},
-    {c:"108",l:"Specialist Consultation",      nhs:false,         fee:150},
-    {c:"109",l:"Orthodontic Assessment",       nhs:true, band:1, fee:26.80},
+  // ── 🔎 EXAMINATION — magnifying glass = clinical inspection ──────────────
+  {group:"EXAMINATION",icon:"🔎",color:"#2563EB",codes:[
+    {c:"100",l:"Routine Examination",           icon:"🔎",nhs:true, band:1, fee:26.80},
+    {c:"101",l:"Exam + Scale & Polish",         icon:"🔎",nhs:true, band:1, fee:26.80},
+    {c:"102",l:"New Patient Examination",       icon:"🔎",nhs:true, band:1, fee:26.80},
+    {c:"103",l:"Recall Examination",            icon:"🔎",nhs:true, band:1, fee:26.80},
+    {c:"104",l:"Emergency Examination",         icon:"🚨",nhs:true, band:1, fee:26.80},
+    {c:"105",l:"Assessment & Advice",           icon:"📋",nhs:true, band:1, fee:26.80},
+    {c:"106",l:"Treatment Planning",            icon:"📋",nhs:true, band:1, fee:26.80},
+    {c:"107",l:"Second Opinion Consultation",   icon:"💬",nhs:false,         fee:95},
+    {c:"108",l:"Specialist Consultation",       icon:"👨‍⚕️",nhs:false,        fee:150},
+    {c:"109",l:"Orthodontic Assessment",        icon:"📐",nhs:true, band:1, fee:26.80},
   ]},
-  {group:"RADIOGRAPHS",icon:"📷",color:"#0891b2",codes:[
-    {c:"120",l:"Small Radiograph",             nhs:true, band:1, fee:0},
-    {c:"121",l:"Periapical Radiograph",        nhs:true, band:1, fee:0},
-    {c:"122",l:"Bitewing X-ray",               nhs:true, band:1, fee:0},
-    {c:"123",l:"OPG / Panoral Radiograph",     nhs:true, band:1, fee:0},
-    {c:"124",l:"Cephalometric Radiograph",     nhs:false,         fee:150},
-    {c:"125",l:"CBCT Scan",                    nhs:false,         fee:350},
-    {c:"126",l:"Intraoral Photographs",        nhs:false,         fee:50},
-    {c:"127",l:"Clinical Photographs",         nhs:false,         fee:75},
-    {c:"128",l:"Digital Scan",                 nhs:false,         fee:120},
-    {c:"129",l:"Study Models",                 nhs:false,         fee:80},
+  // ── 🩻 RADIOGRAPHS — skeleton/x-ray emoji is direct X-ray reference ──────
+  {group:"RADIOGRAPHS",icon:"🩻",color:"#0891B2",codes:[
+    {c:"120",l:"Small Radiograph",              icon:"🩻",nhs:true, band:1, fee:0},
+    {c:"121",l:"Periapical Radiograph",         icon:"🩻",nhs:true, band:1, fee:0},
+    {c:"122",l:"Bitewing X-ray",                icon:"🩻",nhs:true, band:1, fee:0},
+    {c:"123",l:"OPG / Panoral Radiograph",      icon:"🩻",nhs:true, band:1, fee:0},
+    {c:"124",l:"Cephalometric Radiograph",      icon:"🩻",nhs:false,         fee:150},
+    {c:"125",l:"CBCT Scan",                     icon:"📡",nhs:false,         fee:350},
+    {c:"126",l:"Intraoral Photographs",         icon:"📸",nhs:false,         fee:50},
+    {c:"127",l:"Clinical Photographs",          icon:"📸",nhs:false,         fee:75},
+    {c:"128",l:"Digital Scan",                  icon:"🖥️",nhs:false,         fee:120},
+    {c:"129",l:"Study Models",                  icon:"🗿",nhs:false,         fee:80},
   ]},
-  {group:"HYGIENE & PERIO",icon:"🪥",color:"#4ADE80",codes:[
-    {c:"150",l:"Scale & Polish",               nhs:true, band:1, fee:26.80},
-    {c:"151",l:"Hygiene Visit",                nhs:false,         fee:85},
-    {c:"152",l:"Periodontal Assessment",       nhs:true, band:1, fee:26.80},
-    {c:"153",l:"Root Surface Debridement",     nhs:true, band:2, fee:73.50},
-    {c:"154",l:"Deep Cleaning / SRP",          nhs:true, band:2, fee:73.50},
-    {c:"155",l:"Fluoride Application",         nhs:true, band:1, fee:0},
-    {c:"156",l:"Oral Hygiene Instruction",     nhs:true, band:1, fee:0},
-    {c:"157",l:"Airflow Stain Removal",        nhs:false,         fee:120},
-    {c:"158",l:"Fissure Sealant",              nhs:true, band:1, fee:0},
-    {c:"159",l:"Periodontal Review",           nhs:true, band:1, fee:26.80},
+  // ── 🪥 HYGIENE & PERIO — toothbrush = cleaning, universally understood ───
+  {group:"HYGIENE & PERIO",icon:"🪥",color:"#16A34A",codes:[
+    {c:"150",l:"Scale & Polish",                icon:"🪥",nhs:true, band:1, fee:26.80},
+    {c:"151",l:"Hygiene Visit",                 icon:"🪥",nhs:false,         fee:85},
+    {c:"152",l:"Periodontal Assessment",        icon:"🔎",nhs:true, band:1, fee:26.80},
+    {c:"153",l:"Root Surface Debridement",      icon:"🧹",nhs:true, band:2, fee:73.50},
+    {c:"154",l:"Deep Cleaning / SRP",           icon:"🧹",nhs:true, band:2, fee:73.50},
+    {c:"155",l:"Fluoride Application",          icon:"💧",nhs:true, band:1, fee:0},
+    {c:"156",l:"Oral Hygiene Instruction",      icon:"📖",nhs:true, band:1, fee:0},
+    {c:"157",l:"Airflow Stain Removal",         icon:"💨",nhs:false,         fee:120},
+    {c:"158",l:"Fissure Sealant",               icon:"🛡️",nhs:true, band:1, fee:0},
+    {c:"159",l:"Periodontal Review",            icon:"🔎",nhs:true, band:1, fee:26.80},
   ]},
-  {group:"AMALGAM FILLINGS",icon:"🦷",color:"#F59E0B",codes:[
-    {c:"200",l:"Amalgam — 1 Surface",          nhs:true, band:2, fee:73.50},
-    {c:"201",l:"Amalgam — 2 Surface",          nhs:true, band:2, fee:73.50},
-    {c:"202",l:"Amalgam — 3 Surface",          nhs:true, band:2, fee:73.50},
-    {c:"203",l:"Amalgam — MOD",                nhs:true, band:2, fee:73.50},
+  // ── 🪨 AMALGAM FILLINGS — grey metallic material, distinct from composite
+  {group:"AMALGAM FILLINGS",icon:"🪨",color:"#78716C",codes:[
+    {c:"200",l:"Amalgam — 1 Surface",           icon:"🪨",nhs:true, band:2, fee:73.50},
+    {c:"201",l:"Amalgam — 2 Surface",           icon:"🪨",nhs:true, band:2, fee:73.50},
+    {c:"202",l:"Amalgam — 3 Surface",           icon:"🪨",nhs:true, band:2, fee:73.50},
+    {c:"203",l:"Amalgam — MOD",                 icon:"🪨",nhs:true, band:2, fee:73.50},
   ]},
-  {group:"COMPOSITE FILLINGS",icon:"🦷",color:"#2563FF",codes:[
-    {c:"210",l:"Composite — Anterior 1 Surface",nhs:true, band:2, fee:73.50},
-    {c:"211",l:"Composite — Anterior 2 Surface",nhs:true, band:2, fee:73.50},
-    {c:"212",l:"Composite — Posterior 1 Surface",nhs:true,band:2, fee:73.50},
-    {c:"213",l:"Composite — Posterior 2 Surface",nhs:true,band:2, fee:73.50},
-    {c:"214",l:"Composite — Posterior MOD",    nhs:true, band:2, fee:73.50},
-    {c:"215",l:"Composite Edge Bonding",        nhs:false,         fee:250},
-    {c:"216",l:"Composite Veneer Build-up",     nhs:false,         fee:350},
+  // ── 🔵 COMPOSITE FILLINGS — smooth blue circle = tooth-coloured resin ────
+  {group:"COMPOSITE FILLINGS",icon:"🔵",color:"#2563FF",codes:[
+    {c:"210",l:"Composite — Anterior 1 Surface",icon:"🔵",nhs:true, band:2, fee:73.50},
+    {c:"211",l:"Composite — Anterior 2 Surface",icon:"🔵",nhs:true, band:2, fee:73.50},
+    {c:"212",l:"Composite — Posterior 1 Surface",icon:"🔵",nhs:true,band:2, fee:73.50},
+    {c:"213",l:"Composite — Posterior 2 Surface",icon:"🔵",nhs:true,band:2, fee:73.50},
+    {c:"214",l:"Composite — Posterior MOD",     icon:"🔵",nhs:true, band:2, fee:73.50},
+    {c:"215",l:"Composite Edge Bonding",         icon:"✨",nhs:false,         fee:250},
+    {c:"216",l:"Composite Veneer Build-up",      icon:"✨",nhs:false,         fee:350},
   ]},
-  {group:"OTHER RESTORATIONS",icon:"🔧",color:"#8B5CF6",codes:[
-    {c:"220",l:"Glass Ionomer Filling",         nhs:true, band:2, fee:73.50},
-    {c:"221",l:"Temporary Filling",             nhs:true, band:1, fee:26.80},
-    {c:"222",l:"Core Build Up",                 nhs:true, band:2, fee:73.50},
-    {c:"223",l:"Pin Retained Filling",          nhs:true, band:2, fee:73.50},
-    {c:"224",l:"Composite Repair",              nhs:true, band:2, fee:73.50},
-    {c:"225",l:"Replace Existing Filling",      nhs:true, band:2, fee:73.50},
-    {c:"226",l:"Inlay",                         nhs:false,         fee:650},
-    {c:"227",l:"Onlay",                         nhs:false,         fee:750},
+  // ── 🛠️ OTHER RESTORATIONS — tools = multiple repair types ─────────────────
+  {group:"OTHER RESTORATIONS",icon:"🛠️",color:"#8B5CF6",codes:[
+    {c:"220",l:"Glass Ionomer Filling",          icon:"🔵",nhs:true, band:2, fee:73.50},
+    {c:"221",l:"Temporary Filling",              icon:"⏳",nhs:true, band:1, fee:26.80},
+    {c:"222",l:"Core Build Up",                  icon:"🏗️",nhs:true, band:2, fee:73.50},
+    {c:"223",l:"Pin Retained Filling",           icon:"📌",nhs:true, band:2, fee:73.50},
+    {c:"224",l:"Composite Repair",               icon:"🛠️",nhs:true, band:2, fee:73.50},
+    {c:"225",l:"Replace Existing Filling",       icon:"🔄",nhs:true, band:2, fee:73.50},
+    {c:"226",l:"Inlay",                          icon:"💎",nhs:false,         fee:650},
+    {c:"227",l:"Onlay",                          icon:"💎",nhs:false,         fee:750},
   ]},
-  {group:"ENDODONTICS",icon:"🔬",color:"#EF4444",codes:[
-    {c:"250",l:"Pulp Extirpation",              nhs:true, band:2, fee:73.50},
-    {c:"251",l:"Root Canal — Incisor",          nhs:true, band:2, fee:73.50},
-    {c:"252",l:"Root Canal — Premolar",         nhs:true, band:2, fee:73.50},
-    {c:"253",l:"Root Canal — Molar",            nhs:true, band:2, fee:73.50},
-    {c:"254",l:"Re-root Canal Treatment",       nhs:false,         fee:650},
-    {c:"255",l:"Temporary Endo Dressing",       nhs:true, band:2, fee:73.50},
-    {c:"256",l:"Post & Core",                   nhs:true, band:2, fee:73.50},
-    {c:"257",l:"Apexification",                 nhs:false,         fee:450},
-    {c:"258",l:"Endodontic Consultation",       nhs:false,         fee:150},
+  // ── 🦠 ENDODONTICS — nerve/root canal = internal, cellular level ─────────
+  {group:"ENDODONTICS",icon:"🦠",color:"#EF4444",codes:[
+    {c:"250",l:"Pulp Extirpation",               icon:"🩸",nhs:true, band:2, fee:73.50},
+    {c:"251",l:"Root Canal — Incisor",           icon:"🦠",nhs:true, band:2, fee:73.50},
+    {c:"252",l:"Root Canal — Premolar",          icon:"🦠",nhs:true, band:2, fee:73.50},
+    {c:"253",l:"Root Canal — Molar",             icon:"🦠",nhs:true, band:2, fee:73.50},
+    {c:"254",l:"Re-root Canal Treatment",        icon:"🔄",nhs:false,         fee:650},
+    {c:"255",l:"Temporary Endo Dressing",        icon:"⏳",nhs:true, band:2, fee:73.50},
+    {c:"256",l:"Post & Core",                    icon:"🏗️",nhs:true, band:2, fee:73.50},
+    {c:"257",l:"Apexification",                  icon:"🦠",nhs:false,         fee:450},
+    {c:"258",l:"Endodontic Consultation",        icon:"💬",nhs:false,         fee:150},
   ]},
-  {group:"EXTRACTIONS & SURGERY",icon:"✂️",color:"#9f1239",codes:[
-    {c:"300",l:"Simple Extraction",             nhs:true, band:2, fee:73.50},
-    {c:"301",l:"Surgical Extraction",           nhs:true, band:2, fee:73.50},
-    {c:"302",l:"Wisdom Tooth Extraction",       nhs:true, band:2, fee:73.50},
-    {c:"303",l:"Retained Root Removal",         nhs:true, band:2, fee:73.50},
-    {c:"304",l:"Dry Socket Treatment",          nhs:true, band:1, fee:26.80},
-    {c:"305",l:"Incision & Drainage",           nhs:true, band:1, fee:26.80},
-    {c:"306",l:"Acute Infection Treatment",     nhs:true, band:1, fee:26.80},
-    {c:"307",l:"Socket Dressing",               nhs:true, band:1, fee:26.80},
-    {c:"308",l:"Biopsy",                        nhs:true, band:2, fee:73.50},
-    {c:"309",l:"Oral Surgery Referral",         nhs:false,         fee:0},
+  // ── ✂️ EXTRACTIONS & SURGERY — scissors = cut/remove, surgical ───────────
+  {group:"EXTRACTIONS & SURGERY",icon:"✂️",color:"#9F1239",codes:[
+    {c:"300",l:"Simple Extraction",              icon:"✂️",nhs:true, band:2, fee:73.50},
+    {c:"301",l:"Surgical Extraction",            icon:"🔪",nhs:true, band:2, fee:73.50},
+    {c:"302",l:"Wisdom Tooth Extraction",        icon:"✂️",nhs:true, band:2, fee:73.50},
+    {c:"303",l:"Retained Root Removal",          icon:"✂️",nhs:true, band:2, fee:73.50},
+    {c:"304",l:"Dry Socket Treatment",           icon:"🩹",nhs:true, band:1, fee:26.80},
+    {c:"305",l:"Incision & Drainage",            icon:"💧",nhs:true, band:1, fee:26.80},
+    {c:"306",l:"Acute Infection Treatment",      icon:"🦠",nhs:true, band:1, fee:26.80},
+    {c:"307",l:"Socket Dressing",                icon:"🩹",nhs:true, band:1, fee:26.80},
+    {c:"308",l:"Biopsy",                         icon:"🔬",nhs:true, band:2, fee:73.50},
+    {c:"309",l:"Oral Surgery Referral",          icon:"↗️",nhs:false,         fee:0},
   ]},
-  {group:"CROWNS",icon:"👑",color:"#F59E0B",codes:[
-    {c:"350",l:"Porcelain Bonded Crown",        nhs:true, band:3, fee:319.10},
-    {c:"351",l:"Full Ceramic Crown",            nhs:true, band:3, fee:319.10},
-    {c:"352",l:"Zirconia Crown",                nhs:false,         fee:900},
-    {c:"353",l:"Gold Crown",                    nhs:true, band:3, fee:319.10},
-    {c:"354",l:"Temporary Crown",               nhs:true, band:3, fee:319.10},
-    {c:"355",l:"Crown Recement",                nhs:true, band:2, fee:73.50},
-    {c:"356",l:"Crown Repair",                  nhs:true, band:2, fee:73.50},
-    {c:"357",l:"Emax Crown",                    nhs:false,         fee:850},
+  // ── 👑 CROWNS — crown emoji is literally the procedure name ──────────────
+  {group:"CROWNS",icon:"👑",color:"#D97706",codes:[
+    {c:"350",l:"Porcelain Bonded Crown",         icon:"👑",nhs:true, band:3, fee:319.10},
+    {c:"351",l:"Full Ceramic Crown",             icon:"👑",nhs:true, band:3, fee:319.10},
+    {c:"352",l:"Zirconia Crown",                 icon:"💎",nhs:false,         fee:900},
+    {c:"353",l:"Gold Crown",                     icon:"🥇",nhs:true, band:3, fee:319.10},
+    {c:"354",l:"Temporary Crown",               icon:"🎩",nhs:true, band:3, fee:319.10},
+    {c:"355",l:"Crown Recement",                 icon:"🔗",nhs:true, band:2, fee:73.50},
+    {c:"356",l:"Crown Repair",                   icon:"🛠️",nhs:true, band:2, fee:73.50},
+    {c:"357",l:"Emax Crown",                     icon:"💎",nhs:false,         fee:850},
+    {c:"358",l:"Crown Preparation",             icon:"🔧",nhs:true, band:3, fee:319.10},
+    {c:"359",l:"Crown Fit",                      icon:"👑",nhs:true, band:3, fee:319.10},
   ]},
+  // ── 🌉 BRIDGES — bridge emoji spans a gap, exactly like a dental bridge ──
   {group:"BRIDGES",icon:"🌉",color:"#38BDF8",codes:[
-    {c:"380",l:"Adhesive Bridge",               nhs:true, band:3, fee:319.10},
-    {c:"381",l:"Conventional Bridge",           nhs:true, band:3, fee:319.10},
-    {c:"382",l:"Maryland Bridge",               nhs:true, band:3, fee:319.10},
-    {c:"383",l:"Bridge Recement",               nhs:true, band:2, fee:73.50},
-    {c:"384",l:"Bridge Repair",                 nhs:true, band:2, fee:73.50},
+    {c:"380",l:"Adhesive Bridge",                icon:"🌉",nhs:true, band:3, fee:319.10},
+    {c:"381",l:"Conventional Bridge",            icon:"🌉",nhs:true, band:3, fee:319.10},
+    {c:"382",l:"Maryland Bridge",                icon:"🌉",nhs:true, band:3, fee:319.10},
+    {c:"383",l:"Bridge Recement",                icon:"🔗",nhs:true, band:2, fee:73.50},
+    {c:"384",l:"Bridge Repair",                  icon:"🛠️",nhs:true, band:2, fee:73.50},
+    {c:"385",l:"Bridge Preparation",             icon:"🔧",nhs:true, band:3, fee:319.10},
   ]},
-  {group:"DENTURES",icon:"😁",color:"#8B5CF6",codes:[
-    {c:"400",l:"Acrylic Partial Denture",       nhs:true, band:3, fee:319.10},
-    {c:"401",l:"Chrome Partial Denture",        nhs:true, band:3, fee:319.10},
-    {c:"402",l:"Full Upper Denture",            nhs:true, band:3, fee:319.10},
-    {c:"403",l:"Full Lower Denture",            nhs:true, band:3, fee:319.10},
-    {c:"404",l:"Immediate Denture",             nhs:true, band:3, fee:319.10},
-    {c:"405",l:"Denture Repair",                nhs:true, band:3, fee:319.10},
-    {c:"406",l:"Denture Reline",                nhs:true, band:3, fee:319.10},
-    {c:"407",l:"Addition to Denture",           nhs:true, band:3, fee:319.10},
+  // ── 😁 DENTURES — full smile = full set of replacement teeth ─────────────
+  {group:"DENTURES",icon:"😁",color:"#A78BFA",codes:[
+    {c:"400",l:"Acrylic Partial Denture",        icon:"😁",nhs:true, band:3, fee:319.10},
+    {c:"401",l:"Chrome Partial Denture",         icon:"😁",nhs:true, band:3, fee:319.10},
+    {c:"402",l:"Full Upper Denture",             icon:"😁",nhs:true, band:3, fee:319.10},
+    {c:"403",l:"Full Lower Denture",             icon:"😁",nhs:true, band:3, fee:319.10},
+    {c:"404",l:"Immediate Denture",              icon:"😁",nhs:true, band:3, fee:319.10},
+    {c:"405",l:"Denture Repair",                 icon:"🛠️",nhs:true, band:3, fee:319.10},
+    {c:"406",l:"Denture Reline",                 icon:"🔄",nhs:true, band:3, fee:319.10},
+    {c:"407",l:"Addition to Denture",            icon:"➕",nhs:true, band:3, fee:319.10},
+    {c:"408",l:"Denture Fit",                    icon:"✅",nhs:true, band:3, fee:319.10},
   ]},
-  {group:"IMPLANTS",icon:"🔩",color:"#0369a1",codes:[
-    {c:"450",l:"Implant Consultation",          nhs:false,         fee:150},
-    {c:"451",l:"Implant Placement",             nhs:false,         fee:2200},
-    {c:"452",l:"Implant Crown",                 nhs:false,         fee:1200},
-    {c:"453",l:"Implant Bridge",                nhs:false,         fee:3500},
-    {c:"454",l:"Bone Graft",                    nhs:false,         fee:800},
-    {c:"455",l:"Sinus Lift",                    nhs:false,         fee:1200},
-    {c:"456",l:"Guided Surgery",                nhs:false,         fee:500},
-    {c:"457",l:"Implant Review",                nhs:false,         fee:75},
+  // ── 🔩 IMPLANTS — screw/bolt = titanium implant fixture ──────────────────
+  {group:"IMPLANTS",icon:"🔩",color:"#0369A1",codes:[
+    {c:"450",l:"Implant Consultation",           icon:"💬",nhs:false,         fee:150},
+    {c:"451",l:"Implant Placement",              icon:"🔩",nhs:false,         fee:2200},
+    {c:"452",l:"Implant Crown",                  icon:"👑",nhs:false,         fee:1200},
+    {c:"453",l:"Implant Bridge",                 icon:"🌉",nhs:false,         fee:3500},
+    {c:"454",l:"Bone Graft",                     icon:"🦴",nhs:false,         fee:800},
+    {c:"455",l:"Bone Membrane",                  icon:"📄",nhs:false,         fee:400},
+    {c:"456",l:"Sinus Lift",                     icon:"🦴",nhs:false,         fee:1200},
+    {c:"457",l:"Guided Surgery",                 icon:"🔩",nhs:false,         fee:500},
+    {c:"458",l:"Implant Review",                 icon:"🔎",nhs:false,         fee:75},
+    {c:"459",l:"Abutment Placement",             icon:"🔩",nhs:false,         fee:350},
   ]},
-  {group:"ORTHODONTICS",icon:"🦷",color:"#0057CC",codes:[
-    {c:"500",l:"Orthodontic Assessment",        nhs:true, band:1, fee:26.80},
-    {c:"501",l:"Fixed Braces",                  nhs:true, band:3, fee:319.10},
-    {c:"502",l:"Upper Fixed Appliance",         nhs:true, band:3, fee:319.10},
-    {c:"503",l:"Lower Fixed Appliance",         nhs:true, band:3, fee:319.10},
-    {c:"504",l:"Clear Aligners",                nhs:false,         fee:3500},
-    {c:"505",l:"Removable Appliance",           nhs:true, band:3, fee:319.10},
-    {c:"506",l:"Retainer",                      nhs:true, band:3, fee:319.10},
-    {c:"507",l:"Retainer Repair",               nhs:false,         fee:120},
-    {c:"508",l:"Bonded Retainer",               nhs:false,         fee:250},
+  // ── 📐 ORTHODONTICS — set square = alignment / geometric precision ────────
+  {group:"ORTHODONTICS",icon:"📐",color:"#06B6D4",codes:[
+    {c:"500",l:"Orthodontic Assessment",         icon:"📐",nhs:true, band:1, fee:26.80},
+    {c:"501",l:"Fixed Braces",                   icon:"〰️",nhs:true, band:3, fee:319.10},
+    {c:"502",l:"Upper Fixed Appliance",          icon:"〰️",nhs:true, band:3, fee:319.10},
+    {c:"503",l:"Lower Fixed Appliance",          icon:"〰️",nhs:true, band:3, fee:319.10},
+    {c:"504",l:"Clear Aligners",                 icon:"💎",nhs:false,         fee:3500},
+    {c:"505",l:"Removable Appliance",            icon:"🔧",nhs:true, band:3, fee:319.10},
+    {c:"506",l:"Retainer",                       icon:"〰️",nhs:true, band:3, fee:319.10},
+    {c:"507",l:"Retainer Repair",                icon:"🛠️",nhs:false,         fee:120},
+    {c:"508",l:"Bonded Retainer",                icon:"〰️",nhs:false,         fee:250},
   ]},
-  {group:"COSMETIC",icon:"✨",color:"#db2777",codes:[
-    {c:"550",l:"Teeth Whitening — Home",        nhs:false,         fee:350},
-    {c:"551",l:"Teeth Whitening — In Surgery",  nhs:false,         fee:650},
-    {c:"552",l:"Composite Bonding",             nhs:false,         fee:300},
-    {c:"553",l:"Porcelain Veneer",              nhs:false,         fee:900},
-    {c:"554",l:"Smile Makeover Consultation",   nhs:false,         fee:100},
-    {c:"555",l:"Airflow Cosmetic Clean",        nhs:false,         fee:150},
+  // ── ✨ COSMETIC — sparkle = aesthetic improvement ──────────────────────────
+  {group:"COSMETIC",icon:"✨",color:"#DB2777",codes:[
+    {c:"550",l:"Teeth Whitening — Home",         icon:"🌟",nhs:false,         fee:350},
+    {c:"551",l:"Teeth Whitening — In Surgery",   icon:"⚡",nhs:false,         fee:650},
+    {c:"552",l:"Composite Bonding",              icon:"✨",nhs:false,         fee:300},
+    {c:"553",l:"Porcelain Veneer",               icon:"💎",nhs:false,         fee:900},
+    {c:"554",l:"Smile Makeover Consultation",    icon:"😊",nhs:false,         fee:100},
+    {c:"555",l:"Airflow Cosmetic Clean",         icon:"💨",nhs:false,         fee:150},
   ]},
+  // ── 🚨 EMERGENCY — siren = urgent, time-critical ──────────────────────────
   {group:"EMERGENCY",icon:"🚨",color:"#EF4444",codes:[
-    {c:"600",l:"Emergency Appointment",         nhs:true, band:1, fee:26.80},
-    {c:"601",l:"Pain Relief Visit",             nhs:true, band:1, fee:26.80},
-    {c:"602",l:"Trauma Assessment",             nhs:true, band:1, fee:26.80},
-    {c:"603",l:"Broken Tooth Emergency",        nhs:true, band:1, fee:26.80},
-    {c:"604",l:"Lost Crown Emergency",          nhs:true, band:1, fee:26.80},
-    {c:"605",l:"Swelling Review",               nhs:true, band:1, fee:26.80},
+    {c:"600",l:"Emergency Appointment",          icon:"🚨",nhs:true, band:1, fee:26.80},
+    {c:"601",l:"Pain Relief Visit",              icon:"💊",nhs:true, band:1, fee:26.80},
+    {c:"602",l:"Trauma Assessment",              icon:"⚡",nhs:true, band:1, fee:26.80},
+    {c:"603",l:"Broken Tooth Emergency",         icon:"🦷",nhs:true, band:1, fee:26.80},
+    {c:"604",l:"Lost Crown Emergency",           icon:"👑",nhs:true, band:1, fee:26.80},
+    {c:"605",l:"Swelling / Abscess",             icon:"🦠",nhs:true, band:1, fee:26.80},
+    {c:"606",l:"Trauma / Avulsion",              icon:"⚡",nhs:true, band:1, fee:26.80},
   ]},
-  {group:"CDS — AUG 2025",icon:"🏛",color:"#38BDF8",codes:[
-    {c:"9380",l:"Soft Tissue Surgery",          nhs:true,band:2,fee:73.50,cdsFrom:"2025-08-01"},
-    {c:"9381",l:"Non-Lab Made Appliance/Splint",  nhs:true,band:2,fee:73.50,cdsFrom:"2025-08-01"},
-    {c:"9382",l:"Laboratory Made Splint",         nhs:true,band:3,fee:319.10,cdsFrom:"2025-08-01"},
-    {c:"9383",l:"Crown Refix with Post/Core",     nhs:true,band:1,fee:26.80, cdsFrom:"2025-08-01"},
-    {c:"9309",l:"Obturator (Upper Acrylic — 0 teeth)",nhs:true,band:3,fee:319.10,isObturator:true},
+  // ── 🦴 BONE SURGERY — bone emoji = graft material, membrane = covering ────
+  {group:"BONE & SURGICAL",icon:"🦴",color:"#CA8A04",codes:[
+    {c:"700",l:"Bone Graft",                     icon:"🦴",nhs:false,         fee:800},
+    {c:"701",l:"Bone Membrane",                  icon:"📄",nhs:false,         fee:400},
+    {c:"702",l:"Bone Graft + Membrane",          icon:"🦴",nhs:false,         fee:1100},
+    {c:"703",l:"Ridge Augmentation",             icon:"🦴",nhs:false,         fee:950},
+    {c:"704",l:"Alveoloplasty",                  icon:"🔧",nhs:true, band:2,  fee:73.50},
+    {c:"705",l:"Frenectomy",                     icon:"✂️",nhs:true, band:2,  fee:73.50},
+    {c:"706",l:"Crown Lengthening",              icon:"✂️",nhs:false,         fee:450},
   ]},
-  {group:"DENTURE REPAIR",icon:"🔧",color:"#8B5CF6",codes:[
-    {c:"DR001",l:"Denture Repair — Clasp",       nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Clasp"},
-    {c:"DR002",l:"Denture Repair — Tooth",        nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Tooth"},
-    {c:"DR003",l:"Denture Repair — Flange",       nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Flange"},
-    {c:"DR004",l:"Denture Repair — Other",        nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Other"},
+  // ── 🪡 SUTURES — thread/needle = wound closure ────────────────────────────
+  {group:"SUTURES",icon:"🪡",color:"#F97316",codes:[
+    {c:"710",l:"Suture Placement",               icon:"🪡",nhs:true, band:2,  fee:73.50},
+    {c:"711",l:"Suture Removal",                 icon:"✂️",nhs:true, band:1,  fee:26.80},
+    {c:"712",l:"Wound Review",                   icon:"🔎",nhs:true, band:1,  fee:26.80},
   ]},
+  // ── ⚡ OCCLUSION — lightning = bite force / contact adjustment ─────────────
+  {group:"OCCLUSION & BITE",icon:"⚡",color:"#F59E0B",codes:[
+    {c:"720",l:"Occlusal Adjustment",            icon:"⚡",nhs:true, band:1,  fee:26.80},
+    {c:"721",l:"Bite Raising Appliance",         icon:"🦷",nhs:false,         fee:380},
+    {c:"722",l:"Michigan Splint",                icon:"🛡️",nhs:false,         fee:650},
+    {c:"723",l:"Occlusal Splint",                icon:"🛡️",nhs:false,         fee:380},
+    {c:"724",l:"Occlusal Analysis",              icon:"📋",nhs:false,         fee:120},
+    {c:"725",l:"TENS Therapy",                   icon:"⚡",nhs:false,         fee:95},
+  ]},
+  // ── 〰️ FIXED RETAINERS & WIRES — wavy line = wire running along teeth ─────
+  {group:"FIXED RETAINERS",icon:"〰️",color:"#64748B",codes:[
+    {c:"730",l:"Upper Bonded Retainer",          icon:"〰️",nhs:false,         fee:250},
+    {c:"731",l:"Lower Bonded Retainer",          icon:"〰️",nhs:false,         fee:250},
+    {c:"732",l:"Bonded Retainer Repair",         icon:"🛠️",nhs:false,         fee:120},
+    {c:"733",l:"Bonded Retainer Removal",        icon:"✂️",nhs:false,         fee:100},
+    {c:"734",l:"Essix Retainer",                 icon:"💎",nhs:false,         fee:180},
+  ]},
+  // ── 🏛 CDS — AUG 2025 ─────────────────────────────────────────────────────
+  {group:"CDS — AUG 2025",icon:"🏛️",color:"#38BDF8",codes:[
+    {c:"9380",l:"Soft Tissue Surgery",           icon:"✂️",nhs:true,band:2,fee:73.50,cdsFrom:"2025-08-01"},
+    {c:"9381",l:"Non-Lab Made Appliance/Splint", icon:"🛡️",nhs:true,band:2,fee:73.50,cdsFrom:"2025-08-01"},
+    {c:"9382",l:"Laboratory Made Splint",        icon:"🦷",nhs:true,band:3,fee:319.10,cdsFrom:"2025-08-01"},
+    {c:"9383",l:"Crown Refix with Post/Core",    icon:"👑",nhs:true,band:1,fee:26.80, cdsFrom:"2025-08-01"},
+    {c:"9309",l:"Obturator (Upper Acrylic — 0 teeth)",icon:"😁",nhs:true,band:3,fee:319.10,isObturator:true},
+  ]},
+  // ── 🛠️ DENTURE REPAIR ─────────────────────────────────────────────────────
+  {group:"DENTURE REPAIR",icon:"🛠️",color:"#A78BFA",codes:[
+    {c:"DR001",l:"Denture Repair — Clasp",       icon:"🔗",nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Clasp"},
+    {c:"DR002",l:"Denture Repair — Tooth",       icon:"😁",nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Tooth"},
+    {c:"DR003",l:"Denture Repair — Flange",      icon:"🛠️",nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Flange"},
+    {c:"DR004",l:"Denture Repair — Other",       icon:"🛠️",nhs:true,band:0,fee:0,isDentureRepair:true,udas:1,component:"Other"},
+  ]},
+  // ── ↗️ REFERRALS ───────────────────────────────────────────────────────────
   {group:"REFERRALS",icon:"↗️",color:"#CBD5E1",codes:[
-    {c:"650",l:"Oral Surgery Referral",         nhs:false,         fee:0},
-    {c:"651",l:"Endodontic Referral",           nhs:false,         fee:0},
-    {c:"652",l:"Orthodontic Referral",          nhs:false,         fee:0},
-    {c:"653",l:"Periodontal Referral",          nhs:false,         fee:0},
-    {c:"654",l:"Restorative Referral",          nhs:false,         fee:0},
-    {c:"655",l:"Hospital Referral",             nhs:false,         fee:0},
+    {c:"650",l:"Oral Surgery Referral",          icon:"✂️",nhs:false,         fee:0},
+    {c:"651",l:"Endodontic Referral",            icon:"🦠",nhs:false,         fee:0},
+    {c:"652",l:"Orthodontic Referral",           icon:"📐",nhs:false,         fee:0},
+    {c:"653",l:"Periodontal Referral",           icon:"🪥",nhs:false,         fee:0},
+    {c:"654",l:"Restorative Referral",           icon:"🛠️",nhs:false,         fee:0},
+    {c:"655",l:"Hospital Referral",              icon:"🏥",nhs:false,         fee:0},
+    {c:"656",l:"Implant Referral",               icon:"🔩",nhs:false,         fee:0},
   ]},
 ];
 
@@ -16263,11 +16322,12 @@ function DentalWorkspace({patient,user}){
           {favCodes.map(c=>(
             <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"5px 10px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
               onClick={()=>addTx(c)}
-              onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.06)"}
+              onMouseEnter={e=>e.currentTarget.style.background="rgba(255,215,0,.05)"}
               onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:"#fbbf24",padding:0,flexShrink:0}}>★</button>
+              <span style={{fontSize:13,flexShrink:0,width:18,textAlign:"center"}}>{c.icon||"🦷"}</span>
+              <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:9,color:"#fbbf24",padding:0,flexShrink:0}}>★</button>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:10,color:"rgba(255,255,255,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,.75)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
                 <div style={{fontSize:8,color:"#CBD5E1",fontFamily:"ui-monospace,monospace",display:"flex",gap:4,marginTop:1}}>
                   <span>{c.c}</span>
                   {c.nhs&&c.band&&<span style={{padding:"0px 4px",borderRadius:3,background:"rgba(29,78,216,.4)",color:"#93c5fd",fontWeight:700}}>B{c.band}</span>}
@@ -16276,7 +16336,7 @@ function DentalWorkspace({patient,user}){
                 </div>
               </div>
               <button onClick={e=>{e.stopPropagation();addTx(c);}} title="Add to plan"
-                style={{width:18,height:18,borderRadius:4,background:"rgba(0,109,255,0.4)",border:"none",cursor:"pointer",color:"#5eead4",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                style={{width:18,height:18,borderRadius:4,background:"rgba(251,191,36,0.25)",border:"none",cursor:"pointer",color:"#fbbf24",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>
             </div>
           ))}
         </div>}
@@ -16286,11 +16346,12 @@ function DentalWorkspace({patient,user}){
       {showSearch&&<div style={{flex:1,overflowY:"auto"}}>
         <div style={{padding:"5px 12px 3px",fontSize:9,fontWeight:800,color:"#CBD5E1",textTransform:"uppercase",letterSpacing:".07em"}}>{searchCodes.length} results</div>
         {searchCodes.map(c=>(
-          <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"6px 10px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
+          <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"5px 10px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
             onClick={()=>addTx(c)}
             onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.06)"}
             onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-            <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:favs.has(c.c)?"#fbbf24":"rgba(255,255,255,.2)",padding:0,flexShrink:0}}>{favs.has(c.c)?"★":"☆"}</button>
+            <span style={{fontSize:13,flexShrink:0,width:18,textAlign:"center"}}>{c.icon||"🦷"}</span>
+            <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:9,color:favs.has(c.c)?"#fbbf24":"rgba(255,255,255,.2)",padding:0,flexShrink:0}}>{favs.has(c.c)?"★":"☆"}</button>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:10,color:"rgba(255,255,255,.75)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
                 <div style={{display:"flex",gap:4,marginTop:2,alignItems:"center"}}>
@@ -16300,42 +16361,48 @@ function DentalWorkspace({patient,user}){
                   <span style={{fontSize:8,color:"rgba(255,255,255,.35)",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
                 </div>
             </div>
-            <button onClick={e=>{e.stopPropagation();addTx(c);}} style={{width:18,height:18,borderRadius:4,background:"rgba(0,109,255,0.4)",border:"none",cursor:"pointer",color:"#5eead4",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+            <button onClick={e=>{e.stopPropagation();addTx(c);}} style={{width:18,height:18,borderRadius:4,background:"rgba(0,109,255,0.4)",border:"none",cursor:"pointer",color:"#5eead4",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>
           </div>
         ))}
       </div>}
 
       {/* Treatment groups */}
       {!showSearch&&<div style={{flex:1,overflowY:"auto"}}>
-        {UK_TX.map(grp=>(
+        {UK_TX.map(grp=>{
+          const isOpen=openGroup===grp.group;
+          const grpColor=grp.color||"#5eead4";
+          return(
           <div key={grp.group}>
             <button onClick={()=>setOpenGroup(g=>g===grp.group?null:grp.group)}
-              style={{width:"100%",padding:"6px 12px",background:openGroup===grp.group?"rgba(13,148,136,.15)":"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.04)",cursor:"pointer",display:"flex",gap:6,alignItems:"center",textAlign:"left"}}>
-              <span style={{fontSize:11}}>{grp.icon}</span>
-              <span style={{flex:1,fontSize:10,fontWeight:600,color:openGroup===grp.group?"#5eead4":"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".05em"}}>{grp.group}</span>
-              <span style={{fontSize:9,color:"rgba(255,255,255,.25)"}}>{openGroup===grp.group?"▲":"▼"}</span>
+              style={{width:"100%",padding:"6px 12px",background:isOpen?`${grpColor}18`:"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.04)",borderLeft:isOpen?`3px solid ${grpColor}`:"3px solid transparent",cursor:"pointer",display:"flex",gap:7,alignItems:"center",textAlign:"left",transition:"all .12s"}}>
+              <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>{grp.icon}</span>
+              <span style={{flex:1,fontSize:10,fontWeight:700,color:isOpen?grpColor:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".05em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{grp.group}</span>
+              <span style={{fontSize:9,color:"rgba(255,255,255,.25)",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
             </button>
-            {openGroup===grp.group&&grp.codes.map(c=>(
-              <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"6px 10px 6px 26px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
-                onClick={()=>addTx({...c,icon:grp.icon})}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(80,140,255,0.05)"}
+            {isOpen&&grp.codes.map(c=>{
+              const itemIcon=c.icon||grp.icon;
+              return(
+              <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"5px 10px 5px 12px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
+                onClick={()=>addTx({...c,icon:itemIcon})}
+                onMouseEnter={e=>e.currentTarget.style.background=`${grpColor}10`}
                 onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:favs.has(c.c)?"#fbbf24":"rgba(255,255,255,.18)",padding:0,flexShrink:0}}>{favs.has(c.c)?"★":"☆"}</button>
+                <span style={{fontSize:13,flexShrink:0,width:18,textAlign:"center",lineHeight:1}}>{itemIcon}</span>
+                <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:9,color:favs.has(c.c)?"#fbbf24":"rgba(255,255,255,.15)",padding:0,flexShrink:0}}>{favs.has(c.c)?"★":"☆"}</button>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:10,color:"rgba(255,255,255,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
-                <div style={{display:"flex",gap:4,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{fontSize:8,color:"rgba(255,255,255,.35)",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
-                  {c.nhs&&c.band?<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(29,78,216,.5)",color:"#93c5fd",lineHeight:"14px"}}>B{c.band}</span>:null}
-                  {!c.nhs?<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(124,58,237,.4)",color:"#c4b5fd",lineHeight:"14px"}}>Pvt</span>:null}
-                  <span style={{fontSize:8,color:"rgba(255,255,255,.35)",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
-                  {DEFAULT_SNOMED[c.c]&&<span style={{fontSize:7,fontFamily:"ui-monospace,monospace",color:"rgba(94,234,212,.55)",padding:"0 3px",borderRadius:2,background:"rgba(13,148,136,.2)"}}>{DEFAULT_SNOMED[c.c]}</span>}
+                  <div style={{fontSize:10,color:"rgba(255,255,255,.75)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
+                  <div style={{display:"flex",gap:4,marginTop:1,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontSize:8,color:"rgba(255,255,255,.3)",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
+                    {c.nhs&&c.band?<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(29,78,216,.5)",color:"#93c5fd",lineHeight:"14px"}}>B{c.band}</span>:null}
+                    {!c.nhs?<span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(124,58,237,.4)",color:"#c4b5fd",lineHeight:"14px"}}>Pvt</span>:null}
+                    <span style={{fontSize:8,color:"rgba(255,255,255,.35)",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
+                    {DEFAULT_SNOMED[c.c]&&<span style={{fontSize:7,fontFamily:"ui-monospace,monospace",color:"rgba(94,234,212,.55)",padding:"0 3px",borderRadius:2,background:"rgba(13,148,136,.2)"}}>{DEFAULT_SNOMED[c.c]}</span>}
+                  </div>
                 </div>
-                </div>
-                <button onClick={e=>{e.stopPropagation();addTx({...c,icon:grp.icon});}} style={{width:18,height:18,borderRadius:4,background:"rgba(0,109,255,0.3)",border:"none",cursor:"pointer",color:"#5eead4",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                <button onClick={e=>{e.stopPropagation();addTx({...c,icon:itemIcon});}} style={{width:18,height:18,borderRadius:4,background:`${grpColor}55`,border:"none",cursor:"pointer",color:"#fff",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>
               </div>
-            ))}
+            );})}
           </div>
-        ))}
+        );})}
       </div>}
 
       {/* Custom treatments group */}
