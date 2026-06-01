@@ -11999,7 +11999,7 @@ function PracticeInsights({setPage}){
 
 }
 
-function MorningHuddlePage({openPatient}){
+function MorningHuddlePage({openPatient,labs=[]}){
   const mhvw=useWindowWidth();const isMob=mhvw<768;
 
   const now=new Date();
@@ -12862,7 +12862,7 @@ function useDNAWorkflow(){
 
 
 
-function Dashboard({openPatient,waiting,setWaiting,user,setPage}){
+function Dashboard({openPatient,waiting,setWaiting,user,setPage,labs=[]}){
   const [dateRange,setDateRange]=useState("Today");
   const [brief,setBrief]=useState(false);
   const [toast,setToast]=useState(null);
@@ -18106,7 +18106,7 @@ function Patient360Tab({patient,txPlans,setTab,doToast,openPatient}){
   );
 }
 
-function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
+function PatientRecord({patient,onBack,defaultTab,user,openPatient,labs=[],setLabs}){
 
   const [tab,setTab]=useState((defaultTab==="charting"?"chart":defaultTab)||(user?.role==="dentist"||user?.role==="hygienist"?"chart":"overview"));
   // Mobile responsive (additive)
@@ -18275,9 +18275,10 @@ function PatientRecord({patient,onBack,defaultTab,user,openPatient}){
     {id:"history",  l:"History",         icon:"🔒",roles:["manager","dentist"]},
     {id:"consent",  l:"Consent Forms",   icon:"✍️",roles:["dentist","manager","reception","hygienist"]},
     {id:"comms",    l:"Communications",  icon:"💬",roles:["reception","dentist","hygienist","manager","owner"]},
+    {id:"labcases", l:"Lab Cases",       icon:"🔬",roles:["reception","dentist","hygienist","manager","owner"]},
   ];
-  const DENTIST_ORDER=["summary","chart","activity","notes","comms","medical","plans","appts","details","docs","consent","history"];
-  const RECEPTION_ORDER=["summary","details","activity","appts","comms","accounts","plans","medical","docs","consent"];
+  const DENTIST_ORDER=["summary","chart","activity","notes","labcases","comms","medical","plans","appts","details","docs","consent","history"];
+  const RECEPTION_ORDER=["summary","details","activity","appts","comms","labcases","accounts","plans","medical","docs","consent"];
   const TABS=user?.role==="dentist"||user?.role==="hygienist"
     ? ALL_PATIENT_TABS.filter(t=>t.roles.includes(user.role)).sort((a,b)=>DENTIST_ORDER.indexOf(a.id)-DENTIST_ORDER.indexOf(b.id))
     : user?.role==="reception"
@@ -21528,7 +21529,7 @@ function CommandCentrePage({setPage,user}){
   );
 }
 
-function NBAPage({role,setPage,openPatient}){
+function NBAPage({role,setPage,openPatient,labs=[]}){
   const nbavw=useWindowWidth();const isMob=nbavw<768;
   const [dismissed,setDismissed]=useState(new Set());
   const [done,setDone]=useState(new Set());
@@ -25264,9 +25265,61 @@ const LABS_INIT=[
    notes:"Allow extra time for try-in"},
 ];
 
-function LabPage(){
+const LAB_WORKFLOW_STAGES=[
+  {id:"lab_prep",    label:"Lab Prep",     statuses:["draft","sent","confirmed"],          color:"#3B82F6"},
+  {id:"production",  label:"Production",   statuses:["in_production","in_lab","query","delayed"], color:"#8B5CF6"},
+  {id:"delivery",    label:"Delivery",     statuses:["dispatched","overdue"],               color:"#F97316"},
+  {id:"arrived",     label:"Arrived",      statuses:["arrived"],                            color:"#06B6D4"},
+  {id:"verification",label:"Verification", statuses:["nurse_check","awaiting_approval"],    color:"#EC4899"},
+  {id:"ready",       label:"Ready",        statuses:["approved"],                           color:"#22C55E"},
+  {id:"complete",    label:"Complete",     statuses:["fitted","returned","cancelled"],       color:"#64748B"},
+];
+const getWorkflowStage=(status)=>LAB_WORKFLOW_STAGES.find(s=>s.statuses.includes(status))||LAB_WORKFLOW_STAGES[0];
+const getStageIndex=(status)=>LAB_WORKFLOW_STAGES.findIndex(s=>s.statuses.includes(status));
+
+function LabCommandCentre({labs=[],setPage}){
+  const activeLabs=labs.filter(l=>!["fitted","cancelled"].includes(l.status));
+  const overdue=labs.filter(l=>l.status==="overdue"||l.status==="delayed");
+  const readyToFit=labs.filter(l=>l.status==="approved");
+  const nurseCheck=labs.filter(l=>l.status==="nurse_check"||l.status==="arrived");
+  const awaitingApproval=labs.filter(l=>l.status==="awaiting_approval");
+  const revenueAtRisk=labs.filter(l=>{
+    const d=l.appointmentDate?days_until(l.appointmentDate):null;
+    return d!==null&&d<=2&&!["approved","fitted"].includes(l.status);
+  }).reduce((s,l)=>s+(l.fee||0),0);
+  return(
+  <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,padding:16,marginBottom:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{fontSize:13,fontWeight:800}}>🔬 Lab Command Centre</div>
+      {setPage&&<button onClick={()=>setPage("lab")} style={{fontSize:10,color:C.blue,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Open Lab Manager →</button>}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+      {[
+        {l:"In Lab",v:activeLabs.length,c:"#A78BFA",bg:"rgba(139,92,246,0.08)"},
+        {l:"Overdue",v:overdue.length,c:C.red,bg:"rgba(239,68,68,0.08)"},
+        {l:"Ready to Fit",v:readyToFit.length,c:C.green,bg:"rgba(34,197,94,0.08)"},
+        {l:"Nurse Check",v:nurseCheck.length,c:"#EC4899",bg:"rgba(236,72,153,0.08)"},
+        {l:"Awaiting Approval",v:awaitingApproval.length,c:C.amber,bg:"rgba(245,158,11,0.08)"},
+        {l:"Revenue at Risk",v:revenueAtRisk>0?"£"+revenueAtRisk.toFixed(0):"£0",c:revenueAtRisk>0?C.red:C.green,bg:"rgba(15,28,52,0.6)"},
+      ].map(s=>(
+        <div key={s.l} style={{background:s.bg,border:"1px solid rgba(59,130,246,0.08)",borderRadius:10,padding:"8px 10px",cursor:setPage?"pointer":"default"}} onClick={()=>setPage&&setPage("lab")}>
+          <div style={{fontSize:18,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+          <div style={{fontSize:9,fontWeight:600,color:"#64748B",marginTop:2}}>{s.l}</div>
+        </div>
+      ))}
+    </div>
+    {overdue.length>0&&<div style={{marginTop:10,padding:"7px 10px",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:8,fontSize:10,color:C.red,fontWeight:600}}>
+      ⚠ Overdue: {overdue.map(l=>l.patient+" ("+l.type+")").join(" · ")}
+    </div>}
+  </div>
+  );
+}
+
+function LabPage({labs:labsProp,setLabs:setLabsProp,setPage}){
   const lbvw=useWindowWidth();const isMob=lbvw<768;
-  const [labs,setLabs]=useState(LABS_INIT);
+  //const [labs,setLabs]=useState(LABS_INIT);
+  const labs=labsProp||[];
+  const setLabs=setLabsProp||(()=>{});
   const [toast,setToast]=useState(null);
   const [tab,setTab]=useState("cases"); // cases | analytics | reports
   const [filterStatus,setFilterStatus]=useState("all");
@@ -25286,6 +25339,18 @@ function LabPage(){
   const [portalSimModal,setPortalSimModal]=useState(false);
   const [portalSimForm,setPortalSimForm]=useState({caseId:"",status:"",note:""});
   const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),4000);};
+
+  const getFitReadiness=(lc)=>{
+    const checks=[
+      {k:"arrived",   l:"Case Arrived",      done:["arrived","nurse_check","awaiting_approval","approved","fitted"].includes(lc.status)},
+      {k:"nurse",     l:"Nurse Verified",     done:!!lc.nurseCheck&&lc.nurseCheck.itemsChecked?.length>=3},
+      {k:"shade",     l:"Shade Confirmed",    done:!!lc.shade&&lc.shade!=="N/A"},
+      {k:"approved",  l:"Dentist Approved",   done:["approved","fitted"].includes(lc.status)},
+      {k:"appt",      l:"Appointment Booked", done:!!lc.appointmentDate},
+    ];
+    const score=Math.round((checks.filter(c=>c.done).length/checks.length)*100);
+    return{checks,score};
+  };
 
   const addAudit=(id,by,role,action)=>{
     const at=now_str();
@@ -25603,6 +25668,31 @@ function LabPage(){
               </div>
             </div>
 
+            {/* Workflow Progress */}
+            <div style={{marginBottom:16,background:"rgba(15,28,52,0.6)",borderRadius:12,padding:"10px 14px",border:"1px solid rgba(59,130,246,0.1)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Workflow Progress</div>
+              <div style={{display:"flex",alignItems:"center",gap:0}}>
+                {LAB_WORKFLOW_STAGES.map((stage,i)=>{
+                  const currentIdx=getStageIndex(lc.status);
+                  const isActive=i===currentIdx;
+                  const isDone=i<currentIdx;
+                  const stageColor=isDone||isActive?stage.color:"#1E293B";
+                  const textColor=isDone||isActive?stage.color:"#475569";
+                  return(
+                  <React.Fragment key={stage.id}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1,minWidth:0}}>
+                      <div style={{width:24,height:24,borderRadius:"50%",background:isDone?stage.color:isActive?stage.color+"33":"#1E293B",border:`2px solid ${isDone||isActive?stage.color:"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:isDone?"#132238":isActive?stage.color:"#475569",fontWeight:800,transition:"all .2s"}}>
+                        {isDone?"✓":i+1}
+                      </div>
+                      <div style={{fontSize:7,fontWeight:isActive?800:500,color:textColor,marginTop:3,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:52}}>{stage.label}</div>
+                    </div>
+                    {i<LAB_WORKFLOW_STAGES.length-1&&<div style={{height:2,flex:0.3,background:isDone?stage.color:"#1E293B",transition:"all .2s",marginBottom:12}}/>}
+                  </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Key dates */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
               {[["Sent",date_str(lc.sentDate),"#64748B"],["Due",date_str(lc.dueDate),lc.status==="overdue"?C.red:lc.dueDate&&days_until(lc.dueDate)<=2?C.amber:C.text],["Appointment",date_str(lc.appointmentDate),lc.appointmentDate&&days_until(lc.appointmentDate)<=2?C.amber:C.text]].map(([l,v,c])=>(
@@ -25635,6 +25725,25 @@ function LabPage(){
               {lc.nurseCheck.dropdown&&<div style={{fontSize:11,color:"#CBD5E1",marginBottom:4}}>Method: {lc.nurseCheck.dropdown}</div>}
               {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1"}}>{lc.nurseCheck.notes}</div>}
             </div>}
+
+            {/* Fit Readiness Score */}
+            {(()=>{const fr=getFitReadiness(lc);return(
+            <div style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:12,border:`1px solid ${fr.score===100?"rgba(34,197,94,0.3)":"rgba(59,130,246,0.1)"}`,marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:11,fontWeight:700,color:fr.score===100?C.green:fr.score>=60?C.amber:C.red}}>Fit Readiness: {fr.score}%</div>
+                <div style={{width:80,height:6,background:"#1E293B",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:fr.score+"%",background:fr.score===100?C.green:fr.score>=60?"#F59E0B":"#EF4444",borderRadius:3,transition:"width .3s"}}/>
+                </div>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {fr.checks.map(c=>(
+                  <span key={c.k} style={{fontSize:9,padding:"2px 7px",borderRadius:5,background:c.done?"rgba(34,197,94,0.1)":"rgba(100,116,139,0.1)",color:c.done?C.green:"#64748B",fontWeight:600}}>
+                    {c.done?"✓ ":"○ "}{c.l}
+                  </span>
+                ))}
+              </div>
+            </div>
+            )})()}
 
             {/* Unified Communications Timeline */}
             <div style={{marginBottom:16}}>
@@ -25787,6 +25896,8 @@ function LabPage(){
                 const st=S[l.status];
                 const daysLeft=l.dueDate?days_until(l.dueDate):null;
                 const apptDays=l.appointmentDate?days_until(l.appointmentDate):null;
+                const stage=getWorkflowStage(l.status);
+                const fr=getFitReadiness(l);
                 return(
                   <tr key={l.id} style={{borderTop:i>0?"1px solid rgba(59,130,246,0.07)":"none",background:l.status==="overdue"?"rgba(239,68,68,0.04)":"transparent",cursor:"pointer"}} onClick={()=>setDetailCase(l.id)}>
                     <td style={{padding:"10px 12px",fontWeight:700,color:"#F8FAFC"}}>
@@ -25794,6 +25905,7 @@ function LabPage(){
                         {l.patient}
                         {apptRisk48h.some(r=>r.id===l.id)&&<span style={{fontSize:9,padding:"2px 6px",background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:4,color:C.amber,fontWeight:700,flexShrink:0}}>⚠ Lab Risk</span>}
                       </div>
+                      <div style={{fontSize:8,color:fr.score===100?C.green:fr.score>=60?C.amber:C.red,fontWeight:600,marginTop:1}}>Ready: {fr.score}%</div>
                     </td>
                     <td style={{padding:"10px 12px",color:"#CBD5E1",fontSize:11,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lab}</td>
                     <td style={{padding:"10px 12px"}}>
@@ -35372,6 +35484,7 @@ export default function App(){
   const [annReleaseNotes,setAnnReleaseNotes]=useState(null);
   const getAnnPref=(id)=>annUserPrefs[id]||{};
   const patchAnnPref=(id,patch)=>setAnnUserPrefs(p=>({...p,[id]:{...(p[id]||{}),...patch}}));
+  const [globalLabs,setGlobalLabs]=useState(LABS_INIT);
 
   const tasks=useMemo(()=>[{title:"Submit FP17 — Amy Torres",priority:"urgent",done:false,src:"auto"},{title:"Confirm tomorrow's appointments",priority:"urgent",done:false,src:"auto"},{title:"Chase lab — Sarah Chen",priority:"normal",done:false,src:"auto"}],[]);
 
@@ -35388,7 +35501,7 @@ export default function App(){
   const ackAlert=()=>{setAlertQueue([]);};
 
   const renderContent=()=>{
-    if(patientId&&PATIENTS.find(p=>p.id===patientId))return <PatientRecord patient={PATIENTS.find(p=>p.id===patientId)} user={user} defaultTab={patientDefaultTab||"details"} openPatient={openPatient} onBack={()=>{setPatientId(null);setAlertQueue([]);setPatientDefaultTab("details");}}/>;
+    if(patientId&&PATIENTS.find(p=>p.id===patientId))return <PatientRecord patient={PATIENTS.find(p=>p.id===patientId)} user={user} defaultTab={patientDefaultTab||"details"} openPatient={openPatient} onBack={()=>{setPatientId(null);setAlertQueue([]);setPatientDefaultTab("details");}} labs={globalLabs} setLabs={setGlobalLabs}/>;
     if(user?.role==="superadmin"){
       const AP={
         admin_dash:<AdminDashboard/>,
@@ -35417,8 +35530,8 @@ export default function App(){
     }
     const PP={
       command:<CommandCentrePage setPage={p=>{setPage(p);setPatientId(null);}} user={user}/>,
-      nba:<NBAPage role={user?.role||"reception"} setPage={p=>{setPage(p);setPatientId(null);}} openPatient={openPatient}/>,
-      dashboard:<Dashboard openPatient={openPatient} waiting={waiting} setWaiting={setWaiting} user={user} setPage={p=>{setPage(p);setPatientId(null);}}/>,
+      nba:<NBAPage role={user?.role||"reception"} setPage={p=>{setPage(p);setPatientId(null);}} openPatient={openPatient} labs={globalLabs}/>,
+      dashboard:<Dashboard openPatient={openPatient} waiting={waiting} setWaiting={setWaiting} user={user} setPage={p=>{setPage(p);setPatientId(null);}} labs={globalLabs}/>,
       calendar:<CalendarPage openPatient={openPatient} user={user} waiting={waiting} setWaiting={setWaiting}/>,
       waiting:<WaitingPage waiting={waiting} setWaiting={setWaiting} user={user} openPatient={openPatient} setNotifs={n=>setNotifs(n)}/>,
       patients:<PatientsPage patients={PATIENTS} openPatient={openPatient}/>,
@@ -35433,7 +35546,7 @@ export default function App(){
       comms:<CommsPage user={user}/>,
       recovery:<RevenueRecoveryPage/>,
       shortnotice:<ShortNoticePage/>,
-      lab:<LabPage/>,
+      lab:<LabPage labs={globalLabs} setLabs={setGlobalLabs} setPage={p=>{setPage(p);setPatientId(null);}}/>,
       accounts:<AccountsPage/>,
       payments:<PaymentsPage user={user}/>,
       reports:<ReportsPage/>,
@@ -35452,7 +35565,7 @@ export default function App(){
       settings:<SettingsPage user={user}/>,
       usermgmt:<UserManagementPage plan="Growth"/>,
       finance:<FinancePage openPatient={openPatient} user={user}/>,
-      huddle:<MorningHuddlePage openPatient={openPatient}/>,
+      huddle:<MorningHuddlePage openPatient={openPatient} labs={globalLabs}/>,
       online_booking:<OnlineBookingPage setPage={p=>{setPage(p);setPatientId(null);}}/>,
       // daily_priorities: alias for nba — handled by GenericPage fallback
     };
