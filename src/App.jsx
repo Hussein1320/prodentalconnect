@@ -16488,7 +16488,7 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>}
 
-      <div style={{display:chartMode==="3d"?"flex":"none",position:"absolute",inset:0,zIndex:1}}>
+      <div style={{display:"flex",position:"absolute",inset:0,zIndex:chartMode==="3d"?2:-1,opacity:chartMode==="3d"?1:0,pointerEvents:chartMode==="3d"?"auto":"none"}}>
         <Tooth3DView
           onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}}
           selFDI={selTooth}
