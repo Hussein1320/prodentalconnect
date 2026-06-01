@@ -29,7 +29,7 @@ import {
   Droplets, Award, Link2, Microscope, Ruler,
   Wind, Diamond, Scan, Wand2, FlaskConical, Blend, Paintbrush,
   Gem, Crosshair, Waves, TestTube, Hourglass, RotateCw, Spline,
-  Target, Focus, Aperture, Columns, AlignCenter, PenTool
+  Target, Focus, Aperture, Columns, AlignCenter, PenTool, Pill
 
 } from "lucide-react";
 
