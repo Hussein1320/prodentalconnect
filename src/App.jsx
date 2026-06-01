@@ -12562,6 +12562,40 @@ function MorningHuddlePage({openPatient,labs=[]}){
 
       </div>
 
+      {/* ── LAB ALERTS ── */}
+      {(()=>{
+        const atRisk=labs.filter(l=>l.appointmentDate&&days_until(l.appointmentDate)<=2&&!["approved","fitted"].includes(l.status));
+        const overdue=labs.filter(l=>l.status==="overdue"||l.status==="delayed");
+        const needsApproval=labs.filter(l=>l.status==="awaiting_approval");
+        if(!atRisk.length&&!overdue.length&&!needsApproval.length)return null;
+        return(
+        <div style={{padding:"0 18px 14px",...(isMob&&{padding:"0 10px 10px"})}}>
+          <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:14,padding:14}}>
+            <div style={{fontSize:12,fontWeight:800,color:C.red,marginBottom:8}}>🔬 Lab Alerts</div>
+            {atRisk.map(l=>(
+              <div key={l.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",borderBottom:"1px solid rgba(239,68,68,0.1)"}}>
+                <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(239,68,68,0.15)",color:C.red}}>AT RISK</span>
+                <span style={{fontSize:11,flex:1}}>{l.patient} · {l.type} · appt {date_str(l.appointmentDate)}</span>
+                <Chip color={LAB_STATUSES[l.status]?.c||"#64748B"}>{LAB_STATUSES[l.status]?.l||l.status}</Chip>
+              </div>
+            ))}
+            {overdue.map(l=>(
+              <div key={l.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",borderBottom:"1px solid rgba(239,68,68,0.1)"}}>
+                <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(239,68,68,0.15)",color:C.red}}>OVERDUE</span>
+                <span style={{fontSize:11,flex:1}}>{l.patient} · {l.type} · {l.lab}</span>
+              </div>
+            ))}
+            {needsApproval.map(l=>(
+              <div key={l.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0"}}>
+                <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(245,158,11,0.15)",color:C.amber}}>APPROVAL</span>
+                <span style={{fontSize:11,flex:1}}>{l.patient} · {l.type} — awaiting dentist approval</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        );
+      })()}
+
       {/* ── TODAY'S SCHEDULE ── */}
 
       <div style={{padding:"16px 18px",...(isMob&&{padding:"10px 10px"})}}>
@@ -12980,6 +13014,8 @@ function Dashboard({openPatient,waiting,setWaiting,user,setPage,labs=[]}){
     </div>
 
     {isManagerUser&&<OperationalIntelligenceCard doToast={doToast}/>}
+
+    {labs.length>0&&<LabCommandCentre labs={labs} setPage={setPage}/>}
 
     {/* ── Morning Briefing (collapsible) ── */}
     <div style={{background:"#0A1628",border:"1px solid rgba(80,140,255,0.2)",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",borderRadius:16,overflow:"hidden",marginBottom:14}}>
@@ -19577,6 +19613,82 @@ Added by: ${showDocPreview.by}
 
     {tab==="comms"&&<div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:20}}><PatientCommsTab patient={patient}/></div>}
 
+    {tab==="labcases"&&(()=>{
+      const patientFitReadiness=(lc)=>{
+        const checks=[
+          {k:"arrived",done:["arrived","nurse_check","awaiting_approval","approved","fitted"].includes(lc.status)},
+          {k:"nurse",done:!!lc.nurseCheck&&lc.nurseCheck.itemsChecked?.length>=3},
+          {k:"shade",done:!!lc.shade&&lc.shade!=="N/A"},
+          {k:"approved",done:["approved","fitted"].includes(lc.status)},
+          {k:"appt",done:!!lc.appointmentDate},
+        ];
+        return{checks,score:Math.round(checks.filter(c=>c.done).length/checks.length*100)};
+      };
+      const patientLabs=labs.filter(l=>l.pid===patient.id||l.patient===patient.name);
+      const activeLabs=patientLabs.filter(l=>!["fitted","cancelled"].includes(l.status));
+      const historicLabs=patientLabs.filter(l=>["fitted","cancelled"].includes(l.status));
+      return(
+      <div style={{flex:1,overflowY:"auto",padding:20,background:"#0F1C34"}}>
+        <div style={{fontSize:14,fontWeight:800,marginBottom:12}}>🔬 Lab Cases</div>
+        {patientLabs.length===0&&<div style={{textAlign:"center",color:"#475569",padding:32,fontSize:13}}>No lab cases for this patient</div>}
+        {activeLabs.length>0&&<>
+          <div style={{fontSize:10,fontWeight:800,color:"#64748B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Active</div>
+          {activeLabs.map(lc=>{
+            const st=LAB_STATUSES[lc.status];
+            const fr=patientFitReadiness(lc);
+            const apptDays=lc.appointmentDate?days_until(lc.appointmentDate):null;
+            return(
+            <div key={lc.id} style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800}}>{lc.type}</div>
+                  <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{lc.tooth} · {lc.lab} · Shade {lc.shade}</div>
+                </div>
+                <Chip color={st?.c||"#64748B"}>{st?.l||lc.status}</Chip>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:10}}>
+                {[["Sent",date_str(lc.sentDate)],["Due",date_str(lc.dueDate)],["Appointment",date_str(lc.appointmentDate)]].map(([l,v])=>(
+                  <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:8,padding:"7px 10px"}}>
+                    <div style={{fontSize:8,color:"#64748B",fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{l}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:apptDays!==null&&l==="Appointment"&&apptDays<=2?C.amber:C.text}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:9,fontWeight:700,color:fr.score===100?C.green:fr.score>=60?C.amber:C.red,width:80,flexShrink:0}}>Ready: {fr.score}%</div>
+                <div style={{flex:1,height:5,background:"#1E293B",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:fr.score+"%",background:fr.score===100?C.green:fr.score>=60?"#F59E0B":"#EF4444",borderRadius:3}}/>
+                </div>
+              </div>
+              {apptDays!==null&&apptDays<=2&&lc.status!=="approved"&&lc.status!=="fitted"&&(
+                <div style={{marginTop:8,padding:"5px 8px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,fontSize:10,color:C.red,fontWeight:600}}>
+                  ⚠ Appointment in {apptDays}d — case not yet approved
+                </div>
+              )}
+              {lc.audit&&lc.audit.length>0&&<div style={{marginTop:8,borderTop:"1px solid rgba(59,130,246,0.08)",paddingTop:8}}>
+                {lc.audit.slice(-3).map((a,i)=>(
+                  <div key={i} style={{fontSize:9,color:"#64748B",marginTop:2}}>{a.at} · {a.by}: {a.action}</div>
+                ))}
+              </div>}
+            </div>
+            );
+          })}
+        </>}
+        {historicLabs.length>0&&<>
+          <div style={{fontSize:10,fontWeight:800,color:"#64748B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,marginTop:16}}>History</div>
+          {historicLabs.map(lc=>(
+            <div key={lc.id} style={{background:"rgba(15,28,52,0.5)",border:"1px solid rgba(59,130,246,0.06)",borderRadius:12,padding:12,marginBottom:6,opacity:0.7}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <div><div style={{fontSize:12,fontWeight:700}}>{lc.type}</div><div style={{fontSize:10,color:"#64748B"}}>{lc.tooth} · {lc.lab}</div></div>
+                <Chip color={LAB_STATUSES[lc.status]?.c||"#64748B"}>{LAB_STATUSES[lc.status]?.l||lc.status}</Chip>
+              </div>
+            </div>
+          ))}
+        </>}
+      </div>
+      );
+    })()}
+
     </div>
   </div>);
 }
@@ -21635,6 +21747,7 @@ function NBAPage({role,setPage,openPatient,labs=[]}){
 
       {/* Priority list */}
       <div className="pdc-page-pad" style={{flex:1,overflowY:"auto",background:"#0F1C34",padding:18,...(isMob&&{padding:12})}}>
+        {labs.length>0&&<LabCommandCentre labs={labs} setPage={setPage}/>}
         {active.length===0&&done.size===0&&<div style={{textAlign:"center",padding:48,color:"#CBD5E1"}}>
           <div style={{fontSize:40,marginBottom:12}}>✅</div>
           <div style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:4}}>All clear!</div>
