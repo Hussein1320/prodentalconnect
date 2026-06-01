@@ -1923,6 +1923,8 @@ const PERM_AUDIT_INIT=[
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ALL_NAV_ITEMS=[
+  // ─── INTELLIGENCE (top-level — visible to all clinical/management roles) ──
+  {id:"command",      l:"Command Centre",  Icon:Cpu,          g:"Intelligence",  roles:["dentist","manager","owner"]},
   // ─── FRONT DESK ───────────────────────────────────────────────────────────
   {id:"dashboard",    l:"Dashboard",       Icon:Home,         g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"]},
   {id:"nba",          l:"Daily Priorities",Icon:Sparkles,     g:"Front Desk",    roles:["reception","dentist","hygienist","manager","owner"],badge:"nba"},
@@ -20689,6 +20691,298 @@ const CAT_META={
 };
 const URG={high:{c:C.red,l:"Urgent"},medium:{c:C.amber,l:"Today"},low:{c:C.green,l:"This week"}};
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PRACTICE COMMAND CENTRE — AI Operating System layer
+// No dental software has this: revenue at risk, root-cause narrative, ranked
+// action list, cross-source intelligence in one place.
+// ══════════════════════════════════════════════════════════════════════════════
+const CC_REVENUE_DATA={
+  thisMonth:  {target:42000,actual:36820,prev:41200},
+  thisWeek:   {target:10500,actual:8940, prev:10100},
+  chairs:     {util:68,target:85},
+  avgBookVal: {actual:94,target:110},
+  dnaRate:    {actual:8.4,target:4.0},
+  cancelRate: {actual:11.2,target:6.0},
+};
+const CC_ACTIONS=[
+  {id:"CC1",icon:"📞",title:"Call Amy Torres — implant plan likely to convert",detail:"Responded to treatment plan message 2h ago. High intent signal. £2,400 plan open.",value:2400,urgency:"high",cat:"revenue",patient:"Amy Torres",page:"recovery"},
+  {id:"CC2",icon:"📞",title:"Call David Park — implant consultation follow-up",detail:"Consultation was 8 May. No follow-up made in 24 days. Patient at risk of going elsewhere.",value:1800,urgency:"high",cat:"revenue",patient:"David Park",page:"recovery"},
+  {id:"CC3",icon:"🦷",title:"Contact John Mills — crown overdue 28 days",detail:"Band 3 crown recommended. Not rebooked. Treatment plan still open.",value:319,urgency:"high",cat:"revenue",patient:"John Mills",page:"recovery"},
+  {id:"CC4",icon:"💬",title:"Fill today's 14:00 cancellation slot",detail:"James Kirk cancelled this morning. 4 short-notice patients match this slot and are available today.",value:95,urgency:"high",cat:"chair",page:"shortnotice"},
+  {id:"CC5",icon:"⚠️",title:"Lab case overdue: James Kirk's Nightguard",detail:"2 days overdue from Prestige Dental Lab. His appointment is in 7 days — chase now.",value:0,urgency:"high",cat:"lab",page:"lab"},
+  {id:"CC6",icon:"📅",title:"Recall 4 patients overdue 8–14 months",detail:"Lisa White (8m), Tom Bright (11m), Grace Park (14m), Mark Davis (9m). Send recall now.",value:360,urgency:"medium",cat:"recall",page:"recovery"},
+  {id:"CC7",icon:"💰",title:"Outstanding balance: Amy Torres £850",detail:"Balance outstanding 42 days. No payment plan in place. Follow up now.",value:850,urgency:"medium",cat:"finance",page:"accounts"},
+  {id:"CC8",icon:"📋",title:"5 uncontacted treatment plan patients",detail:"Plans totalling £6,240 presented in the last 60 days with no follow-up contact recorded.",value:6240,urgency:"medium",cat:"revenue",page:"recovery"},
+  {id:"CC9",icon:"🔔",title:"Tom Smith's chrome denture awaiting approval",detail:"Nurse check complete. Dentist approval needed before Friday appointment.",value:0,urgency:"medium",cat:"lab",page:"lab"},
+  {id:"CC10",icon:"📊",title:"Chair utilisation at 68% — 17% below target",detail:"Slots available across 3 surgeries Mon–Wed next week. Push WhatsApp recall campaign.",value:1800,urgency:"low",cat:"chair",page:"shortnotice"},
+  {id:"CC11",icon:"🏆",title:"DNA rate 8.4% — 4.4pts above target",detail:"12 DNAs in last 30 days. Consider 48h WhatsApp reminder with confirm link for high-risk patients.",value:520,urgency:"low",cat:"operations",page:"whatsapp"},
+];
+const CC_LEAKAGE=[
+  {label:"Uncontacted treatment plans",amount:6240,count:5,icon:"📋",color:"#EF4444",page:"recovery"},
+  {label:"Outstanding patient balances",amount:1180,count:3,icon:"💰",color:"#F97316",page:"accounts"},
+  {label:"Overdue recalls (8m+)",amount:1440,count:4,icon:"📅",color:"#F59E0B",page:"recovery"},
+  {label:"Cancellations not back-filled",amount:760,count:8,icon:"❌",color:"#EF4444",page:"shortnotice"},
+  {label:"DNAs this month",amount:520,count:12,icon:"🚫",color:"#EF4444",page:"calendar"},
+  {label:"Unbooked post-consult patients",amount:3800,count:3,icon:"🦷",color:"#8B5CF6",page:"recovery"},
+];
+const CC_NARRATIVE={
+  headline:"Revenue down £4,380 vs last month",
+  why:[
+    {point:"Cancellation rate rose to 11.2% (was 6.4%) — 8 slots not back-filled, £760 lost",icon:"❌",color:"#EF4444"},
+    {point:"3 post-implant consultations not followed up — £5,400 combined value drifting",icon:"📞",color:"#F97316"},
+    {point:"Chair utilisation dropped to 68% — Monday mornings and Wed afternoons consistently under-booked",icon:"🪑",color:"#F59E0B"},
+    {point:"4 patients 8+ months overdue recall — likely now at competing practice",icon:"📅",color:"#8B5CF6"},
+  ],
+  fix:"Act on the 3 high-urgency actions below to recover an estimated £4,599 this week alone."
+};
+const CC_BENCH={
+  dnaRate:{you:8.4,avg:5.1,unit:"%",label:"DNA Rate",better:"lower"},
+  cancelRate:{you:11.2,avg:7.3,unit:"%",label:"Cancellation Rate",better:"lower"},
+  txAccept:{you:62,avg:74,unit:"%",label:"Treatment Acceptance",better:"higher"},
+  recallConv:{you:41,avg:58,unit:"%",label:"Recall Conversion",better:"higher"},
+  chairUtil:{you:68,avg:79,unit:"%",label:"Chair Utilisation",better:"higher"},
+  revenuePerChair:{you:1228,avg:1540,unit:"£",label:"Revenue / Chair / Day",better:"higher"},
+};
+const CC_WEEK=[
+  {day:"Mon",actual:1820,target:2100},
+  {day:"Tue",actual:2340,target:2100},
+  {day:"Wed",actual:1640,target:2100},
+  {day:"Thu",actual:1900,target:2100},
+  {day:"Fri",actual:1240,target:2100},
+];
+
+function CommandCentrePage({setPage,user}){
+  const ccvw=useWindowWidth();const isMob=ccvw<768;
+  const [dismissed,setDismissed]=useState(new Set());
+  const [actioned,setActioned]=useState(new Set());
+  const [filterCat,setFilterCat]=useState("all");
+  const [toast,setToast]=useState(null);
+  const [expandNarrative,setExpandNarrative]=useState(true);
+  const doToast=m=>{setToast(m);setTimeout(()=>setToast(null),3000);};
+
+  const totalLeakage=CC_LEAKAGE.reduce((s,l)=>s+l.amount,0);
+  const totalRecoverable=CC_ACTIONS.filter(a=>!dismissed.has(a.id)&&a.value>0).reduce((s,a)=>s+a.value,0);
+  const actionsLeft=CC_ACTIONS.filter(a=>!dismissed.has(a.id)&&!actioned.has(a.id));
+  const high=actionsLeft.filter(a=>a.urgency==="high");
+  const filteredActions=actionsLeft.filter(a=>filterCat==="all"||a.cat===filterCat);
+
+  const pct=(v,t)=>Math.round((v/t)*100);
+  const rev=CC_REVENUE_DATA;
+  const revGap=rev.thisMonth.target-rev.thisMonth.actual;
+  const prevGap=rev.thisMonth.prev-rev.thisMonth.actual;
+  const maxBar=Math.max(...CC_WEEK.map(d=>Math.max(d.actual,d.target)));
+
+  const inp2={padding:"7px 12px",background:"#0F1C34",border:"1.5px solid rgba(59,130,246,0.2)",borderRadius:9,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",cursor:"pointer"};
+
+  return(
+    <div style={{padding:isMob?12:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.1) 0%,transparent 45%),radial-gradient(ellipse at 10% 90%,rgba(59,130,246,0.06) 0%,transparent 40%)"}}>
+
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(7,20,40,0.96)",border:"1px solid rgba(80,140,255,0.3)",borderRadius:9,fontSize:12,color:C.green,zIndex:900,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>{toast}</div>}
+
+      {/* ── Top command bar ──────────────────────────────────────────────── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:3}}>
+            <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#006DFF,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
+            <div style={{fontSize:18,fontWeight:800,background:"linear-gradient(90deg,#F8FAFC,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Practice Command Centre</div>
+          </div>
+          <div style={{fontSize:11,color:"#94A3B8",marginLeft:42}}>Sunday 1 June 2026 · {high.length} urgent actions · £{totalLeakage.toLocaleString()} recoverable revenue identified</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {high.length>0&&<div style={{padding:"6px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,fontSize:11,fontWeight:700,color:C.red,display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:13}}>🔴</span>{high.length} urgent</div>}
+          <button onClick={()=>setPage&&setPage("recovery")} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,boxShadow:"0 0 18px rgba(0,109,255,0.35)"}}>Recovery Engine →</button>
+        </div>
+      </div>
+
+      {/* ── Revenue pulse row ────────────────────────────────────────────── */}
+      <div style={{display:"grid",gridTemplateColumns:isMob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:14}}>
+        {[
+          {l:"Revenue This Month",v:"£"+rev.thisMonth.actual.toLocaleString(),sub:"£"+revGap.toLocaleString()+" below target",c:C.red,bg:"rgba(239,68,68,0.07)",icon:"📉"},
+          {l:"Revenue at Risk",v:"£"+totalLeakage.toLocaleString(),sub:"across "+CC_LEAKAGE.length+" leak sources",c:"#F97316",bg:"rgba(249,115,22,0.07)",icon:"⚠️"},
+          {l:"Chair Utilisation",v:rev.chairs.util+"%",sub:rev.chairs.target-rev.chairs.util+"% below target",c:rev.chairs.util>=rev.chairs.target?C.green:C.amber,bg:"rgba(245,158,11,0.07)",icon:"🪑"},
+          {l:"DNA Rate",v:rev.dnaRate.actual+"%",sub:rev.dnaRate.actual>rev.dnaRate.target?(rev.dnaRate.actual-rev.dnaRate.target).toFixed(1)+"pts above target":"On target",c:rev.dnaRate.actual>rev.dnaRate.target?C.red:C.green,bg:"rgba(239,68,68,0.07)",icon:"🚫"},
+        ].map(s=>(
+          <div key={s.l} style={{background:s.bg,border:"1px solid rgba(59,130,246,0.1)",borderRadius:14,padding:"14px 16px"}}>
+            <div style={{fontSize:10,color:"#64748B",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:6,display:"flex",gap:6,alignItems:"center"}}><span>{s.icon}</span>{s.l}</div>
+            <div style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace",marginBottom:3}}>{s.v}</div>
+            <div style={{fontSize:10,color:"#94A3B8"}}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"2fr 1fr",gap:14,marginBottom:14}}>
+
+        {/* ── AI Narrative ──────────────────────────────────────────────── */}
+        <div style={{background:"linear-gradient(135deg,rgba(139,92,246,0.08),rgba(6,182,212,0.05))",border:"1px solid rgba(139,92,246,0.2)",borderRadius:16,padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,cursor:"pointer"}} onClick={()=>setExpandNarrative(p=>!p)}>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div style={{width:26,height:26,borderRadius:8,background:"linear-gradient(135deg,#8B5CF6,#06B6D4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✨</div>
+              <div>
+                <div style={{fontSize:13,fontWeight:800,color:"#F8FAFC"}}>AI Practice Analysis</div>
+                <div style={{fontSize:10,color:"#94A3B8",marginTop:1}}>Generated today 07:00 · based on live practice data</div>
+              </div>
+            </div>
+            <span style={{color:"#94A3B8",fontSize:14}}>{expandNarrative?"▲":"▼"}</span>
+          </div>
+          {expandNarrative&&<>
+            <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:800,color:C.red,marginBottom:4}}>{CC_NARRATIVE.headline}</div>
+              <div style={{fontSize:11,color:"#CBD5E1"}}>{CC_NARRATIVE.fix}</div>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Root causes identified:</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:0}}>
+              {CC_NARRATIVE.why.map((w,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,borderLeft:"3px solid "+w.color}}>
+                  <span style={{fontSize:14,flexShrink:0}}>{w.icon}</span>
+                  <span style={{fontSize:11,color:"#CBD5E1",lineHeight:1.5}}>{w.point}</span>
+                </div>
+              ))}
+            </div>
+          </>}
+        </div>
+
+        {/* ── Weekly revenue bar chart ───────────────────────────────────── */}
+        <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,padding:16}}>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>This Week vs Target</div>
+          <div style={{fontSize:10,color:"#94A3B8",marginBottom:14}}>Daily revenue · target £2,100/day</div>
+          {CC_WEEK.map(d=>{
+            const apct=pct(d.actual,maxBar);const tpct=pct(d.target,maxBar);
+            const over=d.actual>=d.target;
+            return(
+              <div key={d.day} style={{marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                  <span style={{fontSize:10,color:"#94A3B8",fontWeight:600}}>{d.day}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:over?C.green:C.red,fontFamily:"ui-monospace,monospace"}}>£{d.actual.toLocaleString()}</span>
+                </div>
+                <div style={{height:8,background:"rgba(59,130,246,0.1)",borderRadius:4,position:"relative",overflow:"visible"}}>
+                  <div style={{height:"100%",width:apct+"%",background:over?"linear-gradient(90deg,#22C55E,#16A34A)":"linear-gradient(90deg,#3B82F6,#2563FF)",borderRadius:4,transition:"width 0.6s"}}/>
+                  <div style={{position:"absolute",top:"-2px",left:tpct+"%",width:2,height:12,background:"rgba(245,158,11,0.7)",borderRadius:1}}/>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{display:"flex",gap:12,marginTop:12,justifyContent:"center"}}>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:8,height:8,borderRadius:2,background:"#3B82F6"}}/><span style={{fontSize:9,color:"#64748B"}}>Actual</span></div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:2,height:10,background:"rgba(245,158,11,0.7)",borderRadius:1}}/><span style={{fontSize:9,color:"#64748B"}}>Target</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Revenue leakage breakdown ────────────────────────────────────── */}
+      <div style={{background:"#132238",border:"1px solid rgba(239,68,68,0.15)",borderRadius:16,padding:16,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:800}}>Revenue Leakage Breakdown</div>
+            <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>Total recoverable: <span style={{color:C.red,fontWeight:700}}>£{totalLeakage.toLocaleString()}</span></div>
+          </div>
+          <button onClick={()=>setPage&&setPage("recovery")} style={{padding:"6px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red}}>View All →</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"repeat(3,1fr)",gap:8}}>
+          {CC_LEAKAGE.map(l=>(
+            <div key={l.label} onClick={()=>setPage&&setPage(l.page)} style={{background:"rgba(15,28,52,0.8)",border:"1px solid rgba(59,130,246,0.08)",borderRadius:12,padding:"12px 14px",cursor:"pointer",transition:"border-color .15s"}}
+              onMouseOver={e=>e.currentTarget.style.borderColor="rgba(59,130,246,0.25)"} onMouseOut={e=>e.currentTarget.style.borderColor="rgba(59,130,246,0.08)"}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#CBD5E1",maxWidth:"75%",lineHeight:1.4}}><span style={{marginRight:6}}>{l.icon}</span>{l.label}</div>
+                <div style={{fontSize:11,color:"#64748B",fontWeight:600}}>{l.count}</div>
+              </div>
+              <div style={{fontSize:20,fontWeight:800,color:l.color,fontFamily:"ui-monospace,monospace",marginTop:8}}>£{l.amount.toLocaleString()}</div>
+              <div style={{height:3,background:"rgba(59,130,246,0.08)",borderRadius:2,marginTop:8,overflow:"hidden"}}>
+                <div style={{height:"100%",width:pct(l.amount,totalLeakage)+"%",background:l.color+"99",borderRadius:2}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Priority action list ─────────────────────────────────────────── */}
+      <div style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:800}}>Priority Action List</div>
+            <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>{filteredActions.length} actions · £{totalRecoverable.toLocaleString()} recoverable if all completed</div>
+          </div>
+          <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{...inp2}}>
+            <option value="all">All categories</option>
+            <option value="revenue">Revenue</option>
+            <option value="chair">Chair Filling</option>
+            <option value="recall">Recall</option>
+            <option value="finance">Finance</option>
+            <option value="lab">Lab</option>
+            <option value="operations">Operations</option>
+          </select>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {filteredActions.length===0?<div style={{textAlign:"center",padding:32,color:"#4B5563",fontSize:13}}>All actions complete — well done! 🎉</div>:
+          filteredActions.map((a,i)=>{
+            const isDone=actioned.has(a.id);
+            const urg={high:{c:C.red,bg:"rgba(239,68,68,0.06)",border:"rgba(239,68,68,0.2)"},medium:{c:C.amber,bg:"rgba(245,158,11,0.05)",border:"rgba(245,158,11,0.18)"},low:{c:C.green,bg:"rgba(34,197,94,0.04)",border:"rgba(34,197,94,0.12)"}}[a.urgency];
+            return(
+              <div key={a.id} style={{background:isDone?"rgba(34,197,94,0.04)":urg.bg,border:"1px solid "+(isDone?"rgba(34,197,94,0.2)":urg.border),borderRadius:14,padding:"12px 16px",display:"flex",gap:12,alignItems:"flex-start",transition:"all .2s",opacity:isDone?0.6:1}}>
+                <div style={{fontSize:22,flexShrink:0,marginTop:2}}>{isDone?"✅":a.icon}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:isDone?"#64748B":"#F8FAFC",flex:1}}>{a.title}</div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                      {a.value>0&&<div style={{fontSize:11,fontWeight:800,color:urg.c,fontFamily:"ui-monospace,monospace",background:urg.bg,padding:"2px 8px",borderRadius:6,border:"1px solid "+urg.border}}>£{a.value.toLocaleString()}</div>}
+                      <div style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,background:urg.bg,color:urg.c,border:"1px solid "+urg.border,textTransform:"uppercase",letterSpacing:".06em"}}>{a.urgency==="high"?"Urgent":a.urgency==="medium"?"Today":"This week"}</div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:"#94A3B8",marginTop:3,lineHeight:1.5}}>{a.detail}</div>
+                  {!isDone&&<div style={{display:"flex",gap:8,marginTop:10}}>
+                    <button onClick={()=>{setActioned(p=>{const n=new Set(p);n.add(a.id);return n;});doToast("✓ Action marked complete — great work!");}} style={{padding:"5px 14px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,color:C.green}}>✓ Done</button>
+                    {a.page&&<button onClick={()=>setPage&&setPage(a.page)} style={{padding:"5px 14px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:600,color:C.blue}}>Go →</button>}
+                    <button onClick={()=>{setDismissed(p=>{const n=new Set(p);n.add(a.id);return n;});}} style={{padding:"5px 10px",background:"none",border:"1px solid rgba(100,116,139,0.2)",borderRadius:8,cursor:"pointer",fontSize:10,color:"#64748B"}}>Dismiss</button>
+                  </div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Benchmarking ─────────────────────────────────────────────────── */}
+      <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,padding:16}}>
+        <div style={{fontSize:13,fontWeight:800,marginBottom:4}}>Practice Benchmarking</div>
+        <div style={{fontSize:10,color:"#94A3B8",marginBottom:14}}>Your performance vs anonymised platform average across all UK practices</div>
+        <div style={{display:"grid",gridTemplateColumns:isMob?"1fr 1fr":"repeat(3,1fr)",gap:10}}>
+          {Object.values(CC_BENCH).map(b=>{
+            const better=b.better==="lower"?b.you<b.avg:b.you>b.avg;
+            const diff=Math.abs(b.you-b.avg).toFixed(b.unit==="%"?1:0);
+            const col=better?C.green:C.red;
+            const maxVal=b.better==="lower"?Math.max(b.you,b.avg)*1.1:Math.max(b.you,b.avg)*1.1;
+            return(
+              <div key={b.label} style={{background:"rgba(15,28,52,0.8)",borderRadius:12,padding:"12px 14px",border:"1px solid "+(better?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)")}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#94A3B8"}}>{b.label}</div>
+                  <div style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:better?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:col}}>{better?"▲":"▼"} {diff}{b.unit}</div>
+                </div>
+                <div style={{display:"flex",gap:16,alignItems:"flex-end",marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:9,color:"#64748B",marginBottom:2}}>You</div>
+                    <div style={{fontSize:20,fontWeight:800,color:col,fontFamily:"ui-monospace,monospace"}}>{b.unit==="£"?"£":""}{b.you}{b.unit==="%"?"%":""}</div>
+                  </div>
+                  <div style={{fontSize:10,color:"#4B5563",paddingBottom:4}}>vs</div>
+                  <div>
+                    <div style={{fontSize:9,color:"#64748B",marginBottom:2}}>Average</div>
+                    <div style={{fontSize:15,fontWeight:600,color:"#64748B",fontFamily:"ui-monospace,monospace"}}>{b.unit==="£"?"£":""}{b.avg}{b.unit==="%"?"%":""}</div>
+                  </div>
+                </div>
+                <div style={{height:6,background:"rgba(59,130,246,0.1)",borderRadius:3,overflow:"hidden",position:"relative"}}>
+                  <div style={{height:"100%",width:pct(b.you,maxVal)+"%",background:col,borderRadius:3,opacity:0.7}}/>
+                  <div style={{position:"absolute",top:0,left:pct(b.avg,maxVal)+"%",width:2,height:"100%",background:"rgba(148,163,184,0.5)"}}/>
+                </div>
+                <div style={{fontSize:9,color:"#4B5563",marginTop:4}}>Industry average: {b.unit==="£"?"£":""}{b.avg}{b.unit==="%"?"%":""}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 function NBAPage({role,setPage,openPatient}){
   const nbavw=useWindowWidth();const isMob=nbavw<768;
   const [dismissed,setDismissed]=useState(new Set());
@@ -34291,6 +34585,7 @@ export default function App(){
       return AP[page]||<GenericPage page={page}/>;
     }
     const PP={
+      command:<CommandCentrePage setPage={p=>{setPage(p);setPatientId(null);}} user={user}/>,
       nba:<NBAPage role={user?.role||"reception"} setPage={p=>{setPage(p);setPatientId(null);}} openPatient={openPatient}/>,
       dashboard:<Dashboard openPatient={openPatient} waiting={waiting} setWaiting={setWaiting} user={user} setPage={p=>{setPage(p);setPatientId(null);}}/>,
       calendar:<CalendarPage openPatient={openPatient} user={user} waiting={waiting} setWaiting={setWaiting}/>,
