@@ -15708,7 +15708,7 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         if(T){
           R.current.scene.updateMatrixWorld(true);
 
-          const zoneGeo=(geo,mw,surf,wc,wsx,wsy)=>{
+          const zoneGeo=(geo,mw,surf,wc,wsx,wsy,isRight)=>{
             const pos=geo.attributes.position;
             const nrm=geo.attributes.normal;
             if(!pos)return null;
@@ -15729,12 +15729,13 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
               // Normalised XY position within tooth bounds (−1 … +1)
               const nx=(ct.x-wc.x)/(wsx*0.5);
               const ny=(ct.y-wc.y)/(wsy*0.5);
-              // Non-overlapping diamond split — strictly matches diagram (B=top,P=bottom,M=left,D=right,O=centre)
+              // Diamond split matching diagram. M/D flip by arch side:
+              // right teeth mesial=-X (nx<0), left teeth mesial=+X (nx>0)
               let zone;
               if(Math.abs(nx)<0.35&&Math.abs(ny)<0.35) zone='o';
               else if(ny>=Math.abs(nx))                  zone='b';
               else if(-ny>=Math.abs(nx))                 zone='l';
-              else                                       zone=nx<0?'m':'d';
+              else zone=isRight?(nx<0?'m':'d'):(nx>0?'m':'d');
               if(zone!==surf)continue;
               for(const v of[ia,ib,ic]){
                 newPos.push(pos.getX(v),pos.getY(v),pos.getZ(v));
@@ -15754,11 +15755,12 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             const wbb=new T.Box3().setFromObject(mesh);
             const wc=new T.Vector3();wbb.getCenter(wc);
             const ws=new T.Vector3();wbb.getSize(ws);
+            const isRight=pid.startsWith('UR')||pid.startsWith('LR');
             Object.entries(surfs).forEach(([s,cond])=>{
               if(!cond)return;
               const hex=_COND_3D[cond];
               if(hex==null)return;
-              const g=zoneGeo(mesh.geometry,mesh.matrixWorld,s,wc,ws.x,ws.y);
+              const g=zoneGeo(mesh.geometry,mesh.matrixWorld,s,wc,ws.x,ws.y,isRight);
               if(!g)return;
               const mat=new T.MeshStandardMaterial({
                 color:new T.Color(hex),emissive:new T.Color(hex),
