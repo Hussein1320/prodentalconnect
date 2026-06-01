@@ -16001,6 +16001,15 @@ function DentalWorkspace({patient,user}){
   const [searchQ,setSearchQ]=useState("");
   const [openGroup,setOpenGroup]=useState("DIAGNOSTIC");
   const [favs,setFavs]=useState(new Set(["100","200","400","410","800"]));
+  const [customTxCodes,setCustomTxCodes]=useState([
+    {c:"CUST-001",l:"Tooth Whitening (In-Chair)",nhs:false,fee:550,group:"CUSTOM",icon:"✨",custom:true},
+    {c:"CUST-002",l:"Composite Smile Makeover",nhs:false,fee:1800,group:"CUSTOM",icon:"✨",custom:true},
+  ]);
+  const [newTxModal,setNewTxModal]=useState(false);
+  const [editTxCode,setEditTxCode]=useState(null); // code being edited
+  const blankTx={l:"",c:"",cat:"Cosmetic",nhs:false,band:null,fee:"",icon:"✨"};
+  const [newTxForm,setNewTxForm]=useState(blankTx);
+  const rightTab_dummy=null; // used below
   const [rightTab,setRightTab]=useState("tooth"); // tooth | history | notes | costs
   const [noteText,setNoteText]=useState("");
   const [noteTemplate,setNoteTemplate]=useState("");
@@ -16031,7 +16040,7 @@ function DentalWorkspace({patient,user}){
     if(cond)toast(`✓ ${_COND_3D_LABEL[cond]||cond} → ${surfName} on ${fdi}`);
     else toast(`Cleared ${surfName} on ${fdi}`);
   };
-  const allCodes=UK_TX.flatMap(g=>g.codes.map(c=>({...c,group:g.group,icon:g.icon})));
+  const allCodes=[...UK_TX.flatMap(g=>g.codes.map(c=>({...c,group:g.group,icon:g.icon}))), ...customTxCodes];
   const favCodes=allCodes.filter(c=>favs.has(c.c));
   const searchCodes=searchQ.length>1?allCodes.filter(c=>c.l.toLowerCase().includes(searchQ.toLowerCase())||c.c.includes(searchQ)):[];
   const hasSel=selTeeth.length>0;
@@ -16329,13 +16338,158 @@ function DentalWorkspace({patient,user}){
         ))}
       </div>}
 
-      {/* Bottom status */}
-      <div style={{padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
+      {/* Custom treatments group */}
+      {!showSearch&&customTxCodes.length>0&&<div style={{flexShrink:0}}>
+        <button onClick={()=>setOpenGroup(g=>g==="CUSTOM"?null:"CUSTOM")}
+          style={{width:"100%",padding:"6px 12px",background:openGroup==="CUSTOM"?"rgba(139,92,246,.15)":"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.04)",cursor:"pointer",display:"flex",gap:6,alignItems:"center",textAlign:"left"}}>
+          <span style={{fontSize:11}}>✨</span>
+          <span style={{flex:1,fontSize:10,fontWeight:600,color:openGroup==="CUSTOM"?"#c4b5fd":"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".05em"}}>Custom</span>
+          <span style={{fontSize:9,color:"rgba(255,255,255,.25)"}}>{openGroup==="CUSTOM"?"▲":"▼"}</span>
+        </button>
+        {openGroup==="CUSTOM"&&customTxCodes.map(c=>(
+          <div key={c.c} style={{display:"flex",gap:5,alignItems:"center",padding:"6px 10px 6px 26px",borderBottom:"1px solid rgba(255,255,255,.03)",cursor:"pointer"}}
+            onClick={()=>addTx(c)}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(139,92,246,0.07)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <button onClick={e=>{e.stopPropagation();toggleFav(c.c);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:favs.has(c.c)?"#fbbf24":"rgba(255,255,255,.18)",padding:0,flexShrink:0}}>{favs.has(c.c)?"★":"☆"}</button>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:10,color:"rgba(255,255,255,.8)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.l}</div>
+              <div style={{display:"flex",gap:4,marginTop:2,alignItems:"center"}}>
+                <span style={{fontSize:8,color:"rgba(255,255,255,.35)",fontFamily:"ui-monospace,monospace"}}>{c.c}</span>
+                <span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(139,92,246,.35)",color:"#c4b5fd",lineHeight:"14px"}}>Custom</span>
+                <span style={{fontSize:7,fontWeight:800,padding:"0 4px",borderRadius:3,background:"rgba(124,58,237,.3)",color:"#c4b5fd",lineHeight:"14px"}}>Pvt</span>
+                <span style={{fontSize:8,color:"rgba(255,255,255,.4)",fontFamily:"ui-monospace,monospace"}}>£{c.fee||0}</span>
+              </div>
+            </div>
+            <button onClick={e=>{e.stopPropagation();setEditTxCode(c);setNewTxForm({l:c.l,c:c.c,cat:c.group||"Cosmetic",nhs:c.nhs,band:c.band||null,fee:String(c.fee||""),icon:c.icon||"✨"});setNewTxModal(true);}} title="Edit" style={{width:16,height:16,borderRadius:3,background:"rgba(255,255,255,.08)",border:"none",cursor:"pointer",color:"rgba(255,255,255,.4)",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginRight:2}}>✎</button>
+            <button onClick={e=>{e.stopPropagation();addTx(c);}} style={{width:18,height:18,borderRadius:4,background:"rgba(139,92,246,0.5)",border:"none",cursor:"pointer",color:"#c4b5fd",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+          </div>
+        ))}
+      </div>}
+
+      {/* Bottom — status + new treatment button */}
+      <div style={{padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0,display:"flex",flexDirection:"column",gap:5}}>
+        <button onClick={()=>{setEditTxCode(null);setNewTxForm(blankTx);setNewTxModal(true);}}
+          style={{width:"100%",padding:"7px 0",background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(99,102,241,0.2))",border:"1px solid rgba(139,92,246,0.35)",borderRadius:9,cursor:"pointer",color:"#c4b5fd",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+          <span style={{fontSize:12}}>+</span> New Treatment
+        </button>
         <div style={{fontSize:9,color:"#CBD5E1",textAlign:"center"}}>
           {hasSel?`${selTeeth.length} tooth selected · Click to add treatment`:"Select a tooth to begin"}
         </div>
       </div>
     </div>
+
+    {/* ── New / Edit Custom Treatment Modal ─────────────────────────────── */}
+    {newTxModal&&(()=>{
+      const isEdit=!!editTxCode;
+      const TX_CATS=["Examination","Hygiene","Restorative","Endodontics","Extractions","Crowns","Bridges","Dentures","Implants","Cosmetic","Orthodontics","Other"];
+      const ICONS=["✨","🦷","👑","🔬","🔧","🪥","🌉","😁","🔍","✂️","💎","📋"];
+      const inp3={padding:"8px 12px",background:"#0F1C34",border:"1.5px solid rgba(59,130,246,0.25)",borderRadius:9,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",width:"100%",boxSizing:"border-box"};
+      const lbl3={fontSize:10,fontWeight:700,color:"rgba(148,163,184,0.8)",letterSpacing:".06em",textTransform:"uppercase",marginBottom:3,display:"block"};
+      const saveCustomTx=()=>{
+        if(!newTxForm.l.trim()){toast("Enter a treatment name");return;}
+        const fee=parseFloat(newTxForm.fee)||0;
+        const code=newTxForm.c.trim()||("CUST-"+Date.now()%10000);
+        const tx={c:code,l:newTxForm.l.trim(),nhs:newTxForm.nhs,band:newTxForm.nhs?newTxForm.band:null,fee,group:"CUSTOM",icon:newTxForm.icon||"✨",custom:true};
+        if(isEdit){
+          setCustomTxCodes(p=>p.map(x=>x.c===editTxCode.c?tx:x));
+          toast("✓ Treatment updated");
+        } else {
+          setCustomTxCodes(p=>[...p,tx]);
+          toast("✓ Custom treatment added");
+        }
+        setNewTxModal(false);setEditTxCode(null);setNewTxForm(blankTx);
+      };
+      const deleteCustomTx=()=>{
+        setCustomTxCodes(p=>p.filter(x=>x.c!==editTxCode.c));
+        setFavs(p=>{const n=new Set(p);n.delete(editTxCode.c);return n;});
+        setNewTxModal(false);setEditTxCode(null);setNewTxForm(blankTx);
+        toast("Treatment deleted");
+      };
+      return(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget){setNewTxModal(false);setEditTxCode(null);}}}>
+          <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:480,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",maxHeight:"92vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:800}}>{isEdit?"Edit Treatment":"New Custom Treatment"}</div>
+                <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>Added to your practice treatment library</div>
+              </div>
+              <button onClick={()=>{setNewTxModal(false);setEditTxCode(null);}} style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:18}}>✕</button>
+            </div>
+
+            {/* Icon picker */}
+            <div style={{marginBottom:14}}>
+              <label style={lbl3}>Icon</label>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {ICONS.map(ic=>(
+                  <button key={ic} onClick={()=>setNewTxForm(p=>({...p,icon:ic}))}
+                    style={{width:34,height:34,borderRadius:8,border:"2px solid "+(newTxForm.icon===ic?"rgba(139,92,246,0.7)":"rgba(59,130,246,0.15)"),background:newTxForm.icon===ic?"rgba(139,92,246,0.15)":"#0F1C34",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={lbl3}>Treatment Name *</label>
+                <input value={newTxForm.l} onChange={e=>setNewTxForm(p=>({...p,l:e.target.value}))} placeholder="e.g. Composite Smile Makeover" style={inp3}/>
+              </div>
+              <div>
+                <label style={lbl3}>Treatment Code</label>
+                <input value={newTxForm.c} onChange={e=>setNewTxForm(p=>({...p,c:e.target.value}))} placeholder="e.g. COMP-SMILE" style={inp3}/>
+                <div style={{fontSize:9,color:"#64748B",marginTop:3}}>Auto-generated if left blank</div>
+              </div>
+              <div>
+                <label style={lbl3}>Category</label>
+                <select value={newTxForm.cat} onChange={e=>setNewTxForm(p=>({...p,cat:e.target.value}))} style={{...inp3,cursor:"pointer"}}>
+                  {TX_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl3}>Fee (£)</label>
+                <input type="number" value={newTxForm.fee} onChange={e=>setNewTxForm(p=>({...p,fee:e.target.value}))} placeholder="0.00" style={inp3} min="0" step="0.01"/>
+              </div>
+              <div>
+                <label style={lbl3}>NHS or Private</label>
+                <select value={newTxForm.nhs?"nhs":"private"} onChange={e=>{const isNHS=e.target.value==="nhs";setNewTxForm(p=>({...p,nhs:isNHS,band:isNHS?p.band:null}));}} style={{...inp3,cursor:"pointer"}}>
+                  <option value="private">Private</option>
+                  <option value="nhs">NHS</option>
+                </select>
+              </div>
+              {newTxForm.nhs&&<div>
+                <label style={lbl3}>NHS Band</label>
+                <select value={newTxForm.band||""} onChange={e=>setNewTxForm(p=>({...p,band:e.target.value?Number(e.target.value):null}))} style={{...inp3,cursor:"pointer"}}>
+                  <option value="">Select band</option>
+                  <option value="1">Band 1 — £26.80</option>
+                  <option value="2">Band 2 — £73.50</option>
+                  <option value="3">Band 3 — £319.10</option>
+                </select>
+              </div>}
+            </div>
+
+            {/* Preview */}
+            <div style={{background:"rgba(139,92,246,0.07)",border:"1px solid rgba(139,92,246,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:16}}>{newTxForm.icon||"✨"}</span>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#F8FAFC"}}>{newTxForm.l||"Treatment name"}</div>
+                <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center"}}>
+                  {newTxForm.c&&<span style={{fontSize:9,color:"rgba(255,255,255,.4)",fontFamily:"ui-monospace,monospace"}}>{newTxForm.c}</span>}
+                  <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:newTxForm.nhs?"rgba(29,78,216,.4)":"rgba(139,92,246,.3)",color:newTxForm.nhs?"#93c5fd":"#c4b5fd",fontWeight:700}}>{newTxForm.nhs?`NHS B${newTxForm.band||"?"}`:""}{!newTxForm.nhs?"Private":""}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:"#c4b5fd"}}>£{newTxForm.fee||"0"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:8}}>
+              {isEdit&&<button onClick={deleteCustomTx} style={{padding:"9px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700,color:C.red}}>Delete</button>}
+              <button onClick={()=>{setNewTxModal(false);setEditTxCode(null);}} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+              <button onClick={saveCustomTx} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#8B5CF6,#6D28D9)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>{isEdit?"Save Changes":"Add to Library"}</button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
 
     {/* ══ CENTER PANEL — Odontogram ══ */}
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,position:"relative"}}>
