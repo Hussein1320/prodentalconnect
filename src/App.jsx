@@ -16336,7 +16336,7 @@ function DentalWorkspace({patient,user}){
     </div>
 
     {/* ══ CENTER PANEL — Odontogram ══ */}
-    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,position:"relative"}}>
 
       {/* Chart mode toolbar */}
       <div style={{background:"#132238",borderBottom:"1px solid rgba(56,189,248,0.12)",padding:"0 12px",display:"flex",gap:0,alignItems:"center",flexShrink:0,height:40}}>
@@ -16488,12 +16488,14 @@ function DentalWorkspace({patient,user}){
         </div>
       </div>}
 
-      {chartMode==="3d"&&<Tooth3DView
-        onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}}
-        selFDI={selTooth}
-        teethData={teeth}
-        onSurfaceSet={handleSurfaceSet}
-        surfTool={surfTool}/>}
+      <div style={{display:chartMode==="3d"?"flex":"none",position:"absolute",inset:0,zIndex:1}}>
+        <Tooth3DView
+          onToothClick={(n,surf)=>{toggleTooth(n,null);setRightTab("tooth");if(surf)setSelSurfaces(new Set([surf]));else setSelSurfaces(new Set());}}
+          selFDI={selTooth}
+          teethData={teeth}
+          onSurfaceSet={handleSurfaceSet}
+          surfTool={surfTool}/>
+      </div>
     </div>
 
     {/* ══ RIGHT PANEL — Contextual Details ══ */}
