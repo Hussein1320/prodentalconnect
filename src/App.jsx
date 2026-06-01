@@ -15826,34 +15826,6 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
         R.current.af=requestAnimationFrame(animate);
         controls.update();
         renderer.render(scene,camera);
-        // Update label positions every 3 frames
-        if(++_labelFrame%3===0&&R.current.toothMap){
-          const labels=[];
-          const seen=new Set();
-          // Whole-tooth condition labels
-          Object.entries(R.current.toothConds||{}).forEach(([pid,entry])=>{
-            const mesh=R.current.toothMap[pid];
-            if(!mesh)return;
-            const p=projectMesh(mesh);
-            if(p.z>1)return;
-            seen.add(pid);
-            labels.push({pid,key:entry.key,x:p.x,y:p.y,surfs:null});
-          });
-          // Surface-only condition labels
-          Object.entries(R.current.surfData||{}).forEach(([pid,surfs])=>{
-            if(seen.has(pid))return; // already labelled by whole-tooth
-            const mesh=R.current.toothMap[pid];
-            if(!mesh)return;
-            const p=projectMesh(mesh);
-            if(p.z>1)return;
-            // pick first surface condition as the label key
-            const firstCond=surfs.o||surfs.b||surfs.m||surfs.d||surfs.l||null;
-            if(!firstCond)return;
-            const surfAbbrs=Object.entries(surfs).filter(([,v])=>v).map(([s])=>s.toUpperCase()).join('+');
-            labels.push({pid,key:firstCond,x:p.x,y:p.y,surfs:surfAbbrs});
-          });
-          setCondLabels(labels);
-        }
       };
       animate();
 
@@ -16002,37 +15974,6 @@ function Tooth3DView({onToothClick,selFDI,teethData,onSurfaceSet,surfTool}){
             <span style={{fontSize:10,color:"#64748B"}}>Ensure /public/Teeth_Stained.glb is present</span>
           </div>
         )}
-        {/* Condition label overlays projected from 3D tooth positions */}
-        {status==="ready"&&condLabels.map(({pid,key,x,y,surfs})=>{
-          const col=_COND_3D_HEX[key]||"#64748b";
-          const lbl=_COND_3D_LABEL[key]||key;
-          const icon=_COND_3D_ICON[key]||"●";
-          const surfParts=surfs?surfs.split('+'):[];
-          const surfNames={B:"Buccal",M:"Mesial",O:"Occlusal",D:"Distal",L:"Palatal"};
-          return(
-            <div key={pid} style={{position:"absolute",left:x,top:y-36,transform:"translateX(-50%)",pointerEvents:"none",zIndex:11,
-              display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-              <div style={{background:"rgba(4,8,20,0.95)",border:`1.5px solid ${col}`,borderRadius:7,padding:"4px 8px",
-                display:"flex",flexDirection:"column",gap:2,
-                backdropFilter:"blur(8px)",boxShadow:`0 2px 12px ${col}55,0 0 0 1px rgba(0,0,0,0.4)`}}>
-                <div style={{fontSize:10,fontWeight:800,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap",letterSpacing:".03em"}}>
-                  {icon} {lbl}
-                </div>
-                {surfParts.length>0&&(
-                  <div style={{display:"flex",gap:3,flexWrap:"wrap",maxWidth:110}}>
-                    {surfParts.map(s=>(
-                      <span key={s} style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4,
-                        background:col+"33",border:`1px solid ${col}88`,color:col,fontFamily:"ui-monospace,monospace",whiteSpace:"nowrap"}}>
-                        {s} {surfNames[s]||""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{width:1.5,height:8,background:col,opacity:0.7}}/>
-            </div>
-          );
-        })}
 
         {hovered&&status==="ready"&&(
           <div style={{position:"absolute",bottom:14,left:14,background:"rgba(7,14,26,0.94)",border:"1px solid #00c8ff",borderRadius:8,padding:"6px 12px",pointerEvents:"none",zIndex:4,backdropFilter:"blur(8px)"}}>
