@@ -25199,17 +25199,21 @@ function AccountsPage(){
 // LAB MANAGER — full lab case tracking & appointment readiness system
 // ══════════════════════════════════════════════════════════════════════════════
 const LAB_STATUSES={
-  draft:      {l:"Draft",          c:"#64748B", bg:"rgba(100,116,139,0.12)"},
-  sent:       {l:"Sent to Lab",    c:"#3B82F6", bg:"rgba(59,130,246,0.12)"},
-  in_lab:     {l:"In Lab",         c:"#8B5CF6", bg:"rgba(139,92,246,0.12)"},
-  try_in:     {l:"Try-In Due",     c:"#F97316", bg:"rgba(249,115,22,0.12)"},
-  overdue:    {l:"Overdue",        c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
-  arrived:    {l:"Arrived",        c:"#06B6D4", bg:"rgba(6,182,212,0.12)"},
-  nurse_check:{l:"Nurse Check",    c:"#EC4899", bg:"rgba(236,72,153,0.12)"},
-  awaiting_approval:{l:"Awaiting Approval",c:"#F59E0B",bg:"rgba(245,158,11,0.12)"},
-  approved:   {l:"Approved ✓",     c:"#22C55E", bg:"rgba(34,197,94,0.12)"},
-  rejected:   {l:"Rejected ✗",     c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
-  fitted:     {l:"Fitted / Done",  c:"#22C55E", bg:"rgba(34,197,94,0.08)"},
+  draft:            {l:"Draft",             c:"#64748B", bg:"rgba(100,116,139,0.12)"},
+  sent:             {l:"Sent to Lab",       c:"#3B82F6", bg:"rgba(59,130,246,0.12)"},
+  confirmed:        {l:"Confirmed by Lab",  c:"#6366F1", bg:"rgba(99,102,241,0.12)"},
+  in_production:    {l:"In Production",     c:"#8B5CF6", bg:"rgba(139,92,246,0.12)"},
+  dispatched:       {l:"Dispatched",        c:"#0EA5E9", bg:"rgba(14,165,233,0.12)"},
+  delayed:          {l:"Delayed",           c:"#F97316", bg:"rgba(249,115,22,0.12)"},
+  arrived:          {l:"Arrived",           c:"#06B6D4", bg:"rgba(6,182,212,0.12)"},
+  nurse_check:      {l:"Nurse Check",       c:"#EC4899", bg:"rgba(236,72,153,0.12)"},
+  awaiting_approval:{l:"Awaiting Approval", c:"#F59E0B", bg:"rgba(245,158,11,0.12)"},
+  approved:         {l:"Approved ✓",        c:"#22C55E", bg:"rgba(34,197,94,0.12)"},
+  fitted:           {l:"Fitted / Done",     c:"#22C55E", bg:"rgba(34,197,94,0.08)"},
+  returned:         {l:"Returned to Lab",   c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
+  cancelled:        {l:"Cancelled",         c:"#6B7280", bg:"rgba(107,114,128,0.12)"},
+  query:            {l:"Query / Info Req",  c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
+  overdue:          {l:"Overdue",           c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
 };
 const LAB_CASE_TYPES=["PFM Crown","Zirconia Crown","Metal Crown","Porcelain Veneer","Composite Veneer","Nightguard (Hard)","Nightguard (Soft)","Occlusal Splint","Chrome Denture","Acrylic Denture","Partial Denture","Implant Crown","Implant Bridge","Bridge (PFM)","Bridge (Zirconia)","Orthodontic Retainer","Study Models","Custom Tray","Other"];
 const LAB_COMM_TYPES=["Phone Call","Email","SMS","Lab Note","In-Person"];
@@ -25217,8 +25221,14 @@ const now_str=()=>new Date().toLocaleString("en-GB",{day:"2-digit",month:"short"
 const date_str=(d)=>d?new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"—";
 const days_until=(iso)=>{const d=new Date(iso)-new Date();return Math.ceil(d/86400000);};
 
+const UNMATCHED_EMAILS_INIT=[
+  {id:"E1",from:"dispatch@prestigelab.co.uk",subject:"Sarah Chen crown dispatched",body:"Case L1 for Sarah Chen has been dispatched and will arrive tomorrow.",receivedAt:"Today 09:14",parsed:{patient:"Sarah Chen",caseId:"L1",status:"dispatched",lab:"Prestige Dental Lab"},confidence:"high",matched:false,archived:false},
+  {id:"E2",from:"info@southernceramics.com",subject:"Veneer case update",body:"The veneer case for Helen is currently in production. Expected completion 20 Jun.",receivedAt:"Today 08:30",parsed:{patient:"Helen",status:"in_production",lab:"Southern Ceramics"},confidence:"medium",matched:false,archived:false},
+  {id:"E3",from:"noreply@unknownlab.com",subject:"Case update",body:"Your case is ready.",receivedAt:"Yesterday 17:22",parsed:{},confidence:"low",matched:false,archived:false},
+];
+
 const LABS_INIT=[
-  {id:"L1",patient:"Sarah Chen",pid:"P2",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Prestige Dental Lab",type:"PFM Crown",tooth:"UR6",shade:"A2",sentDate:"2026-05-06",dueDate:"2026-05-14",appointmentDate:"2026-06-03",status:"nurse_check",
+  {id:"L1",patient:"Sarah Chen",pid:"P2",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Prestige Dental Lab",type:"PFM Crown",tooth:"UR6",shade:"A2",sentDate:"2026-05-06",dueDate:"2026-05-14",appointmentDate:"2026-06-03",status:"nurse_check",trackingNumber:"",expectedDelivery:"",labContactEmail:"lab@prestige.co.uk",
    nurseCheck:{itemsChecked:["shade","prescription","impressions"],dropdown:"Impressions taken by nurse",notes:"Shade verified under natural light"},
    audit:[{by:"Reception",role:"reception",at:"06 May 09:12",action:"Case created — Sent to Lab"},
           {by:"Prestige Lab",role:"lab",at:"06 May 14:00",action:"Lab confirmed receipt"},
@@ -25227,25 +25237,25 @@ const LABS_INIT=[
    commsLog:[{type:"Phone Call",by:"Nurse Adams",at:"06 May 09:15",note:"Confirmed case being sent today"},
              {type:"Email",by:"Nurse Adams",at:"13 May 15:00",note:"Chased ETA — lab confirmed 14 May"}],
    notes:"Shade A2 verified on arrival ✓"},
-  {id:"L2",patient:"James Kirk",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Nightguard (Hard)",tooth:"Full arch",shade:"N/A",sentDate:"2026-05-05",dueDate:"2026-05-13",appointmentDate:"2026-05-28",status:"overdue",
+  {id:"L2",patient:"James Kirk",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Nightguard (Hard)",tooth:"Full arch",shade:"N/A",sentDate:"2026-05-05",dueDate:"2026-05-13",appointmentDate:"2026-05-28",status:"overdue",trackingNumber:"",expectedDelivery:"",labContactEmail:"",
    nurseCheck:null,
    audit:[{by:"Reception",role:"reception",at:"05 May 09:00",action:"Case created — Sent to Lab"},
           {by:"System",role:"system",at:"13 May 00:00",action:"Auto-flagged Overdue"}],
    commsLog:[{type:"Phone Call",by:"Nurse Brown",at:"14 May 09:00",note:"Lab said dispatching today — not received yet"}],
    notes:"2 days overdue — chased by phone"},
-  {id:"L3",patient:"Helen Rowe",pid:null,clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Southern Ceramics",type:"Porcelain Veneer",tooth:"UL1",shade:"B1",sentDate:"2026-05-08",dueDate:"2026-06-15",appointmentDate:"2026-06-17",status:"in_lab",
+  {id:"L3",patient:"Helen Rowe",pid:null,clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Southern Ceramics",type:"Porcelain Veneer",tooth:"UL1",shade:"B1",sentDate:"2026-05-08",dueDate:"2026-06-15",appointmentDate:"2026-06-17",status:"in_production",trackingNumber:"",expectedDelivery:"2026-06-13",labContactEmail:"info@southernceramics.com",
    nurseCheck:null,
    audit:[{by:"Reception",role:"reception",at:"08 May 09:30",action:"Case created — Sent to Lab"}],
    commsLog:[],
    notes:"Confirm shade B1 not A2 on arrival"},
-  {id:"L4",patient:"Tom Smith",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Chrome Denture",tooth:"Lower",shade:"N/A",sentDate:"2026-05-01",dueDate:"2026-05-20",appointmentDate:"2026-05-22",status:"awaiting_approval",
+  {id:"L4",patient:"Tom Smith",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Chrome Denture",tooth:"Lower",shade:"N/A",sentDate:"2026-05-01",dueDate:"2026-05-20",appointmentDate:"2026-05-22",status:"awaiting_approval",trackingNumber:"",expectedDelivery:"",labContactEmail:"",
    nurseCheck:{itemsChecked:["shade","fit","prescription","impressions","rx_complete"],dropdown:"Nurse verified all items",notes:"All checks complete — ready for dentist approval"},
    audit:[{by:"Reception",role:"reception",at:"01 May 10:00",action:"Case created — Sent to Lab"},
           {by:"Nurse Brown",role:"nurse",at:"20 May 09:00",action:"Arrived — nurse check complete"},
           {by:"Nurse Brown",role:"nurse",at:"20 May 09:30",action:"Submitted for dentist approval"}],
    commsLog:[],
    notes:"Try-in scheduled — all items verified"},
-  {id:"L5",patient:"Amy Torres",pid:"P4",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Implant Direct",type:"Implant Crown",tooth:"UL2",shade:"A1",sentDate:"2026-04-20",dueDate:"2026-05-25",appointmentDate:"2026-06-10",status:"approved",
+  {id:"L5",patient:"Amy Torres",pid:"P4",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Implant Direct",type:"Implant Crown",tooth:"UL2",shade:"A1",sentDate:"2026-04-20",dueDate:"2026-05-25",appointmentDate:"2026-06-10",status:"approved",trackingNumber:"IMP-2026-881",expectedDelivery:"2026-05-24",labContactEmail:"orders@implantdirect.co.uk",
    nurseCheck:{itemsChecked:["shade","fit","prescription","impressions","rx_complete"],dropdown:"Nurse verified all items",notes:""},
    audit:[{by:"Reception",role:"reception",at:"20 Apr 10:00",action:"Case created — Sent to Lab"},
           {by:"Nurse Adams",role:"nurse",at:"25 May 09:00",action:"Arrived — nurse check complete"},
@@ -25268,7 +25278,14 @@ function LabPage(){
   const [commsModal,setCommsModal]=useState(null);
   const [rejectModal,setRejectModal]=useState(null);
   const [rejectNote,setRejectNote]=useState("");
-  const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),3000);};
+  const [statusModal,setStatusModal]=useState(null);
+  const [statusForm,setStatusForm]=useState({status:"",notes:""});
+  const [unmatchedEmails,setUnmatchedEmails]=useState(UNMATCHED_EMAILS_INIT);
+  const [linkEmailModal,setLinkEmailModal]=useState(null);
+  const [linkCaseId,setLinkCaseId]=useState("");
+  const [portalSimModal,setPortalSimModal]=useState(false);
+  const [portalSimForm,setPortalSimForm]=useState({caseId:"",status:"",note:""});
+  const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),4000);};
 
   const addAudit=(id,by,role,action)=>{
     const at=now_str();
@@ -25281,9 +25298,11 @@ function LabPage(){
 
   // Derived stats
   const overdueCases=labs.filter(l=>l.status==="overdue");
-  const due48h=labs.filter(l=>l.status==="in_lab"&&l.dueDate&&days_until(l.dueDate)<=2&&days_until(l.dueDate)>0);
+  const due48h=labs.filter(l=>["in_production","sent","confirmed"].includes(l.status)&&l.dueDate&&days_until(l.dueDate)<=2&&days_until(l.dueDate)>0);
   const awaitingApproval=labs.filter(l=>l.status==="awaiting_approval");
   const apptReady=labs.filter(l=>l.status==="approved"&&l.appointmentDate&&days_until(l.appointmentDate)<=2);
+  const apptRisk48h=labs.filter(l=>l.appointmentDate&&days_until(l.appointmentDate)<=2&&days_until(l.appointmentDate)>=0&&!["approved","fitted"].includes(l.status));
+  const apptRisk24h=labs.filter(l=>l.appointmentDate&&days_until(l.appointmentDate)<=1&&days_until(l.appointmentDate)>=0&&!["arrived","nurse_check","awaiting_approval","approved","fitted"].includes(l.status));
 
   const allLabs=[...new Set(labs.map(l=>l.lab))];
   const filtered=labs.filter(l=>{
@@ -25294,12 +25313,12 @@ function LabPage(){
   });
 
   // New case form state
-  const blankCase={patient:"",pid:null,clinician:"",nurse:"",lab:"",type:"PFM Crown",tooth:"",shade:"",sentDate:new Date().toISOString().slice(0,10),dueDate:"",appointmentDate:"",notes:""};
+  const blankCase={patient:"",pid:null,clinician:"",nurse:"",lab:"",type:"PFM Crown",tooth:"",shade:"",sentDate:new Date().toISOString().slice(0,10),dueDate:"",appointmentDate:"",notes:"",trackingNumber:"",expectedDelivery:"",labContactEmail:""};
   const [newForm,setNewForm]=useState(blankCase);
   const submitNewCase=()=>{
     if(!newForm.patient||!newForm.lab||!newForm.dueDate){doToast("Fill in Patient, Lab and Due Date","#EF4444");return;}
     const id="L"+(Date.now()%100000);
-    setLabs(p=>[...p,{...newForm,id,status:"sent",nurseCheck:null,audit:[{by:"Reception",role:"reception",at:now_str(),action:"Case created — Sent to Lab"}],commsLog:[]}]);
+    setLabs(p=>[...p,{...newForm,id,status:"sent",nurseCheck:null,audit:[{by:"Reception",role:"reception",at:now_str(),action:"Case created — Sent to Lab"}],commsLog:[],trackingNumber:newForm.trackingNumber||"",expectedDelivery:newForm.expectedDelivery||"",labContactEmail:newForm.labContactEmail||""}]);
     setNewCaseModal(false);setNewForm(blankCase);
     doToast("✓ New lab case created for "+newForm.patient);
   };
@@ -25360,9 +25379,15 @@ function LabPage(){
             </div>
             <div><label style={lbl}>Sent Date</label><input type="date" value={newForm.sentDate} onChange={e=>setNewForm(p=>({...p,sentDate:e.target.value}))} style={inp}/></div>
             <div><label style={lbl}>Due Date *</label><input type="date" value={newForm.dueDate} onChange={e=>setNewForm(p=>({...p,dueDate:e.target.value}))} style={inp}/></div>
+            <div><label style={lbl}>Expected Delivery</label><input type="date" value={newForm.expectedDelivery} onChange={e=>setNewForm(p=>({...p,expectedDelivery:e.target.value}))} style={inp}/></div>
             <div><label style={lbl}>Appointment Date</label><input type="date" value={newForm.appointmentDate} onChange={e=>setNewForm(p=>({...p,appointmentDate:e.target.value}))} style={inp}/></div>
+            <div><label style={lbl}>Tracking Number (optional)</label><input value={newForm.trackingNumber} onChange={e=>setNewForm(p=>({...p,trackingNumber:e.target.value}))} style={inp} placeholder="e.g. TRK-12345"/></div>
+            <div><label style={lbl}>Lab Contact Email</label><input type="email" value={newForm.labContactEmail} onChange={e=>setNewForm(p=>({...p,labContactEmail:e.target.value}))} style={inp} placeholder="lab@example.com"/></div>
           </div>
-          <div style={{marginTop:12}}><label style={lbl}>Notes</label>
+          <div style={{marginTop:10,padding:"8px 12px",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.18)",borderRadius:8,fontSize:11,color:"#94A3B8"}}>
+            📧 Notify lab at: <span style={{color:C.blue,fontWeight:700}}>labs+riverside@prodentalconnect.co.uk</span> — share this address with your lab for email updates
+          </div>
+          <div style={{marginTop:10}}><label style={lbl}>Notes</label>
             <textarea value={newForm.notes} onChange={e=>setNewForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="Any special instructions…"/>
           </div>
           <div style={{display:"flex",gap:8,marginTop:16}}>
@@ -25457,6 +25482,112 @@ function LabPage(){
         </div>
       </div>}
 
+      {/* ── Status Update Modal ─────────────────────────────────────────── */}
+      {statusModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setStatusModal(null);}}>
+        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Update Case Status</div>
+          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>{statusModal.patient} · {statusModal.type} · {statusModal.lab}</div>
+          <div style={{marginBottom:12}}>
+            <label style={lbl}>New Status</label>
+            <select value={statusForm.status} onChange={e=>setStatusForm(p=>({...p,status:e.target.value}))} style={{...inp,cursor:"pointer"}}>
+              <option value="">Select status…</option>
+              {Object.entries(LAB_STATUSES).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:12}}>
+            <label style={lbl}>Notes (optional)</label>
+            <textarea value={statusForm.notes} onChange={e=>setStatusForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="Reason for status change…"/>
+          </div>
+          <div style={{marginBottom:14,padding:"8px 12px",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.15)",borderRadius:8,fontSize:11,color:"#94A3B8"}}>
+            Updated by: <span style={{color:C.text,fontWeight:700}}>Staff (Current User)</span>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setStatusModal(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={()=>{
+              if(!statusForm.status){doToast("Select a status","#EF4444");return;}
+              updateStatus(statusModal.id,statusForm.status,"Staff","staff");
+              if(statusForm.notes){
+                const entry={type:"Staff Note",by:"Staff",at:now_str(),note:statusForm.notes,source:"Staff"};
+                setLabs(p=>p.map(x=>x.id===statusModal.id?{...x,commsLog:[...x.commsLog,entry]}:x));
+              }
+              if(statusForm.status==="arrived")doToast("📋 Task created: Nurse Check Required for "+statusModal.patient);
+              else if(statusForm.status==="nurse_check")doToast("📋 Task created: Dentist Approval Required for "+statusModal.patient);
+              else if(statusForm.status==="delayed")doToast("🔔 Alert sent to reception and dentist: Lab case delayed — "+statusModal.patient);
+              else if(statusForm.status==="query")doToast("🚨 Urgent task: Lab requires information — "+statusModal.patient+" "+statusModal.type,"#EF4444");
+              else doToast("✓ Status updated to: "+(LAB_STATUSES[statusForm.status]?.l||statusForm.status));
+              setStatusModal(null);setStatusForm({status:"",notes:""});
+            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Update Status</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Link Email Modal ─────────────────────────────────────────────── */}
+      {linkEmailModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setLinkEmailModal(null);}}>
+        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:420,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Review & Link Email</div>
+          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>From: {linkEmailModal.from} · {linkEmailModal.receivedAt}</div>
+          <div style={{padding:"10px 12px",background:"rgba(15,28,52,0.8)",borderRadius:8,marginBottom:14,fontSize:11,color:"#CBD5E1",lineHeight:1.6}}>{linkEmailModal.body}</div>
+          <div style={{marginBottom:14}}>
+            <label style={lbl}>Link to Case</label>
+            <select value={linkCaseId} onChange={e=>setLinkCaseId(e.target.value)} style={{...inp,cursor:"pointer"}}>
+              <option value="">Select case…</option>
+              {labs.map(l=><option key={l.id} value={l.id}>{l.id} — {l.patient} ({l.type})</option>)}
+            </select>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{setLinkEmailModal(null);setLinkCaseId("");}} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={()=>{
+              if(!linkCaseId){doToast("Select a case","#EF4444");return;}
+              const entry={type:"Email",by:"Email Parser",at:now_str(),note:"Email matched: "+linkEmailModal.subject,source:"Email Parser"};
+              setLabs(p=>p.map(x=>x.id===linkCaseId?{...x,commsLog:[...x.commsLog,entry]}:x));
+              setUnmatchedEmails(p=>p.map(e=>e.id===linkEmailModal.id?{...e,matched:true}:e));
+              setLinkEmailModal(null);setLinkCaseId("");
+              doToast("✓ Email linked to case "+linkCaseId);
+            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Link Email to Case</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Portal Simulate Modal ────────────────────────────────────────── */}
+      {portalSimModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setPortalSimModal(false);}}>
+        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:440,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Simulate Lab Portal Update</div>
+          <div style={{fontSize:11,color:"#94A3B8",marginBottom:16}}>Simulates an update submitted by a lab via the portal</div>
+          <div style={{marginBottom:12}}>
+            <label style={lbl}>Case</label>
+            <select value={portalSimForm.caseId} onChange={e=>setPortalSimForm(p=>({...p,caseId:e.target.value}))} style={{...inp,cursor:"pointer"}}>
+              <option value="">Select case…</option>
+              {labs.map(l=><option key={l.id} value={l.id}>{l.id} — {l.patient} ({l.type})</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:12}}>
+            <label style={lbl}>New Status</label>
+            <select value={portalSimForm.status} onChange={e=>setPortalSimForm(p=>({...p,status:e.target.value}))} style={{...inp,cursor:"pointer"}}>
+              <option value="">Select…</option>
+              {Object.entries(LAB_STATUSES).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={lbl}>Lab Note</label>
+            <textarea value={portalSimForm.note} onChange={e=>setPortalSimForm(p=>({...p,note:e.target.value}))} rows={2} style={{...inp,resize:"vertical"}} placeholder="Message from lab…"/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setPortalSimModal(false)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={()=>{
+              if(!portalSimForm.caseId||!portalSimForm.status){doToast("Select case and status","#EF4444");return;}
+              updateStatus(portalSimForm.caseId,portalSimForm.status,"Lab Portal","lab");
+              const lcase=labs.find(x=>x.id===portalSimForm.caseId);
+              if(portalSimForm.note){
+                const entry={type:"Lab Portal",by:"Lab Portal",at:now_str(),note:portalSimForm.note,source:"Lab Portal"};
+                setLabs(p=>p.map(x=>x.id===portalSimForm.caseId?{...x,commsLog:[...x.commsLog,entry]}:x));
+              }
+              doToast("🌐 Lab portal update applied for "+(lcase?.patient||portalSimForm.caseId));
+              setPortalSimModal(false);setPortalSimForm({caseId:"",status:"",note:""});
+            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Apply Lab Update</button>
+          </div>
+        </div>
+      </div>}
+
       {/* ── Case Detail Panel ───────────────────────────────────────────── */}
       {detailCase&&(()=>{const lc=labs.find(x=>x.id===detailCase);if(!lc)return null;const st=S[lc.status];return(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"flex-start",justifyContent:"flex-end",zIndex:940,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setDetailCase(null);}}>
@@ -25505,34 +25636,39 @@ function LabPage(){
               {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1"}}>{lc.nurseCheck.notes}</div>}
             </div>}
 
-            {/* Comms log */}
+            {/* Unified Communications Timeline */}
             <div style={{marginBottom:16}}>
               <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                Communications ({lc.commsLog.length})
+                Communications Timeline
                 <button onClick={()=>setCommsModal(lc)} style={{fontSize:10,padding:"3px 10px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,cursor:"pointer",color:C.blue,fontWeight:700}}>+ Log</button>
               </div>
-              {lc.commsLog.length===0?<div style={{fontSize:11,color:"#4B5563",textAlign:"center",padding:"10px 0"}}>No communications logged</div>:
-                lc.commsLog.map((e,i)=>(
-                  <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid rgba(59,130,246,0.35)"}}>
-                    <div style={{fontSize:10,color:"#94A3B8",marginBottom:2}}>{e.type} · {e.by} · {e.at}</div>
-                    <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note}</div>
-                  </div>
-                ))
-              }
-            </div>
-
-            {/* Audit log */}
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8}}>Audit Trail</div>
-              {lc.audit.map((a,i)=>(
-                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:6}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:C.blue,marginTop:4,flexShrink:0}}/>
-                  <div>
-                    <div style={{fontSize:10,color:"#94A3B8"}}>{a.at} · {a.by}</div>
-                    <div style={{fontSize:11,color:"#F8FAFC"}}>{a.action}</div>
-                  </div>
-                </div>
-              ))}
+              {(()=>{
+                const sourceIcon={Staff:"👤",Email:"📧","Email Parser":"📧","Lab Portal":"🌐",System:"🔔"};
+                const commEntries=lc.commsLog.map(e=>({...e,_kind:"comm"}));
+                const auditEntries=lc.audit.map(a=>({...a,_kind:"audit",source:"System",note:a.action,by:a.by,at:a.at}));
+                const allEntries=[...commEntries,...auditEntries];
+                if(allEntries.length===0)return<div style={{fontSize:11,color:"#4B5563",textAlign:"center",padding:"10px 0"}}>No communications logged</div>;
+                return allEntries.map((e,i)=>{
+                  const src=e.source||(e._kind==="audit"?"System":"Staff");
+                  const icon=sourceIcon[src]||"📌";
+                  const borderColor=src==="Lab Portal"?"rgba(34,197,94,0.4)":src==="Email Parser"||src==="Email"?"rgba(59,130,246,0.4)":src==="System"?"rgba(100,116,139,0.4)":"rgba(236,72,153,0.4)";
+                  return(
+                    <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid "+borderColor}}>
+                      <div style={{fontSize:10,color:"#94A3B8",marginBottom:2,display:"flex",gap:6,alignItems:"center"}}>
+                        <span>{icon}</span>
+                        <span style={{fontWeight:700,color:"#CBD5E1"}}>{src}</span>
+                        <span>·</span>
+                        <span>{e.type||"Audit"}</span>
+                        <span>·</span>
+                        <span>{e.by}</span>
+                        <span>·</span>
+                        <span>{e.at}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note||e.action}</div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Actions */}
@@ -25545,6 +25681,7 @@ function LabPage(){
               {lc.status==="approved"&&<button onClick={()=>{updateStatus(lc.id,"fitted","Dentist","dentist");doToast("✓ Case marked fitted");}} style={{padding:"7px 14px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.green}}>Mark Fitted ✓</button>}
               {lc.status==="overdue"&&<button onClick={()=>{const e={type:"Phone Call",by:"Nurse",at:now_str(),note:"Chased lab for update"};setLabs(p=>p.map(x=>x.id===lc.id?{...x,commsLog:[...x.commsLog,e]}:x));addAudit(lc.id,"Nurse","nurse","Lab chased by phone");doToast("📞 Lab chased");}} style={{padding:"7px 14px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red}}>📞 Chase Lab</button>}
               <button onClick={()=>setCommsModal(lc)} style={{padding:"7px 14px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:600,color:C.blue}}>Log Comm</button>
+              <button onClick={()=>{setStatusModal(lc);setStatusForm({status:lc.status,notes:""}); }} style={{padding:"7px 14px",background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:600,color:C.amber}}>Update Status</button>
             </div>
           </div>
         </div>
@@ -25565,8 +25702,8 @@ function LabPage(){
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid rgba(59,130,246,0.1)",paddingBottom:0}}>
-        {[["cases","Cases"],["analytics","Analytics"],["reports","Reports"]].map(([k,l])=>(
+      <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid rgba(59,130,246,0.1)",paddingBottom:0,flexWrap:"wrap"}}>
+        {[["cases","Cases"],["emails","📧 Emails"],["portal","🌐 Portal"],["analytics","Analytics"],["reports","Reports"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:tab===k?"2px solid #006DFF":"2px solid transparent",marginBottom:-1,cursor:"pointer",fontSize:12,fontWeight:tab===k?800:500,color:tab===k?C.blue:"#94A3B8"}}>{l}</button>
         ))}
       </div>
