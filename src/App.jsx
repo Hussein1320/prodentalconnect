@@ -25792,7 +25792,7 @@ function LabPage({labs:labsProp,setLabs:setLabsProp,setPage}){
                   const stageColor=isDone||isActive?stage.color:"#1E293B";
                   const textColor=isDone||isActive?stage.color:"#475569";
                   return(
-                  <React.Fragment key={stage.id}>
+                  <div key={stage.id} style={{display:"flex",alignItems:"center",flex:1,minWidth:0}}>
                     <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1,minWidth:0}}>
                       <div style={{width:24,height:24,borderRadius:"50%",background:isDone?stage.color:isActive?stage.color+"33":"#1E293B",border:`2px solid ${isDone||isActive?stage.color:"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:isDone?"#132238":isActive?stage.color:"#475569",fontWeight:800,transition:"all .2s"}}>
                         {isDone?"✓":i+1}
@@ -25800,7 +25800,7 @@ function LabPage({labs:labsProp,setLabs:setLabsProp,setPage}){
                       <div style={{fontSize:7,fontWeight:isActive?800:500,color:textColor,marginTop:3,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:52}}>{stage.label}</div>
                     </div>
                     {i<LAB_WORKFLOW_STAGES.length-1&&<div style={{height:2,flex:0.3,background:isDone?stage.color:"#1E293B",transition:"all .2s",marginBottom:12}}/>}
-                  </React.Fragment>
+                  </div>
                   );
                 })}
               </div>
