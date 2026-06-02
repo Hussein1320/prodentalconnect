@@ -24863,21 +24863,947 @@ function AccountsPage(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// LAB MANAGER — full lab case tracking & appointment readiness system
+// LAB MANAGER — workflow engine with ownership, escalation & appointment protection
 // ══════════════════════════════════════════════════════════════════════════════
 const LAB_STATUSES={
-  draft:      {l:"Draft",          c:"#64748B", bg:"rgba(100,116,139,0.12)"},
-  sent:       {l:"Sent to Lab",    c:"#3B82F6", bg:"rgba(59,130,246,0.12)"},
-  in_lab:     {l:"In Lab",         c:"#8B5CF6", bg:"rgba(139,92,246,0.12)"},
-  try_in:     {l:"Try-In Due",     c:"#F97316", bg:"rgba(249,115,22,0.12)"},
-  overdue:    {l:"Overdue",        c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
-  arrived:    {l:"Arrived",        c:"#06B6D4", bg:"rgba(6,182,212,0.12)"},
-  nurse_check:{l:"Nurse Check",    c:"#EC4899", bg:"rgba(236,72,153,0.12)"},
-  awaiting_approval:{l:"Awaiting Approval",c:"#F59E0B",bg:"rgba(245,158,11,0.12)"},
-  approved:   {l:"Approved ✓",     c:"#22C55E", bg:"rgba(34,197,94,0.12)"},
-  rejected:   {l:"Rejected ✗",     c:"#EF4444", bg:"rgba(239,68,68,0.12)"},
-  fitted:     {l:"Fitted / Done",  c:"#22C55E", bg:"rgba(34,197,94,0.08)"},
+  draft:                   {l:"Draft",                     c:"#64748B", bg:"rgba(100,116,139,0.12)", owner:"Reception / Nurse",  step:0},
+  sent_to_lab:             {l:"Sent to Lab",               c:"#3B82F6", bg:"rgba(59,130,246,0.12)",  owner:"Lab",                step:1},
+  confirmed_by_lab:        {l:"Confirmed by Lab",          c:"#8B5CF6", bg:"rgba(139,92,246,0.12)",  owner:"Lab",                step:2},
+  in_production:           {l:"In Production",             c:"#A78BFA", bg:"rgba(167,139,250,0.12)", owner:"Lab",                step:3},
+  dispatched:              {l:"Dispatched",                c:"#06B6D4", bg:"rgba(6,182,212,0.12)",   owner:"Reception",          step:4},
+  arrived:                 {l:"Arrived at Practice",       c:"#22D3EE", bg:"rgba(34,211,238,0.12)",  owner:"Reception",          step:5},
+  awaiting_nurse_verification:{l:"Awaiting Nurse Verification",c:"#EC4899",bg:"rgba(236,72,153,0.12)",owner:"Nurse",            step:6},
+  awaiting_dentist_approval:  {l:"Awaiting Dentist Approval",  c:"#F59E0B",bg:"rgba(245,158,11,0.12)", owner:"Treating Dentist",step:7},
+  ready_for_appointment:   {l:"Ready for Appointment",    c:"#22C55E", bg:"rgba(34,197,94,0.12)",   owner:"System",             step:8},
+  fitted:                  {l:"Fitted",                    c:"#22C55E", bg:"rgba(34,197,94,0.08)",   owner:"Dentist",            step:9},
+  returned_to_lab:         {l:"Returned to Lab",           c:"#F97316", bg:"rgba(249,115,22,0.12)", owner:"Lab",                step:1},
+  delayed:                 {l:"Delayed",                   c:"#EF4444", bg:"rgba(239,68,68,0.12)",   owner:"Lab",                step:1},
+  cancelled:               {l:"Cancelled",                 c:"#475569", bg:"rgba(71,85,105,0.10)",   owner:"—",                  step:-1},
+  lab_query:               {l:"Lab Query",                 c:"#F59E0B", bg:"rgba(245,158,11,0.12)",  owner:"Reception",          step:1},
 };
+
+// Workflow pipeline — ordered steps shown in the stepper
+const LAB_WORKFLOW_STEPS=[
+  {id:"draft",             short:"Draft"},
+  {id:"sent_to_lab",       short:"Sent"},
+  {id:"confirmed_by_lab",  short:"Confirmed"},
+  {id:"in_production",     short:"Production"},
+  {id:"dispatched",        short:"Dispatched"},
+  {id:"arrived",           short:"Arrived"},
+  {id:"awaiting_nurse_verification", short:"Nurse Check"},
+  {id:"awaiting_dentist_approval",   short:"Dentist Approval"},
+  {id:"ready_for_appointment",       short:"Ready"},
+  {id:"fitted",            short:"Fitted"},
+];
+
+// Next-action config for each status
+const LAB_NEXT_ACTION={
+  draft:                    {label:"Send to Lab",          role:"reception",   nextStatus:"sent_to_lab"},
+  sent_to_lab:              {label:"Mark Confirmed by Lab",role:"reception",   nextStatus:"confirmed_by_lab"},
+  confirmed_by_lab:         {label:"Mark In Production",  role:"reception",   nextStatus:"in_production"},
+  in_production:            {label:"Mark Dispatched",     role:"reception",   nextStatus:"dispatched"},
+  dispatched:               {label:"Mark Arrived",        role:"reception",   nextStatus:"arrived"},
+  arrived:                  {label:"Start Nurse Verification", role:"nurse",  nextStatus:"awaiting_nurse_verification", nurseModal:true},
+  awaiting_nurse_verification:{label:"Complete Verification",role:"nurse",    nextStatus:"awaiting_dentist_approval",  nurseModal:true},
+  awaiting_dentist_approval:{label:"Approve Case",        role:"dentist",     nextStatus:"ready_for_appointment"},
+  ready_for_appointment:    {label:"Mark Fitted",         role:"dentist",     nextStatus:"fitted"},
+  fitted:                   {label:"Completed",           role:null,          nextStatus:null},
+};
+
+const LAB_CASE_TYPES=["PFM Crown","Zirconia Crown","Metal Crown","Porcelain Veneer","Composite Veneer","Nightguard (Hard)","Nightguard (Soft)","Occlusal Splint","Chrome Denture","Acrylic Denture","Partial Denture","Implant Crown","Implant Bridge","Bridge (PFM)","Bridge (Zirconia)","Orthodontic Retainer","Study Models","Custom Tray","Other"];
+const LAB_COMM_TYPES=["Phone Call","Email","SMS","Lab Note","In-Person","Lab Portal"];
+const now_str=()=>new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const date_str=(d)=>d?new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const days_until=(iso)=>{const d=new Date(iso)-new Date();return Math.ceil(d/86400000);};
+
+// Appointment protection thresholds (days before appointment)
+const apptRisk=(lc)=>{
+  if(!lc.appointmentDate||lc.status==="fitted"||lc.status==="cancelled")return null;
+  const d=days_until(lc.appointmentDate);
+  const readyStatuses=["ready_for_appointment","fitted"];
+  const nurseOk=["awaiting_dentist_approval","ready_for_appointment","fitted"].includes(lc.status);
+  const dentistOk=readyStatuses.includes(lc.status);
+  if(d<=1&&!dentistOk)return"critical";
+  if(d<=2&&!dentistOk)return"high";
+  if(d<=7&&!nurseOk)return"medium";
+  return null;
+};
+
+// How long a case has been in a status requiring human action (for escalation)
+const escalationHours=(lc)=>{
+  if(!lc.lastStatusAt)return 0;
+  return Math.round((Date.now()-new Date(lc.lastStatusAt).getTime())/3600000);
+};
+
+const LABS_INIT=[
+  {id:"L1",patient:"Sarah Chen",pid:"P2",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Prestige Dental Lab",type:"PFM Crown",tooth:"UR6",shade:"A2",
+   sentDate:"2026-05-06",dueDate:"2026-05-14",appointmentDate:"2026-06-03",
+   status:"awaiting_nurse_verification",lastStatusAt:"2026-05-14T10:30:00",
+   nurseCheck:null,
+   audit:[{by:"Reception",role:"reception",at:"06 May 09:12",action:"Case created — Sent to Lab"},
+          {by:"Prestige Lab",role:"lab",at:"06 May 14:00",action:"Confirmed by Lab"},
+          {by:"Prestige Lab",role:"lab",at:"07 May 09:00",action:"In Production"},
+          {by:"Prestige Lab",role:"lab",at:"13 May 16:00",action:"Dispatched"},
+          {by:"Nurse Adams",role:"nurse",at:"14 May 10:30",action:"Arrived at Practice — Nurse verification task created"}],
+   commsLog:[{type:"Phone Call",by:"Nurse Adams",at:"06 May 09:15",note:"Confirmed case being sent today"},
+             {type:"Email",by:"Nurse Adams",at:"13 May 15:00",note:"Chased ETA — lab confirmed 14 May"}],
+   notes:"Shade A2 verified on arrival ✓"},
+  {id:"L2",patient:"James Kirk",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Nightguard (Hard)",tooth:"Full arch",shade:"N/A",
+   sentDate:"2026-05-05",dueDate:"2026-05-13",appointmentDate:"2026-05-28",
+   status:"delayed",lastStatusAt:"2026-05-13T00:00:00",
+   nurseCheck:null,
+   audit:[{by:"Reception",role:"reception",at:"05 May 09:00",action:"Case created — Sent to Lab"},
+          {by:"Prestige Lab",role:"lab",at:"05 May 12:00",action:"Confirmed by Lab"},
+          {by:"System",role:"system",at:"13 May 00:00",action:"Auto-flagged Delayed — past due date"}],
+   commsLog:[{type:"Phone Call",by:"Nurse Brown",at:"14 May 09:00",note:"Lab said dispatching today — not received yet"}],
+   notes:"2 days overdue — chased by phone"},
+  {id:"L3",patient:"Helen Rowe",pid:null,clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Southern Ceramics",type:"Porcelain Veneer",tooth:"UL1",shade:"B1",
+   sentDate:"2026-05-08",dueDate:"2026-06-15",appointmentDate:"2026-06-17",
+   status:"in_production",lastStatusAt:"2026-05-09T10:00:00",
+   nurseCheck:null,
+   audit:[{by:"Reception",role:"reception",at:"08 May 09:30",action:"Case created — Sent to Lab"},
+          {by:"Southern Ceramics",role:"lab",at:"08 May 14:00",action:"Confirmed by Lab"},
+          {by:"Southern Ceramics",role:"lab",at:"09 May 10:00",action:"In Production"}],
+   commsLog:[],
+   notes:"Confirm shade B1 not A2 on arrival"},
+  {id:"L4",patient:"Tom Smith",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Chrome Denture",tooth:"Lower",shade:"N/A",
+   sentDate:"2026-05-01",dueDate:"2026-05-20",appointmentDate:"2026-06-04",
+   status:"awaiting_dentist_approval",lastStatusAt:"2026-05-20T09:30:00",
+   nurseCheck:{correct_patient:true,correct_treatment:true,correct_tooth:true,correct_shade:true,prescription_matches:true,no_defects:true,fit_checked:true,notes:"All checks complete — ready for dentist approval",submittedAt:"20 May 09:30",submittedBy:"Nurse Brown"},
+   audit:[{by:"Reception",role:"reception",at:"01 May 10:00",action:"Case created — Sent to Lab"},
+          {by:"Prestige Lab",role:"lab",at:"01 May 15:00",action:"Confirmed by Lab"},
+          {by:"Prestige Lab",role:"lab",at:"02 May 09:00",action:"In Production"},
+          {by:"Prestige Lab",role:"lab",at:"19 May 16:00",action:"Dispatched"},
+          {by:"Nurse Brown",role:"nurse",at:"20 May 09:00",action:"Arrived at Practice"},
+          {by:"Nurse Brown",role:"nurse",at:"20 May 09:30",action:"Nurse verification complete — awaiting dentist approval"}],
+   commsLog:[],
+   notes:"Try-in scheduled — all items verified"},
+  {id:"L5",patient:"Amy Torres",pid:"P4",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Implant Direct",type:"Implant Crown",tooth:"UL2",shade:"A1",
+   sentDate:"2026-04-20",dueDate:"2026-05-25",appointmentDate:"2026-06-10",
+   status:"ready_for_appointment",lastStatusAt:"2026-05-25T11:00:00",
+   nurseCheck:{correct_patient:true,correct_treatment:true,correct_tooth:true,correct_shade:true,prescription_matches:true,no_defects:true,fit_checked:false,notes:"All good — implant crown seat checked",submittedAt:"25 May 09:00",submittedBy:"Nurse Adams"},
+   audit:[{by:"Reception",role:"reception",at:"20 Apr 10:00",action:"Case created — Sent to Lab"},
+          {by:"Implant Direct",role:"lab",at:"20 Apr 14:00",action:"Confirmed by Lab"},
+          {by:"Implant Direct",role:"lab",at:"22 Apr 09:00",action:"In Production"},
+          {by:"Implant Direct",role:"lab",at:"24 May 16:00",action:"Dispatched"},
+          {by:"Nurse Adams",role:"nurse",at:"25 May 09:00",action:"Arrived at Practice"},
+          {by:"Nurse Adams",role:"nurse",at:"25 May 09:30",action:"Nurse verification complete"},
+          {by:"Dr Patel",role:"dentist",at:"25 May 11:00",action:"Approved ✓ — Ready for Appointment"}],
+   commsLog:[{type:"Email",by:"Nurse Adams",at:"22 Apr 09:00",note:"Lab confirmed receipt and timeline"}],
+   notes:"Allow extra time for try-in"},
+];
+
+// Nurse verification checklist items
+const NC_ITEMS=[
+  {k:"correct_patient",     l:"Correct patient",                   required:true},
+  {k:"correct_treatment",   l:"Correct treatment / appliance",     required:true},
+  {k:"correct_tooth",       l:"Correct tooth / arch",              required:true},
+  {k:"correct_shade",       l:"Correct shade",                     required:true},
+  {k:"prescription_matches",l:"Prescription matches",              required:true},
+  {k:"no_defects",          l:"No visible defects",                required:true},
+  {k:"fit_checked",         l:"Fit / try-in checked (if applicable)", required:false},
+];
+
+function LabPage(){
+  const lbvw=useWindowWidth();const isMob=lbvw<768;
+  const [labs,setLabs]=useState(LABS_INIT);
+  const [toast,setToast]=useState(null);
+  const [tab,setTab]=useState("cases");
+  const [filterStatus,setFilterStatus]=useState("all");
+  const [filterLab,setFilterLab]=useState("all");
+  const [search,setSearch]=useState("");
+  const [detailCase,setDetailCase]=useState(null);
+  const [newCaseModal,setNewCaseModal]=useState(false);
+  const [nurseModal,setNurseModal]=useState(null);
+  const [commsModal,setCommsModal]=useState(null);
+  const [rejectModal,setRejectModal]=useState(null);
+  const [returnModal,setReturnModal]=useState(null);
+  const [rejectNote,setRejectNote]=useState("");
+  const [returnNote,setReturnNote]=useState("");
+  const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),3500);};
+
+  const addAudit=(id,by,role,action)=>{
+    setLabs(p=>p.map(x=>x.id===id?{...x,audit:[...x.audit,{by,role,at:now_str(),action}]}:x));
+  };
+  const updateStatus=(id,status,by,role,extra)=>{
+    setLabs(p=>p.map(x=>x.id===id?{...x,status,lastStatusAt:new Date().toISOString(),...(extra||{})}:x));
+    addAudit(id,by,role,LAB_STATUSES[status]?.l||status);
+  };
+
+  // Derived stats
+  const activeCases=labs.filter(l=>!["fitted","cancelled"].includes(l.status));
+  const overdueCases=labs.filter(l=>l.status==="delayed");
+  const awaitingNurse=labs.filter(l=>l.status==="awaiting_nurse_verification");
+  const awaitingDentist=labs.filter(l=>l.status==="awaiting_dentist_approval");
+  const readyCases=labs.filter(l=>l.status==="ready_for_appointment");
+  const criticalRisk=labs.filter(l=>apptRisk(l)==="critical");
+  const highRisk=labs.filter(l=>apptRisk(l)==="high");
+  const mediumRisk=labs.filter(l=>apptRisk(l)==="medium");
+  const allLabs=[...new Set(labs.map(l=>l.lab))];
+
+  const filtered=labs.filter(l=>{
+    if(filterStatus!=="all"&&l.status!==filterStatus)return false;
+    if(filterLab!=="all"&&l.lab!==filterLab)return false;
+    if(search&&![l.patient,l.type,l.tooth,l.lab].join(" ").toLowerCase().includes(search.toLowerCase()))return false;
+    return true;
+  });
+
+  // New case form
+  const blankCase={patient:"",pid:null,clinician:"",nurse:"",lab:"",type:"PFM Crown",tooth:"",shade:"",sentDate:new Date().toISOString().slice(0,10),dueDate:"",appointmentDate:"",notes:""};
+  const [newForm,setNewForm]=useState(blankCase);
+  const submitNewCase=()=>{
+    if(!newForm.patient||!newForm.lab||!newForm.dueDate){doToast("Fill in Patient, Lab and Due Date","#EF4444");return;}
+    const id="L"+(Date.now()%100000);
+    setLabs(p=>[...p,{...newForm,id,status:"sent_to_lab",lastStatusAt:new Date().toISOString(),nurseCheck:null,
+      audit:[{by:"Reception",role:"reception",at:now_str(),action:"Case created — Sent to Lab"}],commsLog:[]}]);
+    setNewCaseModal(false);setNewForm(blankCase);
+    doToast("✓ New lab case created for "+newForm.patient+" — workflow started");
+  };
+
+  // Nurse verification form
+  const [ncForm,setNcForm]=useState({correct_patient:false,correct_treatment:false,correct_tooth:false,correct_shade:false,prescription_matches:false,no_defects:false,fit_checked:false,notes:""});
+  const ncRequiredPassed=NC_ITEMS.filter(i=>i.required).every(i=>ncForm[i.k]);
+  const submitNurseCheck=()=>{
+    if(!ncRequiredPassed){doToast("Complete all required checks first","#EF4444");return;}
+    const checkData={...ncForm,submittedAt:now_str(),submittedBy:"Nurse Adams"};
+    setLabs(p=>p.map(x=>x.id===nurseModal.id?{...x,status:"awaiting_dentist_approval",lastStatusAt:new Date().toISOString(),nurseCheck:checkData}:x));
+    addAudit(nurseModal.id,"Nurse Adams","nurse","Nurse verification complete — Awaiting Dentist Approval. Task created for Dr "+nurseModal.clinician?.replace("Dr ",""));
+    setNurseModal(null);setNcForm({correct_patient:false,correct_treatment:false,correct_tooth:false,correct_shade:false,prescription_matches:false,no_defects:false,fit_checked:false,notes:""});
+    doToast("✓ Verification submitted — "+nurseModal.clinician+" has been notified");
+  };
+
+  // Comms log
+  const [commForm,setCommForm]=useState({type:"Phone Call",note:""});
+  const submitComm=()=>{
+    if(!commForm.note){doToast("Enter a note","#EF4444");return;}
+    const entry={type:commForm.type,by:"Nurse",at:now_str(),note:commForm.note};
+    setLabs(p=>p.map(x=>x.id===commsModal.id?{...x,commsLog:[...x.commsLog,entry]}:x));
+    setCommsModal(null);setCommForm({type:"Phone Call",note:""});
+    doToast("✓ Communication logged");
+  };
+
+  // Analytics data
+  const labPerf=allLabs.map(lab=>{
+    const cases=labs.filter(l=>l.lab===lab);
+    const completed=cases.filter(l=>l.status==="fitted");
+    const ontime=completed.filter(l=>!l.wasLate).length;
+    const overdue=cases.filter(l=>l.status==="delayed").length;
+    const reliability=completed.length>0?Math.round((ontime/completed.length)*100):null;
+    return{lab,total:cases.length,active:cases.filter(l=>!["fitted","cancelled"].includes(l.status)).length,overdue,reliability};
+  });
+
+  const S=LAB_STATUSES;
+  const inp={padding:"8px 12px",background:"#0F1C34",border:"1.5px solid rgba(59,130,246,0.2)",borderRadius:9,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",width:"100%",boxSizing:"border-box"};
+  const lbl={fontSize:10,fontWeight:700,color:"rgba(148,163,184,0.8)",letterSpacing:".06em",textTransform:"uppercase",marginBottom:3,display:"block"};
+
+  // Workflow stepper component
+  const WorkflowStepper=({status})=>{
+    const steps=LAB_WORKFLOW_STEPS;
+    const curStep=S[status]?.step??-1;
+    const isOff=["returned_to_lab","delayed","cancelled","lab_query"].includes(status);
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:0,overflowX:"auto",paddingBottom:4,marginBottom:16}}>
+        {steps.map((st,i)=>{
+          const done=!isOff&&curStep>i;
+          const current=!isOff&&curStep===i;
+          const col=done?C.green:current?(S[status]?.c||C.blue):"#1e2d44";
+          const txtCol=done?C.green:current?"#fff":"#475569";
+          return(
+            <React.Fragment key={st.id}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:60,flexShrink:0}}>
+                <div style={{width:22,height:22,borderRadius:"50%",
+                  background:done?"rgba(34,197,94,0.2)":current?(S[status]?.bg||"rgba(59,130,246,0.2)"):"rgba(30,45,68,0.8)",
+                  border:`2px solid ${col}`,display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:9,fontWeight:800,color:col,transition:"all .2s"}}>
+                  {done?"✓":i+1}
+                </div>
+                <div style={{fontSize:7,color:txtCol,fontWeight:current?800:500,marginTop:3,textAlign:"center",lineHeight:1.2,whiteSpace:"nowrap"}}>{st.short}</div>
+              </div>
+              {i<steps.length-1&&<div style={{flex:1,height:2,background:done?"rgba(34,197,94,0.4)":"rgba(30,45,68,0.8)",minWidth:8,marginBottom:14}}/>}
+            </React.Fragment>
+          );
+        })}
+        {isOff&&<div style={{marginLeft:8,padding:"2px 8px",borderRadius:6,background:S[status]?.bg,border:"1px solid "+(S[status]?.c||"#64748B")+"44",fontSize:9,fontWeight:700,color:S[status]?.c||"#64748B",whiteSpace:"nowrap"}}>{S[status]?.l}</div>}
+      </div>
+    );
+  };
+
+  // Owner chip
+  const OwnerBadge=({lc})=>{
+    const owner=S[lc.status]?.owner||"—";
+    const escalateH=escalationHours(lc);
+    const needsEscalate=["awaiting_nurse_verification","awaiting_dentist_approval"].includes(lc.status)&&escalateH>24;
+    const isCritical=needsEscalate&&escalateH>48;
+    return(
+      <div style={{display:"flex",flexDirection:"column",gap:2}}>
+        <div style={{fontSize:9,color:"#64748B",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>Waiting on</div>
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{fontSize:11,fontWeight:800,color:isCritical?C.red:needsEscalate?C.amber:"#E2E8F0"}}>{owner}</div>
+          {needsEscalate&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:isCritical?"rgba(239,68,68,0.15)":"rgba(245,158,11,0.15)",color:isCritical?C.red:C.amber,fontWeight:700,border:`1px solid ${isCritical?"rgba(239,68,68,0.3)":"rgba(245,158,11,0.3)"}`}}>{Math.round(escalateH)}h</span>}
+        </div>
+      </div>
+    );
+  };
+
+  // Appointment risk badge
+  const ApptRiskBadge=({lc,compact})=>{
+    const risk=apptRisk(lc);
+    if(!risk)return null;
+    const cfg={
+      critical:{c:C.red,  bg:"rgba(239,68,68,0.15)",  label:"Critical Risk",   icon:"🔴"},
+      high:    {c:C.amber, bg:"rgba(245,158,11,0.15)", label:"Appointment at Risk", icon:"⚠"},
+      medium:  {c:"#F59E0B",bg:"rgba(245,158,11,0.08)",label:"Readiness Warning",   icon:"⏰"},
+    }[risk];
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:4,padding:compact?"2px 6px":"4px 10px",borderRadius:7,background:cfg.bg,border:`1px solid ${cfg.c}44`}}>
+        <span style={{fontSize:compact?9:10}}>{cfg.icon}</span>
+        <span style={{fontSize:compact?8:10,fontWeight:700,color:cfg.c,whiteSpace:"nowrap"}}>{cfg.label}</span>
+        {!compact&&lc.appointmentDate&&<span style={{fontSize:9,color:cfg.c,opacity:0.7}}>· appt {date_str(lc.appointmentDate)}</span>}
+      </div>
+    );
+  };
+
+  return(
+    <div className="pdc-page-pad" style={{padding:isMob?12:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
+
+      {/* Toast */}
+      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(7,20,40,0.97)",border:"1px solid rgba(80,140,255,0.25)",borderRadius:10,fontSize:12,color:toast.c,zIndex:900,display:"flex",gap:8,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.5)",backdropFilter:"blur(8px)"}}><span style={{fontSize:16}}>🔔</span>{toast.m}</div>}
+
+      {/* ── New Case Modal ─────────────────────────────────────────────────── */}
+      {newCaseModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setNewCaseModal(false);}}>
+        <div style={{background:"#132238",borderRadius:18,width:"100%",maxWidth:560,padding:26,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",maxHeight:"90vh",overflowY:"auto",border:"1px solid rgba(80,140,255,0.18)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>New Lab Case</div>
+          <div style={{fontSize:11,color:"#64748B",marginBottom:18}}>Case will be created in <strong style={{color:C.blue}}>Sent to Lab</strong> status — workflow begins immediately.</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[["patient","Patient Name"],["clinician","Clinician"],["nurse","Assigned Nurse"],["lab","Lab Name"],["tooth","Tooth / Arch"],["shade","Shade"]].map(([k,l])=>(
+              <div key={k}><label style={lbl}>{l}</label><input value={newForm[k]||""} onChange={e=>setNewForm(p=>({...p,[k]:e.target.value}))} style={inp}/></div>
+            ))}
+            <div><label style={lbl}>Treatment Type</label>
+              <select value={newForm.type} onChange={e=>setNewForm(p=>({...p,type:e.target.value}))} style={{...inp,cursor:"pointer"}}>
+                {LAB_CASE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl}>Sent Date</label><input type="date" value={newForm.sentDate} onChange={e=>setNewForm(p=>({...p,sentDate:e.target.value}))} style={inp}/></div>
+            <div><label style={lbl}>Due Date *</label><input type="date" value={newForm.dueDate} onChange={e=>setNewForm(p=>({...p,dueDate:e.target.value}))} style={inp}/></div>
+            <div><label style={lbl}>Fit Appointment Date</label><input type="date" value={newForm.appointmentDate} onChange={e=>setNewForm(p=>({...p,appointmentDate:e.target.value}))} style={inp}/></div>
+          </div>
+          <div style={{marginTop:12}}><label style={lbl}>Special Instructions</label>
+            <textarea value={newForm.notes} onChange={e=>setNewForm(p=>({...p,notes:e.target.value}))} rows={2} style={{...inp,resize:"vertical"}} placeholder="Shade notes, try-in requirements, etc."/>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:16}}>
+            <button onClick={()=>setNewCaseModal(false)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={submitNewCase} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,boxShadow:"0 0 16px rgba(0,109,255,0.4)"}}>Create &amp; Start Workflow →</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Nurse Verification Modal ───────────────────────────────────────── */}
+      {nurseModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setNurseModal(null);}}>
+        <div style={{background:"#0F1C34",borderRadius:18,width:"100%",maxWidth:500,padding:26,boxShadow:"0 24px 60px rgba(0,0,0,0.7)",border:"1px solid rgba(236,72,153,0.25)",maxHeight:"90vh",overflowY:"auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+            <div style={{width:36,height:36,borderRadius:10,background:"rgba(236,72,153,0.15)",border:"1px solid rgba(236,72,153,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🔬</div>
+            <div>
+              <div style={{fontSize:15,fontWeight:800}}>Nurse Verification</div>
+              <div style={{fontSize:11,color:"#EC4899"}}>{nurseModal.patient} · {nurseModal.type} · {nurseModal.lab}</div>
+            </div>
+          </div>
+          <div style={{fontSize:11,color:"#94A3B8",marginBottom:18,padding:"8px 10px",background:"rgba(236,72,153,0.06)",borderRadius:8,border:"1px solid rgba(236,72,153,0.15)"}}>
+            Complete all required checks before submitting. This will notify <strong style={{color:"#F8FAFC"}}>{nurseModal.clinician}</strong> to review and approve.
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Verification Checklist</div>
+            {NC_ITEMS.map(item=>{
+              const checked=ncForm[item.k];
+              return(
+                <label key={item.k} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,marginBottom:5,background:checked?"rgba(34,197,94,0.08)":"rgba(15,28,52,0.6)",cursor:"pointer",border:"1.5px solid "+(checked?"rgba(34,197,94,0.3)":"rgba(59,130,246,0.12)"),transition:"all .15s"}}>
+                  <div style={{width:20,height:20,borderRadius:6,background:checked?"rgba(34,197,94,0.2)":"rgba(15,28,52,0.8)",border:`2px solid ${checked?C.green:"rgba(59,130,246,0.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>
+                    {checked&&<span style={{fontSize:12,color:C.green,fontWeight:900}}>✓</span>}
+                  </div>
+                  <input type="checkbox" checked={!!ncForm[item.k]} onChange={e=>setNcForm(p=>({...p,[item.k]:e.target.checked}))} style={{display:"none"}}/>
+                  <div style={{flex:1}}>
+                    <span style={{fontSize:12,fontWeight:600,color:checked?C.green:"#CBD5E1"}}>{item.l}</span>
+                    {!item.required&&<span style={{fontSize:9,color:"#64748B",marginLeft:6}}>(optional)</span>}
+                  </div>
+                  {!item.required&&<span style={{fontSize:10,color:"#475569"}}>optional</span>}
+                </label>
+              );
+            })}
+          </div>
+          <div style={{marginBottom:6}}>
+            <label style={lbl}>Verification Notes</label>
+            <textarea value={ncForm.notes} onChange={e=>setNcForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="Any observations, issues or important notes about this case…"/>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:14,fontSize:11,color:"#94A3B8",alignItems:"center"}}>
+            <span style={{color:ncRequiredPassed?C.green:C.amber,fontWeight:700}}>{NC_ITEMS.filter(i=>i.required&&ncForm[i.k]).length}/{NC_ITEMS.filter(i=>i.required).length}</span> required items checked
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setNurseModal(null)} style={{flex:1,padding:"10px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={submitNurseCheck} disabled={!ncRequiredPassed}
+              style={{flex:2,padding:"10px",background:ncRequiredPassed?"linear-gradient(135deg,#EC4899,#BE185D)":"rgba(100,116,139,0.2)",color:ncRequiredPassed?"#fff":"#64748B",border:"none",borderRadius:10,cursor:ncRequiredPassed?"pointer":"not-allowed",fontSize:12,fontWeight:700,transition:"all .2s"}}>
+              {ncRequiredPassed?"Submit — Notify Dentist →":"Complete required checks first"}
+            </button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Comms Log Modal ───────────────────────────────────────────────── */}
+      {commsModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setCommsModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:"100%",maxWidth:460,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",border:"1px solid rgba(80,140,255,0.18)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Log Communication</div>
+          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>{commsModal.patient} · {commsModal.lab}</div>
+          {commsModal.commsLog.length>0&&<div style={{marginBottom:12,maxHeight:160,overflowY:"auto"}}>
+            {commsModal.commsLog.map((e,i)=>(
+              <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid rgba(59,130,246,0.35)"}}>
+                <div style={{fontSize:10,color:"#94A3B8",marginBottom:2}}>{e.type} · {e.by} · {e.at}</div>
+                <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note}</div>
+              </div>
+            ))}
+          </div>}
+          <div style={{marginBottom:10}}>
+            <label style={lbl}>Communication Type</label>
+            <select value={commForm.type} onChange={e=>setCommForm(p=>({...p,type:e.target.value}))} style={{...inp,cursor:"pointer"}}>
+              {LAB_COMM_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={lbl}>Note *</label>
+            <textarea value={commForm.note} onChange={e=>setCommForm(p=>({...p,note:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="What was discussed or agreed?"/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setCommsModal(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={submitComm} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700}}>Log Communication</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Reject Modal ──────────────────────────────────────────────────── */}
+      {rejectModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setRejectModal(null);}}>
+        <div style={{background:"#132238",borderRadius:18,width:"100%",maxWidth:420,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",border:"1px solid rgba(239,68,68,0.25)"}}>
+          <div style={{fontSize:15,fontWeight:800,marginBottom:2,color:C.red}}>Reject Case</div>
+          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>{rejectModal.patient} · {rejectModal.type}</div>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button onClick={()=>{if(!rejectNote){doToast("Enter reason","#EF4444");return;}updateStatus(rejectModal.id,"returned_to_lab","Dentist","dentist",{notes:(rejectModal.notes||"")+"\n↺ Returned to Lab: "+rejectNote});setRejectModal(null);setRejectNote("");doToast("↺ Case returned to lab for correction","#F97316");}}
+              style={{flex:1,padding:"8px",border:"1px solid rgba(249,115,22,0.3)",borderRadius:9,background:"rgba(249,115,22,0.1)",cursor:"pointer",fontSize:11,fontWeight:700,color:"#F97316"}}>↺ Return to Lab</button>
+            <button onClick={()=>{if(!rejectNote){doToast("Enter reason","#EF4444");return;}updateStatus(rejectModal.id,"cancelled","Dentist","dentist",{notes:(rejectModal.notes||"")+"\n❌ Cancelled: "+rejectNote});setRejectModal(null);setRejectNote("");doToast("Case cancelled","#EF4444");}}
+              style={{flex:1,padding:"8px",border:"1px solid rgba(239,68,68,0.3)",borderRadius:9,background:"rgba(239,68,68,0.1)",cursor:"pointer",fontSize:11,fontWeight:700,color:C.red}}>❌ Cancel Case</button>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={lbl}>Reason *</label>
+            <textarea value={rejectNote} onChange={e=>setRejectNote(e.target.value)} rows={3} style={{...inp,resize:"vertical",borderColor:"rgba(239,68,68,0.3)"}} placeholder="Shade incorrect, doesn't fit, wrong prescription…"/>
+          </div>
+          <button onClick={()=>setRejectModal(null)} style={{width:"100%",padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+        </div>
+      </div>}
+
+      {/* ── Case Detail Panel (slide-over) ───────────────────────────────── */}
+      {detailCase&&(()=>{const lc=labs.find(x=>x.id===detailCase);if(!lc)return null;const st=S[lc.status];const risk=apptRisk(lc);const escalH=escalationHours(lc);return(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"flex-start",justifyContent:"flex-end",zIndex:940,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setDetailCase(null);}}>
+          <div style={{background:"#0B1424",borderRadius:18,width:"100%",maxWidth:560,height:"100%",maxHeight:"calc(100vh - 32px)",overflowY:"auto",padding:22,boxShadow:"-8px 0 40px rgba(0,0,0,0.6)",border:"1px solid rgba(80,140,255,0.18)"}}>
+
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:17,fontWeight:800,color:"#F8FAFC"}}>{lc.patient}</div>
+                <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>{lc.type} · Tooth {lc.tooth} · {lc.lab}</div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <button onClick={()=>setDetailCase(null)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#94A3B8",cursor:"pointer",fontSize:14,padding:"4px 10px",lineHeight:1}}>✕</button>
+              </div>
+            </div>
+
+            {/* Workflow stepper */}
+            <div style={{background:"rgba(7,14,28,0.8)",borderRadius:12,padding:"12px 10px",marginBottom:14,border:"1px solid rgba(59,130,246,0.1)"}}>
+              <WorkflowStepper status={lc.status}/>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:st.c,boxShadow:`0 0 8px ${st.c}88`}}/>
+                  <span style={{fontSize:12,fontWeight:800,color:st.c}}>{st.l}</span>
+                </div>
+                <OwnerBadge lc={lc}/>
+              </div>
+            </div>
+
+            {/* Appointment risk banner */}
+            {risk&&<div style={{marginBottom:14,padding:"10px 14px",borderRadius:12,background:risk==="critical"?"rgba(239,68,68,0.1)":risk==="high"?"rgba(245,158,11,0.08)":"rgba(245,158,11,0.06)",border:`1px solid ${risk==="critical"?C.red:C.amber}44`}}>
+              <div style={{fontSize:12,fontWeight:700,color:risk==="critical"?C.red:C.amber,marginBottom:3}}>
+                {risk==="critical"?"🔴 Critical Appointment Risk":risk==="high"?"⚠ Appointment at Risk":"⏰ Readiness Warning"}
+              </div>
+              <div style={{fontSize:11,color:"#94A3B8"}}>
+                Fit appointment: <strong style={{color:"#F8FAFC"}}>{date_str(lc.appointmentDate)}</strong> ({days_until(lc.appointmentDate)}d away)
+                {lc.status==="awaiting_dentist_approval"&&" — dentist approval pending"}
+                {lc.status==="awaiting_nurse_verification"&&" — nurse verification pending"}
+              </div>
+            </div>}
+
+            {/* Escalation warning */}
+            {["awaiting_nurse_verification","awaiting_dentist_approval"].includes(lc.status)&&escalH>24&&(
+              <div style={{marginBottom:14,padding:"8px 12px",borderRadius:10,background:escalH>48?"rgba(239,68,68,0.1)":"rgba(245,158,11,0.08)",border:`1px solid ${escalH>48?C.red:C.amber}44`,display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:14}}>{escalH>48?"🚨":"⚠"}</span>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:escalH>48?C.red:C.amber}}>{escalH>48?"48h Escalation":"24h Reminder"}</div>
+                  <div style={{fontSize:10,color:"#94A3B8"}}>{st.owner} has not acted for {Math.round(escalH)} hours</div>
+                </div>
+              </div>
+            )}
+
+            {/* Key dates */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+              {[["Sent",date_str(lc.sentDate),"#64748B"],["Due Lab",date_str(lc.dueDate),lc.status==="delayed"?C.red:lc.dueDate&&days_until(lc.dueDate)<=2?C.amber:"#94A3B8"],["Fit Appt",date_str(lc.appointmentDate),risk?C.amber:"#94A3B8"]].map(([l,v,c])=>(
+                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
+                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:c}}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Details grid */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+              {[["Clinician",lc.clinician],["Assigned Nurse",lc.nurse],["Shade",lc.shade],["Case ID",lc.id]].map(([l,v])=>(
+                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
+                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{v||"—"}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Notes */}
+            {lc.notes&&<div style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:12,border:"1px solid rgba(59,130,246,0.1)",marginBottom:14,fontSize:12,color:"#CBD5E1",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{lc.notes}</div>}
+
+            {/* Nurse verification results */}
+            {lc.nurseCheck&&<div style={{background:"rgba(236,72,153,0.06)",border:"1px solid rgba(236,72,153,0.2)",borderRadius:12,padding:14,marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#EC4899",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span>🔬 Nurse Verification</span>
+                <span style={{fontSize:10,color:"#94A3B8",fontWeight:500}}>{lc.nurseCheck.submittedBy} · {lc.nurseCheck.submittedAt}</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:8}}>
+                {NC_ITEMS.map(item=>{
+                  const passed=lc.nurseCheck[item.k];
+                  return(
+                    <div key={item.k} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",borderRadius:7,background:passed?"rgba(34,197,94,0.08)":"rgba(100,116,139,0.08)",border:`1px solid ${passed?"rgba(34,197,94,0.2)":"rgba(100,116,139,0.12)"}`}}>
+                      <span style={{fontSize:11,color:passed?C.green:"#475569",fontWeight:800}}>{passed?"✓":"—"}</span>
+                      <span style={{fontSize:10,color:passed?"#CBD5E1":"#475569",fontWeight:500}}>{item.l}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1",padding:"8px 10px",background:"rgba(15,28,52,0.5)",borderRadius:7",fontStyle:"italic"}}>{lc.nurseCheck.notes}</div>}
+            </div>}
+
+            {/* Communications */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                Communications ({lc.commsLog.length})
+                <button onClick={()=>setCommsModal(lc)} style={{fontSize:10,padding:"3px 10px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,cursor:"pointer",color:C.blue,fontWeight:700}}>+ Log</button>
+              </div>
+              {lc.commsLog.length===0?<div style={{fontSize:11,color:"#4B5563",textAlign:"center",padding:"8px 0"}}>No communications logged</div>:
+                lc.commsLog.map((e,i)=>(
+                  <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid rgba(59,130,246,0.35)"}}>
+                    <div style={{fontSize:10,color:"#94A3B8",marginBottom:2}}>{e.type} · {e.by} · {e.at}</div>
+                    <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note}</div>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Audit trail */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8}}>Audit Trail</div>
+              <div style={{position:"relative",paddingLeft:18}}>
+                <div style={{position:"absolute",left:7,top:6,bottom:6,width:2,background:"rgba(59,130,246,0.15)",borderRadius:1}}/>
+                {lc.audit.map((a,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:8,position:"relative"}}>
+                    <div style={{position:"absolute",left:-14,top:5,width:8,height:8,borderRadius:"50%",background:a.role==="system"?"#64748B":a.role==="dentist"?C.amber:a.role==="nurse"?"#EC4899":C.blue,border:"2px solid #0B1424",flexShrink:0}}/>
+                    <div>
+                      <div style={{fontSize:10,color:"#94A3B8"}}>{a.at} · <span style={{color:"#CBD5E1"}}>{a.by}</span></div>
+                      <div style={{fontSize:11,color:"#E2E8F0",marginTop:1}}>{a.action}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Workflow Action Buttons */}
+            <div style={{borderTop:"1px solid rgba(59,130,246,0.12)",paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".08em",marginBottom:2}}>Next Action</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {/* Primary next-step action */}
+                {LAB_NEXT_ACTION[lc.status]&&LAB_NEXT_ACTION[lc.status].nextStatus&&(()=>{
+                  const na=LAB_NEXT_ACTION[lc.status];
+                  if(na.nurseModal){
+                    return(<button onClick={()=>{setNurseModal(lc);}} style={{flex:2,padding:"10px 14px",background:"linear-gradient(135deg,#EC4899,#BE185D)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🔬 {na.label} →</button>);
+                  }
+                  const nextSt=S[na.nextStatus];
+                  return(<button onClick={()=>{updateStatus(lc.id,na.nextStatus,"Staff","staff");doToast("✓ "+nextSt.l);}} style={{flex:2,padding:"10px 14px",background:`linear-gradient(135deg,${nextSt.c}cc,${nextSt.c}88)`,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{na.label} →</button>);
+                })()}
+
+                {/* Dentist approve */}
+                {lc.status==="awaiting_dentist_approval"&&<>
+                  <button onClick={()=>{updateStatus(lc.id,"ready_for_appointment","Dr Patel","dentist");doToast("✓ Case approved — Ready for Appointment");}} style={{flex:2,padding:"10px 14px",background:"linear-gradient(135deg,#22C55E,#16A34A)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700}}>Approve ✓ — Ready</button>
+                  <button onClick={()=>setRejectModal(lc)} style={{padding:"10px 14px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:C.red}}>Reject / Return ✗</button>
+                </>}
+
+                {/* Mark fitted */}
+                {lc.status==="ready_for_appointment"&&<button onClick={()=>{updateStatus(lc.id,"fitted","Dentist","dentist");doToast("✓ Case marked fitted — workflow complete");}} style={{flex:1,padding:"10px 14px",background:"linear-gradient(135deg,#22C55E,#16A34A)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700}}>Mark Fitted ✓</button>}
+
+                {/* Chase overdue */}
+                {lc.status==="delayed"&&<button onClick={()=>{const e={type:"Phone Call",by:"Reception",at:now_str(),note:"Chased lab for update — case delayed"};setLabs(p=>p.map(x=>x.id===lc.id?{...x,commsLog:[...x.commsLog,e]}:x));addAudit(lc.id,"Reception","reception","Lab chased — case delayed");doToast("📞 Lab chased");}} style={{flex:1,padding:"10px 14px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:C.red}}>📞 Chase Lab</button>}
+
+                {/* Lab query */}
+                {lc.status==="lab_query"&&<button onClick={()=>setCommsModal(lc)} style={{flex:1,padding:"10px 14px",background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,color:C.amber}}>💬 Respond to Query</button>}
+
+                <button onClick={()=>setCommsModal(lc)} style={{padding:"10px 12px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,cursor:"pointer",fontSize:11,fontWeight:600,color:C.blue}}>Log Comm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );})()}
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:17,fontWeight:800,letterSpacing:"-.02em"}}>Lab Manager</div>
+          <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>
+            {activeCases.length} active · {awaitingNurse.length>0&&<span style={{color:"#EC4899",fontWeight:700}}>{awaitingNurse.length} awaiting nurse · </span>}{awaitingDentist.length>0&&<span style={{color:C.amber,fontWeight:700}}>{awaitingDentist.length} awaiting dentist · </span>}{criticalRisk.length>0&&<span style={{color:C.red,fontWeight:700}}>{criticalRisk.length} critical risk</span>}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {criticalRisk.length>0&&<div style={{padding:"6px 12px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:9,fontSize:11,fontWeight:700,color:C.red}}>🔴 {criticalRisk.length} critical</div>}
+          {overdueCases.length>0&&<div style={{padding:"6px 12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:9,fontSize:11,fontWeight:700,color:C.red}}>⚠ {overdueCases.length} delayed</div>}
+          {awaitingDentist.length>0&&<div style={{padding:"6px 12px",background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:9,fontSize:11,fontWeight:700,color:C.amber}}>🩺 {awaitingDentist.length} need approval</div>}
+          <button onClick={()=>setNewCaseModal(true)} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",boxShadow:"0 0 16px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={12}/>New Lab Case</button>
+        </div>
+      </div>
+
+      {/* ── Tabs ──────────────────────────────────────────────────────────── */}
+      <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid rgba(59,130,246,0.1)"}}>
+        {[["cases","📋 Cases"],["workflow","⚡ Workflow"],["analytics","📊 Analytics"],["reports","📄 Reports"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:tab===k?"2.5px solid #006DFF":"2.5px solid transparent",marginBottom:-1,cursor:"pointer",fontSize:12,fontWeight:tab===k?800:500,color:tab===k?C.blue:"#94A3B8"}}>{l}</button>
+        ))}
+      </div>
+
+      {/* ── CASES TAB ─────────────────────────────────────────────────────── */}
+      {tab==="cases"&&<>
+        {/* Critical risk banners */}
+        {criticalRisk.map(lc=>(
+          <div key={lc.id} style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.35)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"center"}}>
+            <span style={{fontSize:16}}>🔴</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:800,color:C.red}}>Critical Appointment Risk — {lc.patient}</div>
+              <div style={{fontSize:11,color:"#94A3B8",marginTop:1}}>{lc.type} · {date_str(lc.appointmentDate)} · {S[lc.status]?.l} — case not ready</div>
+            </div>
+            <button onClick={()=>setDetailCase(lc.id)} style={{padding:"5px 12px",background:"rgba(239,68,68,0.15)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red,whiteSpace:"nowrap"}}>Take Action →</button>
+          </div>
+        ))}
+
+        {/* Stats grid */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+          {[
+            {l:"Delayed",v:overdueCases.length,c:C.red,bg:"rgba(239,68,68,0.08)",filter:"delayed"},
+            {l:"In Production",v:labs.filter(l=>["sent_to_lab","confirmed_by_lab","in_production"].includes(l.status)).length,c:"#A78BFA",bg:"rgba(139,92,246,0.08)",filter:"in_production"},
+            {l:"Arrived",v:labs.filter(l=>l.status==="arrived").length,c:"#22D3EE",bg:"rgba(6,182,212,0.08)",filter:"arrived"},
+            {l:"Nurse Check",v:awaitingNurse.length,c:"#EC4899",bg:"rgba(236,72,153,0.08)",filter:"awaiting_nurse_verification"},
+            {l:"Dentist Approval",v:awaitingDentist.length,c:C.amber,bg:"rgba(245,158,11,0.08)",filter:"awaiting_dentist_approval"},
+            {l:"Ready",v:readyCases.length,c:C.green,bg:"rgba(34,197,94,0.08)",filter:"ready_for_appointment"},
+          ].map(s=>(
+            <div key={s.l} onClick={()=>setFilterStatus(filterStatus===s.filter?"all":s.filter)} style={{background:filterStatus===s.filter?s.bg:"rgba(15,28,52,0.5)",border:`1px solid ${filterStatus===s.filter?(s.c+"44"):"rgba(59,130,246,0.08)"}`,borderRadius:12,padding:"10px 14px",display:"flex",flexDirection:"column",gap:2,cursor:"pointer",transition:"all .15s"}}>
+              <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
+              <div style={{fontSize:9,fontWeight:700,color:"#64748B",textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search patient, type, lab…" style={{...inp,width:200,flex:"none"}}/>
+          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{...inp,width:180,flex:"none",cursor:"pointer"}}>
+            <option value="all">All statuses</option>
+            {Object.entries(S).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+          </select>
+          <select value={filterLab} onChange={e=>setFilterLab(e.target.value)} style={{...inp,width:180,flex:"none",cursor:"pointer"}}>
+            <option value="all">All labs</option>
+            {allLabs.map(l=><option key={l} value={l}>{l}</option>)}
+          </select>
+          <div style={{fontSize:11,color:"#64748B",marginLeft:"auto"}}>{filtered.length} case{filtered.length!==1?"s":""}</div>
+        </div>
+
+        {/* Cases table */}
+        <div style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,overflow:"hidden",backdropFilter:"blur(4px)",...(isMob&&{overflowX:"auto"})}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,...(isMob&&{minWidth:820})}}>
+            <thead><tr style={{background:"rgba(7,14,28,0.9)",borderBottom:"1px solid rgba(80,140,255,0.12)"}}>
+              {["Patient","Lab","Treatment","Shade","Due","Fit Appt","Status / Owner","Actions"].map(h=>(
+                <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:9,fontWeight:800,color:"rgba(59,130,246,0.6)",letterSpacing:".07em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>{filtered.length===0?
+              <tr><td colSpan={8} style={{padding:"32px",textAlign:"center",color:"#4B5563",fontSize:13}}>No cases match filters</td></tr>:
+              filtered.map((l,i)=>{
+                const st=S[l.status];
+                const daysLeft=l.dueDate?days_until(l.dueDate):null;
+                const apptDays=l.appointmentDate?days_until(l.appointmentDate):null;
+                const risk=apptRisk(l);
+                const escalH=escalationHours(l);
+                const needsEscalate=["awaiting_nurse_verification","awaiting_dentist_approval"].includes(l.status)&&escalH>24;
+                return(
+                  <tr key={l.id} style={{borderTop:i>0?"1px solid rgba(59,130,246,0.06)":"none",background:risk==="critical"?"rgba(239,68,68,0.04)":l.status==="delayed"?"rgba(239,68,68,0.03)":"transparent",cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="rgba(59,130,246,0.04)"}
+                    onMouseLeave={e=>e.currentTarget.style.background=risk==="critical"?"rgba(239,68,68,0.04)":l.status==="delayed"?"rgba(239,68,68,0.03)":"transparent"}
+                    onClick={()=>setDetailCase(l.id)}>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{fontWeight:700,color:"#F8FAFC"}}>{l.patient}</div>
+                      {risk&&<ApptRiskBadge lc={l} compact/>}
+                    </td>
+                    <td style={{padding:"10px 12px",color:"#94A3B8",fontSize:11,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lab}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{color:"#E2E8F0",fontWeight:600,fontSize:11}}>{l.type}</div>
+                      <div style={{fontSize:10,color:"#64748B",marginTop:1}}>{l.tooth}</div>
+                    </td>
+                    <td style={{padding:"10px 12px",fontFamily:"ui-monospace,monospace",fontWeight:700,color:"#60A5FA",fontSize:11}}>{l.shade}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{fontWeight:600,color:l.status==="delayed"?C.red:daysLeft!==null&&daysLeft<=2?C.amber:"#94A3B8",fontSize:11}}>{date_str(l.dueDate)}</div>
+                      {daysLeft!==null&&daysLeft<=3&&l.status!=="fitted"&&<div style={{fontSize:9,color:daysLeft<=0?C.red:C.amber,marginTop:1}}>{daysLeft<=0?"Delayed":"In "+daysLeft+"d"}</div>}
+                    </td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{fontSize:11,color:apptDays!==null&&apptDays<=2?C.amber:apptDays!==null&&apptDays<=7?C.amber:"#94A3B8"}}>{date_str(l.appointmentDate)}</div>
+                      {apptDays!==null&&apptDays<=7&&apptDays>0&&<div style={{fontSize:9,color:apptDays<=2?C.red:C.amber,marginTop:1}}>in {apptDays}d {apptDays<=2?"⚠":""}</div>}
+                    </td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                        <Chip color={st.c}>{st.l}</Chip>
+                        <div style={{fontSize:9,color:"#475569"}}>→ <span style={{color:"#64748B"}}>{st.owner}</span></div>
+                        {needsEscalate&&<div style={{fontSize:9,color:escalH>48?C.red:C.amber,fontWeight:700}}>{Math.round(escalH)}h waiting</div>}
+                      </div>
+                    </td>
+                    <td style={{padding:"10px 12px"}} onClick={e=>e.stopPropagation()}>
+                      <div style={{display:"flex",gap:4,flexWrap:"nowrap"}}>
+                        {l.status==="dispatched"&&<button onClick={()=>{updateStatus(l.id,"arrived","Reception","reception");doToast("✓ Arrived — Nurse "+l.nurse+" notified");}} style={{padding:"4px 9px",background:"rgba(6,182,212,0.12)",border:"1px solid rgba(6,182,212,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:"#22D3EE",whiteSpace:"nowrap"}}>✓ Arrived</button>}
+                        {l.status==="arrived"&&<button onClick={()=>setNurseModal(l)} style={{padding:"4px 9px",background:"rgba(236,72,153,0.12)",border:"1px solid rgba(236,72,153,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:"#EC4899",whiteSpace:"nowrap"}}>🔬 Verify</button>}
+                        {l.status==="awaiting_dentist_approval"&&<button onClick={()=>{updateStatus(l.id,"ready_for_appointment","Dr Patel","dentist");doToast("✓ Approved — Ready for Appointment");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Approve</button>}
+                        {l.status==="ready_for_appointment"&&<button onClick={()=>{updateStatus(l.id,"fitted","Dentist","dentist");doToast("✓ Fitted");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Fitted</button>}
+                        {l.status==="delayed"&&<button onClick={()=>{const e={type:"Phone Call",by:"Reception",at:now_str(),note:"Chased lab — case delayed"};setLabs(p=>p.map(x=>x.id===l.id?{...x,commsLog:[...x.commsLog,e]}:x));addAudit(l.id,"Reception","reception","Lab chased");doToast("📞 "+l.lab+" chased");}} style={{padding:"4px 9px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.red,whiteSpace:"nowrap"}}>📞 Chase</button>}
+                        <button onClick={()=>setDetailCase(l.id)} style={{padding:"4px 8px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,color:C.blue}}>⋯</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            }</tbody>
+          </table>
+        </div>
+      </>}
+
+      {/* ── WORKFLOW TAB ──────────────────────────────────────────────────── */}
+      {tab==="workflow"&&<>
+        {/* Kanban-style workflow board */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+          {LAB_WORKFLOW_STEPS.map(step=>{
+            const stepCases=labs.filter(l=>l.status===step.id);
+            const st=S[step.id];
+            if(!st)return null;
+            return(
+              <div key={step.id} style={{background:"rgba(13,22,40,0.7)",border:`1px solid ${st.c}33`,borderRadius:14,padding:12,minHeight:120,display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:st.c,textTransform:"uppercase",letterSpacing:".06em"}}>{step.short}</div>
+                  <div style={{width:20,height:20,borderRadius:"50%",background:st.bg,border:`1px solid ${st.c}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:st.c}}>{stepCases.length}</div>
+                </div>
+                <div style={{fontSize:9,color:"#475569",fontWeight:600}}>→ {st.owner}</div>
+                {stepCases.length===0&&<div style={{fontSize:10,color:"#2d3748",fontStyle:"italic",textAlign:"center",paddingTop:8}}>No cases</div>}
+                {stepCases.map(lc=>{
+                  const risk=apptRisk(lc);
+                  const escalH=escalationHours(lc);
+                  return(
+                    <div key={lc.id} onClick={()=>setDetailCase(lc.id)} style={{background:"rgba(7,14,28,0.8)",border:`1px solid ${risk?"rgba(239,68,68,0.3)":"rgba(59,130,246,0.12)"}`,borderRadius:10,padding:"8px 10px",cursor:"pointer",transition:"all .15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor=st.c+"55"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor=risk?"rgba(239,68,68,0.3)":"rgba(59,130,246,0.12)"}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#E2E8F0"}}>{lc.patient}</div>
+                      <div style={{fontSize:9,color:"#64748B",marginTop:2}}>{lc.type} · {lc.tooth}</div>
+                      {lc.appointmentDate&&<div style={{fontSize:9,color:apptRisk(lc)?C.amber:"#475569",marginTop:2}}>Appt {date_str(lc.appointmentDate)}</div>}
+                      {risk&&<div style={{fontSize:8,color:C.red,fontWeight:700,marginTop:3}}>⚠ {risk==="critical"?"CRITICAL RISK":"Appt Risk"}</div>}
+                      {escalH>24&&<div style={{fontSize:8,color:escalH>48?C.red:C.amber,fontWeight:700,marginTop:2}}>{Math.round(escalH)}h waiting</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {/* Off-track column */}
+          {(()=>{
+            const offTrack=labs.filter(l=>["returned_to_lab","delayed","cancelled","lab_query"].includes(l.status));
+            return offTrack.length>0&&(
+              <div style={{background:"rgba(13,22,40,0.7)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:14,padding:12,minHeight:120,display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:C.red,textTransform:"uppercase",letterSpacing:".06em"}}>Off Track</div>
+                  <div style={{width:20,height:20,borderRadius:"50%",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:C.red}}>{offTrack.length}</div>
+                </div>
+                {offTrack.map(lc=>(
+                  <div key={lc.id} onClick={()=>setDetailCase(lc.id)} style={{background:"rgba(7,14,28,0.8)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"8px 10px",cursor:"pointer"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#E2E8F0"}}>{lc.patient}</div>
+                    <Chip color={S[lc.status]?.c||"#64748B"}>{S[lc.status]?.l||lc.status}</Chip>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Appointment Protection Summary */}
+        {(criticalRisk.length>0||highRisk.length>0||mediumRisk.length>0)&&<div style={{marginTop:16,background:"rgba(239,68,68,0.04)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:14,padding:16}}>
+          <div style={{fontSize:13,fontWeight:800,color:C.red,marginBottom:12}}>🛡 Appointment Protection</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[...criticalRisk,...highRisk,...mediumRisk].map(lc=>(
+              <div key={lc.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"rgba(7,14,28,0.6)",borderRadius:10,border:`1px solid ${apptRisk(lc)==="critical"?C.red:C.amber}33`}}>
+                <ApptRiskBadge lc={lc}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#E2E8F0"}}>{lc.patient} — {lc.type}</div>
+                  <div style={{fontSize:10,color:"#64748B"}}>Status: {S[lc.status]?.l} · Fit: {date_str(lc.appointmentDate)}</div>
+                </div>
+                <button onClick={()=>setDetailCase(lc.id)} style={{padding:"5px 12px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.blue}}>View →</button>
+              </div>
+            ))}
+          </div>
+        </div>}
+
+        {/* Dashboard widgets row */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16}}>
+          {/* Doctor widget */}
+          <div style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:14,padding:16}}>
+            <div style={{fontSize:12,fontWeight:800,color:C.amber,marginBottom:12}}>🩺 My Lab Actions — Dr Patel</div>
+            {[
+              {label:"Awaiting My Approval",v:awaitingDentist.length,c:C.amber},
+              {label:"Ready This Week",v:readyCases.filter(l=>l.appointmentDate&&days_until(l.appointmentDate)<=7).length,c:C.green},
+              {label:"Appointment Risks",v:[...criticalRisk,...highRisk].length,c:C.red},
+            ].map(r=>(
+              <div key={r.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,marginBottom:4,background:"rgba(7,14,28,0.5)"}}>
+                <span style={{fontSize:11,color:"#94A3B8"}}>{r.label}</span>
+                <span style={{fontSize:18,fontWeight:800,color:r.c,fontFamily:"ui-monospace,monospace"}}>{r.v}</span>
+              </div>
+            ))}
+            {awaitingDentist.length>0&&<button onClick={()=>{setTab("cases");setFilterStatus("awaiting_dentist_approval");}} style={{width:"100%",marginTop:8,padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.amber}}>Review Cases →</button>}
+          </div>
+
+          {/* Reception widget */}
+          <div style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(6,182,212,0.2)",borderRadius:14,padding:16}}>
+            <div style={{fontSize:12,fontWeight:800,color:"#22D3EE",marginBottom:12}}>🏥 Reception Dashboard</div>
+            {[
+              {label:"Cases Arriving Today",v:labs.filter(l=>l.status==="dispatched").length,c:"#22D3EE"},
+              {label:"Awaiting Nurse Verification",v:awaitingNurse.length,c:"#EC4899"},
+              {label:"Delayed / Overdue",v:overdueCases.length,c:C.red},
+              {label:"Appointments at Risk",v:[...criticalRisk,...highRisk].length,c:C.amber},
+            ].map(r=>(
+              <div key={r.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,marginBottom:4,background:"rgba(7,14,28,0.5)"}}>
+                <span style={{fontSize:11,color:"#94A3B8"}}>{r.label}</span>
+                <span style={{fontSize:18,fontWeight:800,color:r.c,fontFamily:"ui-monospace,monospace"}}>{r.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Auto-generated priorities */}
+        {(()=>{
+          const priorities=[];
+          labs.forEach(lc=>{
+            const risk=apptRisk(lc);
+            const escalH=escalationHours(lc);
+            if(lc.status==="arrived")priorities.push({icon:"⚠",msg:`Lab case arrived — nurse verification required · ${lc.patient} (${lc.type})`,c:C.amber,id:lc.id});
+            if(lc.status==="awaiting_dentist_approval")priorities.push({icon:"🩺",msg:`Awaiting dentist approval · ${lc.patient} (${lc.type})${escalH>24?" — "+Math.round(escalH)+"h waiting":""}`,c:escalH>48?C.red:C.amber,id:lc.id});
+            if(risk==="critical")priorities.push({icon:"🔴",msg:`Critical appointment risk · ${lc.patient} — fit ${date_str(lc.appointmentDate)}`,c:C.red,id:lc.id});
+            if(lc.status==="delayed")priorities.push({icon:"⏰",msg:`Lab overdue · ${lc.patient} (${lc.lab}) — chase required`,c:C.red,id:lc.id});
+            if(lc.status==="lab_query")priorities.push({icon:"💬",msg:`Lab query awaiting response · ${lc.patient}`,c:C.amber,id:lc.id});
+          });
+          if(priorities.length===0)return null;
+          return(
+            <div style={{marginTop:16,background:"rgba(13,22,40,0.7)",border:"1px solid rgba(59,130,246,0.15)",borderRadius:14,padding:16}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#94A3B8",marginBottom:10}}>⚡ Auto-generated Priorities</div>
+              {priorities.map((p,i)=>(
+                <div key={i} onClick={()=>setDetailCase(p.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:9,marginBottom:4,background:"rgba(7,14,28,0.5)",border:`1px solid ${p.c}22`,cursor:"pointer"}}>
+                  <span style={{fontSize:14}}>{p.icon}</span>
+                  <span style={{fontSize:11,color:p.c,fontWeight:600,flex:1}}>{p.msg}</span>
+                  <span style={{fontSize:10,color:"#475569"}}>→</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </>}
+
+      {/* ── ANALYTICS TAB ─────────────────────────────────────────────────── */}
+      {tab==="analytics"&&<>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:800,marginBottom:10}}>Lab Performance</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:10}}>
+            {labPerf.map(p=>(
+              <div key={p.lab} style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#F8FAFC"}}>{p.lab}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[["Total Cases",p.total,C.blue],["Active",p.active,"#A78BFA"],["Delayed",p.overdue,p.overdue>0?C.red:"#64748B"],["Reliability",p.reliability!==null?p.reliability+"%":"N/A",p.reliability===null?"#64748B":p.reliability>=90?C.green:p.reliability>=70?C.amber:C.red]].map(([l,v,c])=>(
+                    <div key={l} style={{background:"rgba(7,14,28,0.6)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.08)"}}>
+                      <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
+                      <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:"ui-monospace,monospace"}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {p.reliability!==null&&<div style={{marginTop:10}}>
+                  <div style={{height:5,background:"rgba(59,130,246,0.1)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:p.reliability+"%",background:p.reliability>=90?C.green:p.reliability>=70?C.amber:C.red,borderRadius:3}}/>
+                  </div>
+                  <div style={{fontSize:10,color:"#64748B",marginTop:3}}>On-time delivery rate</div>
+                </div>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Workflow Status Breakdown</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {Object.entries(S).map(([k,v])=>{const count=labs.filter(l=>l.status===k).length;return count>0&&(
+              <div key={k} style={{background:v.bg,border:"1px solid "+v.c+"33",borderRadius:10,padding:"8px 14px",display:"flex",gap:8,alignItems:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:v.c,fontFamily:"ui-monospace,monospace"}}>{count}</div>
+                <div style={{fontSize:11,fontWeight:600,color:v.c}}>{v.l}</div>
+              </div>
+            );})}
+          </div>
+        </div>
+      </>}
+
+      {/* ── REPORTS TAB ───────────────────────────────────────────────────── */}
+      {tab==="reports"&&<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:10}}>
+          {[
+            {title:"Outstanding Cases",desc:"All active, not yet fitted",data:activeCases,color:C.blue},
+            {title:"Delayed / Overdue",desc:"Cases past lab due date",data:overdueCases,color:C.red},
+            {title:"Awaiting Nurse Verification",desc:"Arrived, nurse check not done",data:awaitingNurse,color:"#EC4899"},
+            {title:"Awaiting Dentist Approval",desc:"Nurse-verified, pending approval",data:awaitingDentist,color:C.amber},
+            {title:"Ready for Appointment",desc:"Fully approved — ready to fit",data:readyCases,color:C.green},
+            {title:"Appointment Risks",desc:"Cases at risk of not being ready",data:[...new Set([...criticalRisk,...highRisk,...mediumRisk])],color:C.red},
+            {title:"All Fitted",desc:"Completed cases",data:labs.filter(l=>l.status==="fitted"),color:"#64748B"},
+          ].map(r=>(
+            <div key={r.title} style={{background:"rgba(13,22,40,0.8)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC"}}>{r.title}</div>
+                  <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{r.desc}</div>
+                </div>
+                <div style={{fontSize:22,fontWeight:800,color:r.color,fontFamily:"ui-monospace,monospace"}}>{r.data.length}</div>
+              </div>
+              {r.data.length===0?<div style={{fontSize:11,color:"#2d3748",padding:"8px 0"}}>No cases</div>:
+                r.data.slice(0,4).map(l=>(
+                  <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:"1px solid rgba(59,130,246,0.07)",cursor:"pointer"}} onClick={()=>{setDetailCase(l.id);setTab("cases");}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:"#E2E8F0"}}>{l.patient}</div>
+                      <div style={{fontSize:10,color:"#64748B"}}>{l.type} · {l.lab}</div>
+                    </div>
+                    <Chip color={S[l.status]?.c||"#64748B"}>{S[l.status]?.l||l.status}</Chip>
+                  </div>
+                ))
+              }
+              {r.data.length>4&&<div style={{fontSize:10,color:C.blue,marginTop:6,cursor:"pointer"}} onClick={()=>{setFilterStatus("all");setTab("cases");}}>+{r.data.length-4} more →</div>}
+            </div>
+          ))}
+        </div>
+      </>}
+
+    </div>
+  );
+}
 const LAB_CASE_TYPES=["PFM Crown","Zirconia Crown","Metal Crown","Porcelain Veneer","Composite Veneer","Nightguard (Hard)","Nightguard (Soft)","Occlusal Splint","Chrome Denture","Acrylic Denture","Partial Denture","Implant Crown","Implant Bridge","Bridge (PFM)","Bridge (Zirconia)","Orthodontic Retainer","Study Models","Custom Tray","Other"];
 const LAB_COMM_TYPES=["Phone Call","Email","SMS","Lab Note","In-Person"];
 const now_str=()=>new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
