@@ -25020,7 +25020,16 @@ function LabPage(){
   const [returnModal,setReturnModal]=useState(null);
   const [rejectNote,setRejectNote]=useState("");
   const [returnNote,setReturnNote]=useState("");
+  const [stepConfirm,setStepConfirm]=useState(null); // {caseId, targetStatus, label}
+  const [editField,setEditField]=useState(null);      // {caseId, field, value}
   const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),3500);};
+
+  // Update a single field and log to audit
+  const updateField=(id,field,value,label)=>{
+    setLabs(p=>p.map(x=>x.id===id?{...x,[field]:value}:x));
+    addAudit(id,"Staff","staff",`${label} updated → ${value}`);
+    doToast(`✓ ${label} updated`);
+  };
 
   const addAudit=(id,by,role,action)=>{
     setLabs(p=>p.map(x=>x.id===id?{...x,audit:[...x.audit,{by,role,at:now_str(),action}]}:x));
@@ -25096,9 +25105,10 @@ function LabPage(){
   const inp={padding:"8px 12px",background:"#0F1C34",border:"1.5px solid rgba(59,130,246,0.2)",borderRadius:9,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",width:"100%",boxSizing:"border-box"};
   const lbl={fontSize:10,fontWeight:700,color:"rgba(148,163,184,0.8)",letterSpacing:".06em",textTransform:"uppercase",marginBottom:3,display:"block"};
 
-  // Workflow stepper component
-  const WorkflowStepper=({status})=>{
+  // Clickable workflow stepper
+  const WorkflowStepper=({lc})=>{
     const steps=LAB_WORKFLOW_STEPS;
+    const status=lc.status;
     const curStep=S[status]?.step??-1;
     const isOff=["returned_to_lab","delayed","cancelled","lab_query"].includes(status);
     return(
@@ -25106,20 +25116,25 @@ function LabPage(){
         {steps.map((st,i)=>{
           const done=!isOff&&curStep>i;
           const current=!isOff&&curStep===i;
-          const col=done?C.green:current?(S[status]?.c||C.blue):"#1e2d44";
-          const txtCol=done?C.green:current?"#fff":"#475569";
+          const clickable=!isOff&&i>curStep&&i===curStep+1; // only next step is clickable
+          const col=done?C.green:current?(S[status]?.c||C.blue):clickable?"rgba(59,130,246,0.5)":"#1e2d44";
+          const txtCol=done?C.green:current?"#fff":clickable?"#94A3B8":"#475569";
           return(
             <React.Fragment key={st.id}>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:60,flexShrink:0}}>
+              <div
+                title={clickable?`Click to advance to: ${st.short}`:""}
+                onClick={clickable?()=>setStepConfirm({caseId:lc.id,targetStatus:st.id,label:st.short,lc}):undefined}
+                style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:60,flexShrink:0,cursor:clickable?"pointer":"default",opacity:!done&&!current&&!clickable?0.45:1,transition:"opacity .2s"}}>
                 <div style={{width:22,height:22,borderRadius:"50%",
-                  background:done?"rgba(34,197,94,0.2)":current?(S[status]?.bg||"rgba(59,130,246,0.2)"):"rgba(30,45,68,0.8)",
+                  background:done?"rgba(34,197,94,0.2)":current?(S[status]?.bg||"rgba(59,130,246,0.2)"):clickable?"rgba(59,130,246,0.1)":"rgba(30,45,68,0.8)",
                   border:`2px solid ${col}`,display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:9,fontWeight:800,color:col,transition:"all .2s"}}>
-                  {done?"✓":i+1}
+                  fontSize:9,fontWeight:800,color:col,transition:"all .2s",
+                  boxShadow:clickable?"0 0 8px rgba(59,130,246,0.3)":"none"}}>
+                  {done?"✓":clickable?"→":i+1}
                 </div>
                 <div style={{fontSize:7,color:txtCol,fontWeight:current?800:500,marginTop:3,textAlign:"center",lineHeight:1.2,whiteSpace:"nowrap"}}>{st.short}</div>
               </div>
-              {i<steps.length-1&&<div style={{flex:1,height:2,background:done?"rgba(34,197,94,0.4)":"rgba(30,45,68,0.8)",minWidth:8,marginBottom:14}}/>}
+              {i<steps.length-1&&<div style={{flex:1,height:2,background:done?"rgba(34,197,94,0.4)":clickable?"rgba(59,130,246,0.2)":"rgba(30,45,68,0.8)",minWidth:8,marginBottom:14,transition:"background .2s"}}/>}
             </React.Fragment>
           );
         })}
@@ -25295,6 +25310,51 @@ function LabPage(){
         </div>
       </div>}
 
+      {/* ── Step Confirm Modal ────────────────────────────────────────────── */}
+      {stepConfirm&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:960,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setStepConfirm(null);}}>
+        <div style={{background:"#0F1C34",borderRadius:18,width:"100%",maxWidth:400,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.7)",border:"1px solid rgba(80,140,255,0.25)"}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:6}}>Advance Workflow</div>
+          <div style={{fontSize:11,color:"#94A3B8",marginBottom:16}}>{stepConfirm.lc?.patient} · {stepConfirm.lc?.type}</div>
+          <div style={{padding:"12px 14px",background:"rgba(59,130,246,0.08)",borderRadius:10,border:"1px solid rgba(59,130,246,0.2)",marginBottom:18}}>
+            <div style={{fontSize:10,color:"#64748B",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Moving to</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:LAB_STATUSES[stepConfirm.targetStatus]?.c||C.blue}}/>
+              <div style={{fontSize:14,fontWeight:800,color:LAB_STATUSES[stepConfirm.targetStatus]?.c||C.blue}}>{LAB_STATUSES[stepConfirm.targetStatus]?.l||stepConfirm.label}</div>
+            </div>
+            <div style={{fontSize:11,color:"#94A3B8",marginTop:4}}>Owner: {LAB_STATUSES[stepConfirm.targetStatus]?.owner||"—"}</div>
+          </div>
+          <div style={{fontSize:11,color:"#64748B",marginBottom:18}}>This action will be logged in the audit trail with timestamp and your name.</div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setStepConfirm(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={()=>{
+              const sc=stepConfirm;
+              updateStatus(sc.caseId,sc.targetStatus,"Staff","staff");
+              doToast("✓ Advanced to: "+LAB_STATUSES[sc.targetStatus]?.l);
+              setStepConfirm(null);
+            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,boxShadow:"0 0 16px rgba(0,109,255,0.3)"}}>Confirm &amp; Advance →</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── Inline Field Edit Modal ───────────────────────────────────────── */}
+      {editField&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:960,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setEditField(null);}}>
+        <div style={{background:"#0F1C34",borderRadius:18,width:"100%",maxWidth:360,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",border:"1px solid rgba(80,140,255,0.2)"}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:4}}>Edit {editField.label}</div>
+          <div style={{fontSize:11,color:"#94A3B8",marginBottom:14}}>{editField.patient}</div>
+          {editField.type==="date"
+            ?<input type="date" value={editField.value} onChange={e=>setEditField(p=>({...p,value:e.target.value}))} style={{...inp,marginBottom:16}}/>
+            :<input type="text" value={editField.value} onChange={e=>setEditField(p=>({...p,value:e.target.value}))} style={{...inp,marginBottom:16}} autoFocus/>
+          }
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setEditField(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
+            <button onClick={()=>{
+              updateField(editField.caseId,editField.field,editField.value,editField.label);
+              setEditField(null);
+            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700}}>Save Change</button>
+          </div>
+        </div>
+      </div>}
+
       {/* ── Case Detail Panel (slide-over) ───────────────────────────────── */}
       {detailCase&&(()=>{const lc=labs.find(x=>x.id===detailCase);if(!lc)return null;const st=S[lc.status];const risk=apptRisk(lc);const escalH=escalationHours(lc);return(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"flex-start",justifyContent:"flex-end",zIndex:940,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setDetailCase(null);}}>
@@ -25313,7 +25373,7 @@ function LabPage(){
 
             {/* Workflow stepper */}
             <div style={{background:"rgba(7,14,28,0.8)",borderRadius:12,padding:"12px 10px",marginBottom:14,border:"1px solid rgba(59,130,246,0.1)"}}>
-              <WorkflowStepper status={lc.status}/>
+              <WorkflowStepper lc={lc}/>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <div style={{width:10,height:10,borderRadius:"50%",background:st.c,boxShadow:`0 0 8px ${st.c}88`}}/>
@@ -25346,21 +25406,38 @@ function LabPage(){
               </div>
             )}
 
-            {/* Key dates */}
+            {/* Key dates — clickable to edit */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-              {[["Sent",date_str(lc.sentDate),"#64748B"],["Due Lab",date_str(lc.dueDate),lc.status==="delayed"?C.red:lc.dueDate&&days_until(lc.dueDate)<=2?C.amber:"#94A3B8"],["Fit Appt",date_str(lc.appointmentDate),risk?C.amber:"#94A3B8"]].map(([l,v,c])=>(
-                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
-                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
+              {[
+                {l:"Sent",v:date_str(lc.sentDate),c:"#64748B",field:"sentDate",raw:lc.sentDate,editable:false},
+                {l:"Due Date",v:date_str(lc.dueDate),c:lc.status==="delayed"?C.red:lc.dueDate&&days_until(lc.dueDate)<=2?C.amber:"#94A3B8",field:"dueDate",raw:lc.dueDate,editable:true},
+                {l:"Fit Appt",v:date_str(lc.appointmentDate),c:risk?C.amber:"#94A3B8",field:"appointmentDate",raw:lc.appointmentDate,editable:true},
+              ].map(({l,v,c,field,raw,editable})=>(
+                <div key={l}
+                  onClick={editable?()=>setEditField({caseId:lc.id,field,label:l,value:raw||"",type:"date",patient:lc.patient}):undefined}
+                  style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)",cursor:editable?"pointer":"default",position:"relative",transition:"border .15s",...(editable&&{":hover":{borderColor:"rgba(59,130,246,0.4)"}})}}>
+                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    {l}{editable&&<span style={{fontSize:9,color:"#334155"}}>✏</span>}
+                  </div>
                   <div style={{fontSize:12,fontWeight:700,color:c}}>{v}</div>
                 </div>
               ))}
             </div>
 
-            {/* Details grid */}
+            {/* Details grid — clickable to edit */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-              {[["Clinician",lc.clinician],["Assigned Nurse",lc.nurse],["Shade",lc.shade],["Case ID",lc.id]].map(([l,v])=>(
-                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
-                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
+              {[
+                {l:"Clinician",v:lc.clinician,field:"clinician",editable:true},
+                {l:"Assigned Nurse",v:lc.nurse,field:"nurse",editable:true},
+                {l:"Shade",v:lc.shade,field:"shade",editable:true},
+                {l:"Case ID",v:lc.id,field:"id",editable:false},
+              ].map(({l,v,field,editable})=>(
+                <div key={l}
+                  onClick={editable?()=>setEditField({caseId:lc.id,field,label:l,value:v||"",type:"text",patient:lc.patient}):undefined}
+                  style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)",cursor:editable?"pointer":"default",transition:"border .15s"}}>
+                  <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    {l}{editable&&<span style={{fontSize:9,color:"#334155"}}>✏</span>}
+                  </div>
                   <div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{v||"—"}</div>
                 </div>
               ))}
@@ -25386,7 +25463,7 @@ function LabPage(){
                   );
                 })}
               </div>
-              {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1",padding:"8px 10px",background:"rgba(15,28,52,0.5)",borderRadius:7",fontStyle:"italic"}}>{lc.nurseCheck.notes}</div>}
+              {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1",padding:"8px 10px",background:"rgba(15,28,52,0.5)",borderRadius:7,fontStyle:"italic"}}>{lc.nurseCheck.notes}</div>}
             </div>}
 
             {/* Communications */}
@@ -25476,7 +25553,7 @@ function LabPage(){
 
       {/* ── Tabs ──────────────────────────────────────────────────────────── */}
       <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid rgba(59,130,246,0.1)"}}>
-        {[["cases","📋 Cases"],["workflow","⚡ Workflow"],["analytics","📊 Analytics"],["reports","📄 Reports"]].map(([k,l])=>(
+        {[["cases","📋 Cases"],["workflow","⚡ Workflow"],["analytics","📊 Analytics"],["reports","📄 Reports"],["audit","🔒 Audit Log"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:tab===k?"2.5px solid #006DFF":"2.5px solid transparent",marginBottom:-1,cursor:"pointer",fontSize:12,fontWeight:tab===k?800:500,color:tab===k?C.blue:"#94A3B8"}}>{l}</button>
         ))}
       </div>
@@ -25801,541 +25878,43 @@ function LabPage(){
         </div>
       </>}
 
-    </div>
-  );
-}
-const LAB_CASE_TYPES=["PFM Crown","Zirconia Crown","Metal Crown","Porcelain Veneer","Composite Veneer","Nightguard (Hard)","Nightguard (Soft)","Occlusal Splint","Chrome Denture","Acrylic Denture","Partial Denture","Implant Crown","Implant Bridge","Bridge (PFM)","Bridge (Zirconia)","Orthodontic Retainer","Study Models","Custom Tray","Other"];
-const LAB_COMM_TYPES=["Phone Call","Email","SMS","Lab Note","In-Person"];
-const now_str=()=>new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
-const date_str=(d)=>d?new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"—";
-const days_until=(iso)=>{const d=new Date(iso)-new Date();return Math.ceil(d/86400000);};
-
-const LABS_INIT=[
-  {id:"L1",patient:"Sarah Chen",pid:"P2",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Prestige Dental Lab",type:"PFM Crown",tooth:"UR6",shade:"A2",sentDate:"2026-05-06",dueDate:"2026-05-14",appointmentDate:"2026-06-03",status:"nurse_check",
-   nurseCheck:{itemsChecked:["shade","prescription","impressions"],dropdown:"Impressions taken by nurse",notes:"Shade verified under natural light"},
-   audit:[{by:"Reception",role:"reception",at:"06 May 09:12",action:"Case created — Sent to Lab"},
-          {by:"Prestige Lab",role:"lab",at:"06 May 14:00",action:"Lab confirmed receipt"},
-          {by:"Nurse Adams",role:"nurse",at:"14 May 10:30",action:"Marked Arrived"},
-          {by:"Nurse Adams",role:"nurse",at:"14 May 11:00",action:"Nurse check submitted"}],
-   commsLog:[{type:"Phone Call",by:"Nurse Adams",at:"06 May 09:15",note:"Confirmed case being sent today"},
-             {type:"Email",by:"Nurse Adams",at:"13 May 15:00",note:"Chased ETA — lab confirmed 14 May"}],
-   notes:"Shade A2 verified on arrival ✓"},
-  {id:"L2",patient:"James Kirk",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Nightguard (Hard)",tooth:"Full arch",shade:"N/A",sentDate:"2026-05-05",dueDate:"2026-05-13",appointmentDate:"2026-05-28",status:"overdue",
-   nurseCheck:null,
-   audit:[{by:"Reception",role:"reception",at:"05 May 09:00",action:"Case created — Sent to Lab"},
-          {by:"System",role:"system",at:"13 May 00:00",action:"Auto-flagged Overdue"}],
-   commsLog:[{type:"Phone Call",by:"Nurse Brown",at:"14 May 09:00",note:"Lab said dispatching today — not received yet"}],
-   notes:"2 days overdue — chased by phone"},
-  {id:"L3",patient:"Helen Rowe",pid:null,clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Southern Ceramics",type:"Porcelain Veneer",tooth:"UL1",shade:"B1",sentDate:"2026-05-08",dueDate:"2026-06-15",appointmentDate:"2026-06-17",status:"in_lab",
-   nurseCheck:null,
-   audit:[{by:"Reception",role:"reception",at:"08 May 09:30",action:"Case created — Sent to Lab"}],
-   commsLog:[],
-   notes:"Confirm shade B1 not A2 on arrival"},
-  {id:"L4",patient:"Tom Smith",pid:null,clinician:"Dr Ahmed",nurse:"Nurse Brown",lab:"Prestige Dental Lab",type:"Chrome Denture",tooth:"Lower",shade:"N/A",sentDate:"2026-05-01",dueDate:"2026-05-20",appointmentDate:"2026-05-22",status:"awaiting_approval",
-   nurseCheck:{itemsChecked:["shade","fit","prescription","impressions","rx_complete"],dropdown:"Nurse verified all items",notes:"All checks complete — ready for dentist approval"},
-   audit:[{by:"Reception",role:"reception",at:"01 May 10:00",action:"Case created — Sent to Lab"},
-          {by:"Nurse Brown",role:"nurse",at:"20 May 09:00",action:"Arrived — nurse check complete"},
-          {by:"Nurse Brown",role:"nurse",at:"20 May 09:30",action:"Submitted for dentist approval"}],
-   commsLog:[],
-   notes:"Try-in scheduled — all items verified"},
-  {id:"L5",patient:"Amy Torres",pid:"P4",clinician:"Dr Patel",nurse:"Nurse Adams",lab:"Implant Direct",type:"Implant Crown",tooth:"UL2",shade:"A1",sentDate:"2026-04-20",dueDate:"2026-05-25",appointmentDate:"2026-06-10",status:"approved",
-   nurseCheck:{itemsChecked:["shade","fit","prescription","impressions","rx_complete"],dropdown:"Nurse verified all items",notes:""},
-   audit:[{by:"Reception",role:"reception",at:"20 Apr 10:00",action:"Case created — Sent to Lab"},
-          {by:"Nurse Adams",role:"nurse",at:"25 May 09:00",action:"Arrived — nurse check complete"},
-          {by:"Dr Patel",role:"dentist",at:"25 May 11:00",action:"Approved ✓ — ready for fit"}],
-   commsLog:[{type:"Email",by:"Nurse Adams",at:"22 Apr 09:00",note:"Lab confirmed receipt and timeline"}],
-   notes:"Allow extra time for try-in"},
-];
-
-function LabPage(){
-  const lbvw=useWindowWidth();const isMob=lbvw<768;
-  const [labs,setLabs]=useState(LABS_INIT);
-  const [toast,setToast]=useState(null);
-  const [tab,setTab]=useState("cases"); // cases | analytics | reports
-  const [filterStatus,setFilterStatus]=useState("all");
-  const [filterLab,setFilterLab]=useState("all");
-  const [search,setSearch]=useState("");
-  const [detailCase,setDetailCase]=useState(null);
-  const [newCaseModal,setNewCaseModal]=useState(false);
-  const [nurseModal,setNurseModal]=useState(null);
-  const [commsModal,setCommsModal]=useState(null);
-  const [rejectModal,setRejectModal]=useState(null);
-  const [rejectNote,setRejectNote]=useState("");
-  const doToast=(m,c)=>{setToast({m,c:c||C.green});setTimeout(()=>setToast(null),3000);};
-
-  const addAudit=(id,by,role,action)=>{
-    const at=now_str();
-    setLabs(p=>p.map(x=>x.id===id?{...x,audit:[...x.audit,{by,role,at,action}]}:x));
-  };
-  const updateStatus=(id,status,by,role,extra)=>{
-    setLabs(p=>p.map(x=>x.id===id?{...x,status,...(extra||{})}:x));
-    addAudit(id,by,role,LAB_STATUSES[status]?.l||status);
-  };
-
-  // Derived stats
-  const overdueCases=labs.filter(l=>l.status==="overdue");
-  const due48h=labs.filter(l=>l.status==="in_lab"&&l.dueDate&&days_until(l.dueDate)<=2&&days_until(l.dueDate)>0);
-  const awaitingApproval=labs.filter(l=>l.status==="awaiting_approval");
-  const apptReady=labs.filter(l=>l.status==="approved"&&l.appointmentDate&&days_until(l.appointmentDate)<=2);
-
-  const allLabs=[...new Set(labs.map(l=>l.lab))];
-  const filtered=labs.filter(l=>{
-    if(filterStatus!=="all"&&l.status!==filterStatus)return false;
-    if(filterLab!=="all"&&l.lab!==filterLab)return false;
-    if(search&&![l.patient,l.type,l.tooth,l.lab].join(" ").toLowerCase().includes(search.toLowerCase()))return false;
-    return true;
-  });
-
-  // New case form state
-  const blankCase={patient:"",pid:null,clinician:"",nurse:"",lab:"",type:"PFM Crown",tooth:"",shade:"",sentDate:new Date().toISOString().slice(0,10),dueDate:"",appointmentDate:"",notes:""};
-  const [newForm,setNewForm]=useState(blankCase);
-  const submitNewCase=()=>{
-    if(!newForm.patient||!newForm.lab||!newForm.dueDate){doToast("Fill in Patient, Lab and Due Date","#EF4444");return;}
-    const id="L"+(Date.now()%100000);
-    setLabs(p=>[...p,{...newForm,id,status:"sent",nurseCheck:null,audit:[{by:"Reception",role:"reception",at:now_str(),action:"Case created — Sent to Lab"}],commsLog:[]}]);
-    setNewCaseModal(false);setNewForm(blankCase);
-    doToast("✓ New lab case created for "+newForm.patient);
-  };
-
-  // Nurse check form
-  const NC_ITEMS=[{k:"shade",l:"Shade verified"},  {k:"fit",l:"Fit/try-in checked"},{k:"prescription",l:"Lab prescription correct"},{k:"impressions",l:"Impressions match"},{k:"rx_complete",l:"Rx form complete"}];
-  const [ncForm,setNcForm]=useState({itemsChecked:[],dropdown:"",notes:""});
-  const submitNurseCheck=()=>{
-    if(ncForm.itemsChecked.length<3){doToast("Please check at least 3 items","#EF4444");return;}
-    setLabs(p=>p.map(x=>x.id===nurseModal.id?{...x,status:"awaiting_approval",nurseCheck:ncForm}:x));
-    addAudit(nurseModal.id,"Nurse","nurse","Nurse check complete — submitted for dentist approval");
-    setNurseModal(null);setNcForm({itemsChecked:[],dropdown:"",notes:""});
-    doToast("✓ Nurse check submitted — awaiting dentist approval");
-  };
-
-  // Comms log
-  const [commForm,setCommForm]=useState({type:"Phone Call",note:""});
-  const submitComm=()=>{
-    if(!commForm.note){doToast("Enter a note","#EF4444");return;}
-    const entry={type:commForm.type,by:"Nurse",at:now_str(),note:commForm.note};
-    setLabs(p=>p.map(x=>x.id===commsModal.id?{...x,commsLog:[...x.commsLog,entry]}:x));
-    setCommsModal(null);setCommForm({type:"Phone Call",note:""});
-    doToast("✓ Communication logged");
-  };
-
-  // Analytics data
-  const labPerf=allLabs.map(lab=>{
-    const cases=labs.filter(l=>l.lab===lab);
-    const completed=cases.filter(l=>l.status==="fitted");
-    const ontime=completed.filter(l=>!l.wasLate).length;
-    const overdue=cases.filter(l=>l.status==="overdue").length;
-    const reliability=completed.length>0?Math.round((ontime/completed.length)*100):null;
-    return{lab,total:cases.length,active:cases.filter(l=>!["fitted"].includes(l.status)).length,overdue,reliability};
-  });
-
-  const S=LAB_STATUSES;
-  const inp={padding:"8px 12px",background:"#0F1C34",border:"1.5px solid rgba(59,130,246,0.2)",borderRadius:9,color:"#F8FAFC",fontSize:12,fontFamily:"inherit",outline:"none",width:"100%",boxSizing:"border-box"};
-  const lbl={fontSize:10,fontWeight:700,color:"rgba(148,163,184,0.8)",letterSpacing:".06em",textTransform:"uppercase",marginBottom:3,display:"block"};
-
-  return(
-    <div className="pdc-page-pad" style={{padding:isMob?12:20,overflowY:"auto",flex:1,background:"#071428",backgroundImage:"radial-gradient(ellipse at 85% 5%,rgba(80,140,255,0.08) 0%,transparent 45%),radial-gradient(ellipse at 15% 80%,rgba(59,130,246,0.05) 0%,transparent 40%)"}}>
-
-      {/* Toast */}
-      {toast&&<div style={{position:"fixed",top:64,right:18,padding:"10px 16px",background:"rgba(7,20,40,0.95)",border:"1px solid rgba(80,140,255,0.25)",borderRadius:9,fontSize:12,color:toast.c,zIndex:900,display:"flex",gap:6,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}}>{toast.m}</div>}
-
-      {/* ── New Case Modal ───────────────────────────────────────────────── */}
-      {newCaseModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setNewCaseModal(false);}}>
-        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:540,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)",maxHeight:"90vh",overflowY:"auto"}}>
-          <div style={{fontSize:15,fontWeight:800,marginBottom:16}}>New Lab Case</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {[["patient","Patient Name"],["clinician","Clinician"],["nurse","Nurse"],["lab","Lab Name"],["tooth","Tooth/Arch"],["shade","Shade"]].map(([k,l])=>(
-              <div key={k}><label style={lbl}>{l}</label><input value={newForm[k]||""} onChange={e=>setNewForm(p=>({...p,[k]:e.target.value}))} style={inp}/></div>
-            ))}
-            <div><label style={lbl}>Type</label>
-              <select value={newForm.type} onChange={e=>setNewForm(p=>({...p,type:e.target.value}))} style={{...inp,cursor:"pointer"}}>
-                {LAB_CASE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div><label style={lbl}>Sent Date</label><input type="date" value={newForm.sentDate} onChange={e=>setNewForm(p=>({...p,sentDate:e.target.value}))} style={inp}/></div>
-            <div><label style={lbl}>Due Date *</label><input type="date" value={newForm.dueDate} onChange={e=>setNewForm(p=>({...p,dueDate:e.target.value}))} style={inp}/></div>
-            <div><label style={lbl}>Appointment Date</label><input type="date" value={newForm.appointmentDate} onChange={e=>setNewForm(p=>({...p,appointmentDate:e.target.value}))} style={inp}/></div>
-          </div>
-          <div style={{marginTop:12}}><label style={lbl}>Notes</label>
-            <textarea value={newForm.notes} onChange={e=>setNewForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="Any special instructions…"/>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            <button onClick={()=>setNewCaseModal(false)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
-            <button onClick={submitNewCase} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Create Lab Case</button>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── Nurse Check Modal ───────────────────────────────────────────── */}
-      {nurseModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setNurseModal(null);}}>
-        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:460,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
-          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Nurse Verification</div>
-          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:16}}>{nurseModal.patient} · {nurseModal.type} · {nurseModal.lab}</div>
-          <div style={{marginBottom:12}}>
-            {NC_ITEMS.map(item=>(
-              <label key={item.k} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,marginBottom:4,background:ncForm.itemsChecked.includes(item.k)?"rgba(34,197,94,0.08)":"rgba(15,28,52,0.6)",cursor:"pointer",border:"1px solid "+(ncForm.itemsChecked.includes(item.k)?"rgba(34,197,94,0.25)":"rgba(59,130,246,0.1)")}}>
-                <input type="checkbox" checked={ncForm.itemsChecked.includes(item.k)} onChange={e=>{
-                  setNcForm(p=>({...p,itemsChecked:e.target.checked?[...p.itemsChecked,item.k]:p.itemsChecked.filter(x=>x!==item.k)}));
-                }} style={{accentColor:C.green,width:14,height:14}}/>
-                <span style={{fontSize:12,fontWeight:600,color:ncForm.itemsChecked.includes(item.k)?C.green:"#CBD5E1"}}>{item.l}</span>
-              </label>
-            ))}
-          </div>
-          <div style={{marginBottom:10}}>
-            <label style={lbl}>Verification Method</label>
-            <select value={ncForm.dropdown} onChange={e=>setNcForm(p=>({...p,dropdown:e.target.value}))} style={{...inp,cursor:"pointer"}}>
-              <option value="">Select…</option>
-              {["Impressions taken by nurse","Nurse measured shade","Checked against prescription","Reviewed with dentist","Standard check protocol"].map(o=><option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-          <div style={{marginBottom:14}}>
-            <label style={lbl}>Notes</label>
-            <textarea value={ncForm.notes} onChange={e=>setNcForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="Any issues or observations…"/>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setNurseModal(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
-            <button onClick={submitNurseCheck} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#EC4899,#BE185D)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Submit Nurse Check →</button>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── Comms Log Modal ─────────────────────────────────────────────── */}
-      {commsModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setCommsModal(null);}}>
-        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:460,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
-          <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Log Communication</div>
-          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>{commsModal.patient} · {commsModal.lab}</div>
-          {/* History */}
-          {commsModal.commsLog.length>0&&<div style={{marginBottom:12,maxHeight:160,overflowY:"auto"}}>
-            {commsModal.commsLog.map((e,i)=>(
-              <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid rgba(59,130,246,0.4)"}}>
-                <div style={{fontSize:10,color:"#94A3B8",marginBottom:2}}>{e.type} · {e.by} · {e.at}</div>
-                <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note}</div>
-              </div>
-            ))}
-          </div>}
-          <div style={{marginBottom:10}}>
-            <label style={lbl}>Type</label>
-            <select value={commForm.type} onChange={e=>setCommForm(p=>({...p,type:e.target.value}))} style={{...inp,cursor:"pointer"}}>
-              {LAB_COMM_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div style={{marginBottom:14}}>
-            <label style={lbl}>Note *</label>
-            <textarea value={commForm.note} onChange={e=>setCommForm(p=>({...p,note:e.target.value}))} rows={3} style={{...inp,resize:"vertical"}} placeholder="What was discussed or agreed?"/>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setCommsModal(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
-            <button onClick={submitComm} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Log Communication</button>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── Reject Modal ────────────────────────────────────────────────── */}
-      {rejectModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setRejectModal(null);}}>
-        <div style={{background:"#132238",borderRadius:16,width:"100%",maxWidth:420,padding:24,boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
-          <div style={{fontSize:15,fontWeight:800,marginBottom:4,color:C.red}}>Reject Case</div>
-          <div style={{fontSize:11,color:"#CBD5E1",marginBottom:12}}>{rejectModal.patient} · {rejectModal.type}</div>
-          <div style={{marginBottom:14}}>
-            <label style={lbl}>Reason for rejection *</label>
-            <textarea value={rejectNote} onChange={e=>setRejectNote(e.target.value)} rows={3} style={{...inp,resize:"vertical",borderColor:"rgba(239,68,68,0.3)"}} placeholder="Describe the issue (shade wrong, doesn't fit, etc.)…"/>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setRejectModal(null)} style={{flex:1,padding:"9px",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,background:"transparent",cursor:"pointer",fontSize:12,color:"#CBD5E1"}}>Cancel</button>
-            <button onClick={()=>{
-              if(!rejectNote){doToast("Enter rejection reason","#EF4444");return;}
-              updateStatus(rejectModal.id,"rejected","Dentist","dentist",{notes:rejectModal.notes+"\n❌ Rejected: "+rejectNote});
-              setRejectModal(null);setRejectNote("");
-              doToast("Case rejected — returned to lab","#EF4444");
-            }} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#EF4444,#B91C1C)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontSize:12,fontWeight:700}}>Reject & Return to Lab</button>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── Case Detail Panel ───────────────────────────────────────────── */}
-      {detailCase&&(()=>{const lc=labs.find(x=>x.id===detailCase);if(!lc)return null;const st=S[lc.status];return(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"flex-start",justifyContent:"flex-end",zIndex:940,padding:16}} onClick={e=>{if(e.target===e.currentTarget)setDetailCase(null);}}>
-          <div style={{background:"#0F1C34",borderRadius:16,width:"100%",maxWidth:520,height:"100%",maxHeight:"calc(100vh - 32px)",overflowY:"auto",padding:20,boxShadow:"-8px 0 40px rgba(0,0,0,0.5)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-              <div>
-                <div style={{fontSize:16,fontWeight:800}}>{lc.patient}</div>
-                <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{lc.type} · {lc.tooth} · {lc.lab}</div>
-              </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <Chip color={st.c}>{st.l}</Chip>
-                <button onClick={()=>setDetailCase(null)} style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
-              </div>
-            </div>
-
-            {/* Key dates */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-              {[["Sent",date_str(lc.sentDate),"#64748B"],["Due",date_str(lc.dueDate),lc.status==="overdue"?C.red:lc.dueDate&&days_until(lc.dueDate)<=2?C.amber:C.text],["Appointment",date_str(lc.appointmentDate),lc.appointmentDate&&days_until(lc.appointmentDate)<=2?C.amber:C.text]].map(([l,v,c])=>(
-                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
-                  <div style={{fontSize:9,color:"#64748B",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:c}}>{v}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Details grid */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-              {[["Clinician",lc.clinician],["Nurse",lc.nurse],["Shade",lc.shade],["Case ID",lc.id]].map(([l,v])=>(
-                <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(59,130,246,0.1)"}}>
-                  <div style={{fontSize:9,color:"#64748B",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
-                  <div style={{fontSize:12,fontWeight:600,color:"#F8FAFC"}}>{v||"—"}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Notes */}
-            {lc.notes&&<div style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:12,border:"1px solid rgba(59,130,246,0.1)",marginBottom:16,fontSize:12,color:"#CBD5E1",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{lc.notes}</div>}
-
-            {/* Nurse check results */}
-            {lc.nurseCheck&&<div style={{background:"rgba(236,72,153,0.06)",border:"1px solid rgba(236,72,153,0.2)",borderRadius:10,padding:12,marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#EC4899",marginBottom:8}}>Nurse Verification</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-                {NC_ITEMS.map(item=><span key={item.k} style={{fontSize:10,padding:"3px 8px",borderRadius:6,background:lc.nurseCheck.itemsChecked.includes(item.k)?"rgba(34,197,94,0.15)":"rgba(100,116,139,0.15)",color:lc.nurseCheck.itemsChecked.includes(item.k)?C.green:"#64748B",fontWeight:600}}>{lc.nurseCheck.itemsChecked.includes(item.k)?"✓ ":""}{item.l}</span>)}
-              </div>
-              {lc.nurseCheck.dropdown&&<div style={{fontSize:11,color:"#CBD5E1",marginBottom:4}}>Method: {lc.nurseCheck.dropdown}</div>}
-              {lc.nurseCheck.notes&&<div style={{fontSize:11,color:"#CBD5E1"}}>{lc.nurseCheck.notes}</div>}
-            </div>}
-
-            {/* Comms log */}
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                Communications ({lc.commsLog.length})
-                <button onClick={()=>setCommsModal(lc)} style={{fontSize:10,padding:"3px 10px",background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,cursor:"pointer",color:C.blue,fontWeight:700}}>+ Log</button>
-              </div>
-              {lc.commsLog.length===0?<div style={{fontSize:11,color:"#4B5563",textAlign:"center",padding:"10px 0"}}>No communications logged</div>:
-                lc.commsLog.map((e,i)=>(
-                  <div key={i} style={{padding:"8px 10px",background:"rgba(15,28,52,0.7)",borderRadius:8,marginBottom:4,borderLeft:"3px solid rgba(59,130,246,0.35)"}}>
-                    <div style={{fontSize:10,color:"#94A3B8",marginBottom:2}}>{e.type} · {e.by} · {e.at}</div>
-                    <div style={{fontSize:11,color:"#F8FAFC"}}>{e.note}</div>
-                  </div>
-                ))
-              }
-            </div>
-
-            {/* Audit log */}
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#94A3B8",marginBottom:8}}>Audit Trail</div>
-              {lc.audit.map((a,i)=>(
-                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:6}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:C.blue,marginTop:4,flexShrink:0}}/>
-                  <div>
-                    <div style={{fontSize:10,color:"#94A3B8"}}>{a.at} · {a.by}</div>
-                    <div style={{fontSize:11,color:"#F8FAFC"}}>{a.action}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Actions */}
-            <div style={{borderTop:"1px solid rgba(59,130,246,0.1)",paddingTop:14,display:"flex",gap:8,flexWrap:"wrap"}}>
-              {lc.status==="sent"&&<button onClick={()=>{updateStatus(lc.id,"in_lab","Lab","lab");doToast("Marked: In Lab");}} style={{padding:"7px 14px",background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:"#A78BFA"}}>Mark In Lab</button>}
-              {(lc.status==="in_lab"||lc.status==="overdue")&&<button onClick={()=>{updateStatus(lc.id,"arrived","Nurse","nurse");doToast("✓ Marked Arrived");}} style={{padding:"7px 14px",background:"rgba(6,182,212,0.12)",border:"1px solid rgba(6,182,212,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:"#22D3EE"}}>✓ Mark Arrived</button>}
-              {lc.status==="arrived"&&<button onClick={()=>{setNurseModal(lc);}} style={{padding:"7px 14px",background:"rgba(236,72,153,0.12)",border:"1px solid rgba(236,72,153,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:"#EC4899"}}>Nurse Check →</button>}
-              {lc.status==="awaiting_approval"&&<button onClick={()=>{updateStatus(lc.id,"approved","Dentist","dentist");doToast("✓ Case approved");}} style={{padding:"7px 14px",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.green}}>Approve ✓</button>}
-              {lc.status==="awaiting_approval"&&<button onClick={()=>setRejectModal(lc)} style={{padding:"7px 14px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red}}>Reject ✗</button>}
-              {lc.status==="approved"&&<button onClick={()=>{updateStatus(lc.id,"fitted","Dentist","dentist");doToast("✓ Case marked fitted");}} style={{padding:"7px 14px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.green}}>Mark Fitted ✓</button>}
-              {lc.status==="overdue"&&<button onClick={()=>{const e={type:"Phone Call",by:"Nurse",at:now_str(),note:"Chased lab for update"};setLabs(p=>p.map(x=>x.id===lc.id?{...x,commsLog:[...x.commsLog,e]}:x));addAudit(lc.id,"Nurse","nurse","Lab chased by phone");doToast("📞 Lab chased");}} style={{padding:"7px 14px",background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:700,color:C.red}}>📞 Chase Lab</button>}
-              <button onClick={()=>setCommsModal(lc)} style={{padding:"7px 14px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:9,cursor:"pointer",fontSize:11,fontWeight:600,color:C.blue}}>Log Comm</button>
-            </div>
-          </div>
-        </div>
-      );})()}
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontSize:16,fontWeight:800}}>Lab Manager</div>
-          <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{labs.filter(l=>l.status!=="fitted").length} active cases · {overdueCases.length>0?<span style={{color:C.red,fontWeight:700}}>{overdueCases.length} overdue</span>:"all on track"} · {awaitingApproval.length>0&&<span style={{color:C.amber,fontWeight:700}}>{awaitingApproval.length} awaiting approval · </span>}{apptReady.length>0&&<span style={{color:C.green,fontWeight:700}}>{apptReady.length} ready for appointment</span>}</div>
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {overdueCases.length>0&&<div style={{padding:"6px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:8,fontSize:11,fontWeight:700,color:C.red}}>⚠ {overdueCases.length} overdue</div>}
-          {due48h.length>0&&<div style={{padding:"6px 12px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:8,fontSize:11,fontWeight:700,color:C.amber}}>⏰ {due48h.length} due &lt;48h</div>}
-          {awaitingApproval.length>0&&<div style={{padding:"6px 12px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:8,fontSize:11,fontWeight:700,color:C.amber}}>🔔 {awaitingApproval.length} need approval</div>}
-          <button onClick={()=>setNewCaseModal(true)} style={{padding:"7px 16px",background:"linear-gradient(135deg,#006DFF,#0057CC)",color:"#fff",boxShadow:"0 0 14px rgba(0,109,255,0.4)",border:"none",borderRadius:12,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",gap:5,alignItems:"center"}}><Plus size={12}/>New Lab Case</button>
-        </div>
-      </div>
-
-      {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid rgba(59,130,246,0.1)",paddingBottom:0}}>
-        {[["cases","Cases"],["analytics","Analytics"],["reports","Reports"]].map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k)} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:tab===k?"2px solid #006DFF":"2px solid transparent",marginBottom:-1,cursor:"pointer",fontSize:12,fontWeight:tab===k?800:500,color:tab===k?C.blue:"#94A3B8"}}>{l}</button>
-        ))}
-      </div>
-
-      {/* ── CASES TAB ───────────────────────────────────────────────────── */}
-      {tab==="cases"&&<>
-        {/* Alert banner for 48h appointments */}
-        {apptReady.length>0&&<div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <div style={{fontSize:14}}>🗓</div>
+      {/* ── AUDIT LOG TAB ─────────────────────────────────────────────────── */}
+      {tab==="audit"&&(()=>{
+        const allAudit=labs.flatMap(l=>l.audit.map(a=>({...a,caseId:l.id,patient:l.patient,type:l.type})))
+          .sort((a,b)=>b.at.localeCompare(a.at));
+        const roleColor={reception:"#38BDF8",lab:"#A78BFA",nurse:"#EC4899",dentist:"#22C55E",staff:"#F59E0B",system:"#64748B"};
+        return(
           <div>
-            <div style={{fontSize:12,fontWeight:700,color:C.green}}>Appointment Readiness Alert</div>
-            <div style={{fontSize:11,color:"#CBD5E1",marginTop:2}}>{apptReady.map(l=>`${l.patient} (${l.type}) — appt ${date_str(l.appointmentDate)}`).join(" · ")}</div>
-          </div>
-        </div>}
-
-        {/* Stats row */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:14}}>
-          {[
-            {l:"Overdue",v:overdueCases.length,c:C.red,bg:"rgba(239,68,68,0.08)"},
-            {l:"In Lab",v:labs.filter(l=>l.status==="in_lab").length,c:"#A78BFA",bg:"rgba(139,92,246,0.08)"},
-            {l:"Due <48h",v:due48h.length,c:C.amber,bg:"rgba(245,158,11,0.08)"},
-            {l:"Arrived",v:labs.filter(l=>["arrived","nurse_check"].includes(l.status)).length,c:"#22D3EE",bg:"rgba(6,182,212,0.08)"},
-            {l:"Awaiting Approval",v:awaitingApproval.length,c:C.amber,bg:"rgba(245,158,11,0.08)"},
-            {l:"Approved / Ready",v:labs.filter(l=>l.status==="approved").length,c:C.green,bg:"rgba(34,197,94,0.08)"},
-          ].map(s=>(
-            <div key={s.l} style={{background:s.bg,border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"10px 14px",display:"flex",flexDirection:"column",gap:2}}>
-              <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:"ui-monospace,monospace"}}>{s.v}</div>
-              <div style={{fontSize:10,fontWeight:600,color:"#94A3B8"}}>{s.l}</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#94A3B8"}}>{allAudit.length} events across {labs.length} cases</div>
+              <div style={{fontSize:10,color:"#475569",padding:"4px 10px",borderRadius:6,background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.12)"}}>🔒 Immutable · Append-only · CQC compliant</div>
             </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search patient, type, lab…" style={{...inp,width:200,flex:"none"}}/>
-          <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{...inp,width:160,flex:"none",cursor:"pointer"}}>
-            <option value="all">All statuses</option>
-            {Object.entries(S).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-          </select>
-          <select value={filterLab} onChange={e=>setFilterLab(e.target.value)} style={{...inp,width:180,flex:"none",cursor:"pointer"}}>
-            <option value="all">All labs</option>
-            {allLabs.map(l=><option key={l} value={l}>{l}</option>)}
-          </select>
-          <div style={{fontSize:11,color:"#64748B",marginLeft:"auto"}}>{filtered.length} case{filtered.length!==1?"s":""}</div>
-        </div>
-
-        {/* Table */}
-        <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:16,overflow:"hidden",...(isMob&&{overflowX:"auto"})}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,...(isMob&&{minWidth:780})}}>
-            <thead><tr style={{background:"#0F1C34",borderBottom:"2px solid rgba(80,140,255,0.15)"}}>
-              {["Patient","Lab","Type / Tooth","Shade","Due","Appointment","Status","Actions"].map(h=>(
-                <th key={h} style={{padding:"9px 12px",textAlign:"left",fontSize:9,fontWeight:800,color:"rgba(59,130,246,0.7)",letterSpacing:".06em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+            <div style={{background:"#0B1424",borderRadius:14,border:"1px solid rgba(59,130,246,0.1)",overflow:"hidden"}}>
+              {allAudit.map((a,i)=>(
+                <div key={i} style={{display:"flex",gap:12,padding:"10px 14px",borderTop:i>0?"1px solid rgba(59,130,246,0.06)":"none",alignItems:"flex-start",cursor:"pointer",background:"transparent"}} onClick={()=>{setDetailCase(a.caseId);setTab("cases");}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:roleColor[a.role]||"#64748B",marginTop:5,flexShrink:0,boxShadow:`0 0 6px ${roleColor[a.role]||"#64748B"}66`}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                      <span style={{fontSize:11,fontWeight:800,color:"#F8FAFC"}}>{a.patient}</span>
+                      <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:(roleColor[a.role]||"#64748B")+"18",color:roleColor[a.role]||"#64748B",fontWeight:700,border:`1px solid ${roleColor[a.role]||"#64748B"}33`}}>{a.role}</span>
+                      <span style={{fontSize:10,color:"#94A3B8"}}>{a.by}</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#CBD5E1"}}>{a.action}</div>
+                    <div style={{fontSize:10,color:"#475569",marginTop:2}}>{a.at} · {a.type}</div>
+                  </div>
+                  <div style={{fontSize:9,color:"#334155",fontFamily:"ui-monospace,monospace",flexShrink:0,marginTop:3}}>{a.caseId}</div>
+                </div>
               ))}
-            </tr></thead>
-            <tbody>{filtered.length===0?
-              <tr><td colSpan={8} style={{padding:"28px",textAlign:"center",color:"#4B5563",fontSize:13}}>No cases match the current filters</td></tr>:
-              filtered.map((l,i)=>{
-                const st=S[l.status];
-                const daysLeft=l.dueDate?days_until(l.dueDate):null;
-                const apptDays=l.appointmentDate?days_until(l.appointmentDate):null;
-                return(
-                  <tr key={l.id} style={{borderTop:i>0?"1px solid rgba(59,130,246,0.07)":"none",background:l.status==="overdue"?"rgba(239,68,68,0.04)":"transparent",cursor:"pointer"}} onClick={()=>setDetailCase(l.id)}>
-                    <td style={{padding:"10px 12px",fontWeight:700,color:"#F8FAFC"}}>{l.patient}</td>
-                    <td style={{padding:"10px 12px",color:"#CBD5E1",fontSize:11,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lab}</td>
-                    <td style={{padding:"10px 12px"}}>
-                      <div style={{color:"#F8FAFC",fontWeight:600}}>{l.type}</div>
-                      <div style={{fontSize:10,color:"#94A3B8",marginTop:1}}>{l.tooth}</div>
-                    </td>
-                    <td style={{padding:"10px 12px",fontFamily:"ui-monospace,monospace",fontWeight:600,color:C.blue,fontSize:11}}>{l.shade}</td>
-                    <td style={{padding:"10px 12px"}}>
-                      <div style={{fontWeight:600,color:l.status==="overdue"?C.red:daysLeft!==null&&daysLeft<=2?C.amber:C.text,fontSize:11}}>{date_str(l.dueDate)}</div>
-                      {daysLeft!==null&&daysLeft<=3&&l.status!=="fitted"&&<div style={{fontSize:10,color:daysLeft<=0?C.red:C.amber,marginTop:1}}>{daysLeft<=0?"Overdue":daysLeft===1?"Tomorrow":daysLeft+" days"}</div>}
-                    </td>
-                    <td style={{padding:"10px 12px"}}>
-                      <div style={{fontSize:11,color:apptDays!==null&&apptDays<=2?C.amber:C.text}}>{date_str(l.appointmentDate)}</div>
-                      {apptDays!==null&&apptDays<=2&&apptDays>0&&<div style={{fontSize:10,color:C.amber,marginTop:1}}>⚠ in {apptDays}d</div>}
-                    </td>
-                    <td style={{padding:"10px 12px"}}><Chip color={st.c}>{st.l}</Chip></td>
-                    <td style={{padding:"10px 12px"}} onClick={e=>e.stopPropagation()}>
-                      <div style={{display:"flex",gap:4}}>
-                        {l.status==="overdue"&&<button onClick={()=>{const e={type:"Phone Call",by:"Nurse",at:now_str(),note:"Chased lab"};setLabs(p=>p.map(x=>x.id===l.id?{...x,commsLog:[...x.commsLog,e]}:x));addAudit(l.id,"Nurse","nurse","Lab chased");doToast("📞 "+l.lab+" chased");}} style={{padding:"4px 9px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.red,whiteSpace:"nowrap"}}>📞 Chase</button>}
-                        {(l.status==="in_lab"||l.status==="sent")&&<button onClick={()=>{updateStatus(l.id,"arrived","Nurse","nurse");doToast("✓ Marked arrived");}} style={{padding:"4px 9px",background:"rgba(6,182,212,0.1)",border:"1px solid rgba(6,182,212,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:"#22D3EE",whiteSpace:"nowrap"}}>✓ Arrived</button>}
-                        {l.status==="arrived"&&<button onClick={()=>setNurseModal(l)} style={{padding:"4px 9px",background:"rgba(236,72,153,0.1)",border:"1px solid rgba(236,72,153,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:"#EC4899",whiteSpace:"nowrap"}}>Nurse ✓</button>}
-                        {l.status==="awaiting_approval"&&<button onClick={()=>{updateStatus(l.id,"approved","Dentist","dentist");doToast("✓ Case approved");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Approve</button>}
-                        {l.status==="approved"&&<button onClick={()=>{updateStatus(l.id,"fitted","Dentist","dentist");doToast("✓ Fitted");}} style={{padding:"4px 9px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:7,cursor:"pointer",fontSize:10,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>Fitted</button>}
-                        <button onClick={()=>setDetailCase(l.id)} style={{padding:"4px 8px",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:7,cursor:"pointer",fontSize:10,color:C.blue}}>⋯</button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            }</tbody>
-          </table>
-        </div>
-      </>}
-
-      {/* ── ANALYTICS TAB ───────────────────────────────────────────────── */}
-      {tab==="analytics"&&<>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>Lab Performance</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:10}}>
-            {labPerf.map(p=>(
-              <div key={p.lab} style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
-                <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#F8FAFC"}}>{p.lab}</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[["Total Cases",p.total,C.blue],["Active",p.active,"#A78BFA"],["Overdue",p.overdue,p.overdue>0?C.red:"#64748B"],["Reliability",p.reliability!==null?p.reliability+"%":"N/A",p.reliability===null?"#64748B":p.reliability>=90?C.green:p.reliability>=70?C.amber:C.red]].map(([l,v,c])=>(
-                    <div key={l} style={{background:"rgba(15,28,52,0.8)",borderRadius:10,padding:"10px 12px"}}>
-                      <div style={{fontSize:9,color:"#64748B",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
-                      <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:"ui-monospace,monospace"}}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                {p.reliability!==null&&<div style={{marginTop:10}}>
-                  <div style={{height:6,background:"rgba(59,130,246,0.12)",borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:p.reliability+"%",background:p.reliability>=90?C.green:p.reliability>=70?C.amber:C.red,borderRadius:3,transition:"width 0.5s"}}/>
-                  </div>
-                  <div style={{fontSize:10,color:"#64748B",marginTop:3}}>On-time delivery rate</div>
-                </div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Turnaround summary */}
-        <div style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Case Status Breakdown</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {Object.entries(S).map(([k,v])=>{const count=labs.filter(l=>l.status===k).length;return count>0&&(
-              <div key={k} style={{background:v.bg,border:"1px solid "+v.c+"44",borderRadius:10,padding:"8px 14px",display:"flex",gap:8,alignItems:"center"}}>
-                <div style={{fontSize:18,fontWeight:800,color:v.c,fontFamily:"ui-monospace,monospace"}}>{count}</div>
-                <div style={{fontSize:11,fontWeight:600,color:v.c}}>{v.l}</div>
-              </div>
-            );})}
-          </div>
-        </div>
-      </>}
-
-      {/* ── REPORTS TAB ─────────────────────────────────────────────────── */}
-      {tab==="reports"&&<>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:10}}>
-          {[
-            {title:"Outstanding Cases",desc:"All active cases not yet fitted",data:labs.filter(l=>l.status!=="fitted"),color:C.blue},
-            {title:"Overdue Cases",desc:"Cases past due date",data:overdueCases,color:C.red},
-            {title:"Due This Week",desc:"Cases due in next 7 days",data:labs.filter(l=>l.dueDate&&days_until(l.dueDate)>=0&&days_until(l.dueDate)<=7),color:C.amber},
-            {title:"Awaiting Dentist Approval",desc:"Nurse-checked, pending approval",data:awaitingApproval,color:"#F59E0B"},
-            {title:"Appointment Readiness",desc:"Approved cases with appointment in ≤48h",data:apptReady,color:C.green},
-            {title:"All Fitted / Complete",desc:"Completed cases",data:labs.filter(l=>l.status==="fitted"),color:"#64748B"},
-          ].map(r=>(
-            <div key={r.title} style={{background:"#132238",border:"1px solid rgba(59,130,246,0.12)",borderRadius:14,padding:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#F8FAFC"}}>{r.title}</div>
-                  <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>{r.desc}</div>
-                </div>
-                <div style={{fontSize:22,fontWeight:800,color:r.color,fontFamily:"ui-monospace,monospace"}}>{r.data.length}</div>
-              </div>
-              {r.data.length===0?<div style={{fontSize:11,color:"#4B5563",padding:"8px 0"}}>No cases</div>:
-                r.data.slice(0,4).map(l=>(
-                  <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:"1px solid rgba(59,130,246,0.07)",cursor:"pointer"}} onClick={()=>{setDetailCase(l.id);setTab("cases");}}>
-                    <div>
-                      <div style={{fontSize:11,fontWeight:600,color:"#F8FAFC"}}>{l.patient}</div>
-                      <div style={{fontSize:10,color:"#94A3B8"}}>{l.type} · {l.lab}</div>
-                    </div>
-                    <Chip color={S[l.status].c}>{S[l.status].l}</Chip>
-                  </div>
-                ))
-              }
-              {r.data.length>4&&<div style={{fontSize:10,color:C.blue,marginTop:6,cursor:"pointer"}} onClick={()=>{setFilterStatus("all");setTab("cases");}}>+{r.data.length-4} more →</div>}
+              {allAudit.length===0&&<div style={{padding:"28px",textAlign:"center",color:"#4B5563",fontSize:12}}>No audit events yet</div>}
             </div>
-          ))}
-        </div>
-      </>}
+          </div>
+        );
+      })()}
 
     </div>
   );
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SHORT NOTICE LIST — opt-in patients for last-minute slots
